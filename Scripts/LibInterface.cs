@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-public class LibConnection : MonoBehaviour
+public class LibInterface
 {
     //function definitions
     [DllImport("G3D_UniversalHeadTrackingLibrary.dll", EntryPoint="?initLibrary@G3D_UHTL@@YAHXZ", CallingConvention = CallingConvention.Cdecl)]
@@ -152,34 +152,4 @@ public class LibConnection : MonoBehaviour
     delegate void TNewShaderParametersCallback(
         in CG3DShaderParameters shaderParameters, out IntPtr listener);
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        int result = initLibrary();
-        Debug.Log("initLibrary Result: " + result);
-
-        int deviceCount = -1;
-        result = getHeadTrackingDeviceCount(out deviceCount);
-        Debug.Log("getHeadTrackingDeviceCount Result: " + result);
-
-        result = deinitLibrary();
-        Debug.Log("deinitLibrary Result: " + result);
-        // int deviceCount = 0;
-        // int result = getHeadTrackingDeviceCount(deviceCount);
-        // Debug.Log("Result: " + result);
-        // Debug.Log("Device Count: " + deviceCount);
-        // IntPtr ptr =  new IntPtr();
-        // result = getHeadTrackingDeviceName(0, ptr);
-        // Debug.Log("Result: " + result);
-
-        // string deviceName = Marshal.PtrToStringAnsi(ptr);
-        // Debug.Log("Device Name: " + deviceName);
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }
