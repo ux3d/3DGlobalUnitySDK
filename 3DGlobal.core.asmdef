@@ -1,8 +1,7 @@
 {
     "name": "3DGlobal.Core",
     "rootNamespace": "",
-    "references": [
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
