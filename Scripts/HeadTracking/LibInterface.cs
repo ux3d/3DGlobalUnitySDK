@@ -186,7 +186,8 @@ public class LibInterface
     public void registerHeadPositionChangedCallback(
         IntPtr listener,
         TNewHeadPositionCallback callback
-    ) { }
+    ) { // TODO
+    }
 
     public void unregisterHeadPositionChangedCallback(
         IntPtr listener
