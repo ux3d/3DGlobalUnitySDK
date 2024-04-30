@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate void TNewShaderParametersCallback(
+public delegate void TNewShaderParametersCallbackInternal(
     in G3DShaderParameters shaderParameters,
     IntPtr listener
 );
@@ -289,10 +289,7 @@ public class LibInterface
         );
     }
 
-    public void registerHeadPositionChangedCallback(
-        ITNewHeadPositionCallback inferfaceInstance,
-        TNewHeadPositionCallback callback
-    )
+    public void registerHeadPositionChangedCallback(ITNewHeadPositionCallback inferfaceInstance)
     {
         GCHandle gch = GCHandle.Alloc(inferfaceInstance);
 
@@ -366,15 +363,97 @@ public class LibInterface
         }
     }
 
+    private void TranslateShaderParametersCallback(
+        in G3DShaderParameters shaderParameters,
+        IntPtr listener
+    )
+    {
+        // translate intptr to interface instance
+        // call interface instance callback
+        GCHandle gch = GCHandle.FromIntPtr(listener);
+        ITNewShaderParametersCallback interfaceInstance = (ITNewShaderParametersCallback)gch.Target;
+
+        interfaceInstance.NewShaderParametersCallback(shaderParameters);
+    }
+
     public void registerShaderParametersChangedCallback(
-        IntPtr listener,
-        TNewShaderParametersCallback callback
-    ) { // TODO
+        ITNewShaderParametersCallback interfaceInstance
+    )
+    {
+        GCHandle gch = GCHandle.Alloc(interfaceInstance);
+
+        TNewShaderParametersCallbackInternal cppTranslationCallback =
+            new TNewShaderParametersCallbackInternal(TranslateShaderParametersCallback);
+
+        int result = LibInterfaceCpp.registerShaderParametersChangedCallback(
+            GCHandle.ToIntPtr(gch),
+            cppTranslationCallback
+        );
+        gch.Free();
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: registerShaderParametersChangedCallback result: " + result);
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException(
+                "G3D library: this callback has already been registered."
+            );
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library not initialized.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library: an unknown error occurred when registering the shader parameters changed callback."
+            );
+        }
     }
 
     public void unregisterShaderParametersChangedCallback(
-        IntPtr listener
-    ) { // TODO
+        ITNewShaderParametersCallback interfaceInstance
+    )
+    {
+        GCHandle gch = GCHandle.Alloc(interfaceInstance);
+        int result = LibInterfaceCpp.unregisterShaderParametersChangedCallback(
+            GCHandle.ToIntPtr(gch)
+        );
+        gch.Free();
+
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: unregisterShaderParametersChangedCallback result: " + result);
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException(
+                "G3D library: this callback has already been unregistered."
+            );
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library: callback not registered.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library: an unknown error occurred when unregistering the shader parameters changed callback."
+            );
+        }
     }
 
     private void TranslateNewErrorMessageCallback(
@@ -400,10 +479,7 @@ public class LibInterface
         );
     }
 
-    public void registerMessageCallback(
-        ITNewErrorMessageCallback inferfaceInstance,
-        TNewErrorMessageCallback callback
-    )
+    public void registerMessageCallback(ITNewErrorMessageCallback inferfaceInstance)
     {
         GCHandle gch = GCHandle.Alloc(listener);
 
