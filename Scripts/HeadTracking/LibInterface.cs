@@ -481,7 +481,7 @@ public class LibInterface
 
     public void registerMessageCallback(ITNewErrorMessageCallback inferfaceInstance)
     {
-        GCHandle gch = GCHandle.Alloc(listener);
+        GCHandle gch = GCHandle.Alloc(inferfaceInstance);
 
         TNewErrorMessageCallbackInternal cppTranslationCallback =
             new TNewErrorMessageCallbackInternal(TranslateNewErrorMessageCallback);
@@ -521,7 +521,7 @@ public class LibInterface
 
     public void unregisterMessageCallback(ITNewErrorMessageCallback inferfaceInstance)
     {
-        GCHandle gch = GCHandle.Alloc(listener);
+        GCHandle gch = GCHandle.Alloc(inferfaceInstance);
         int result = LibInterfaceCpp.unregisterMessageCallback(GCHandle.ToIntPtr(gch));
         gch.Free();
 
@@ -1400,7 +1400,7 @@ internal static class LibInterfaceCpp
     )]
     public static extern int registerShaderParametersChangedCallback(
         IntPtr listener,
-        TNewShaderParametersCallback callback
+        TNewShaderParametersCallbackInternal callback
     );
 
     [DllImport(
@@ -1417,7 +1417,7 @@ internal static class LibInterfaceCpp
     )]
     public static extern int registerMessageCallback(
         IntPtr listener,
-        TNewErrorMessageCallback callback
+        TNewErrorMessageCallbackInternal callback
     );
 
     [DllImport(

@@ -16,7 +16,7 @@ public class G3DHeadTracking : MonoBehaviour, ITNewHeadPositionCallback
     void Start()
     {
         libInterface = new LibInterface(calibrationPath, configPath, configFileName, true);
-        libInterface.registerHeadPositionChangedCallback(this, NewHeadPositionCallback);
+        libInterface.registerHeadPositionChangedCallback(this);
     }
 
     // Update is called once per frame
