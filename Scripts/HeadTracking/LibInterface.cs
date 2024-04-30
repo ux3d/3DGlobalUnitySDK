@@ -3,17 +3,13 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate void TNewErrorMessageCallback(
-    EMessageSeverity severity,
-    in byte[] sender,
-    in byte[] caption,
-    in byte[] cause,
-    in byte[] remedy,
+public delegate void TNewShaderParametersCallback(
+    in G3DShaderParameters shaderParameters,
     IntPtr listener
 );
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate void TNewHeadPositionCallback(
+internal delegate void TNewHeadPositionCallbackInternal(
     [MarshalAs(UnmanagedType.U1)] bool headDetected,
     [MarshalAs(UnmanagedType.U1)] bool imagePosIsValid,
     int imagePosX,
@@ -21,12 +17,6 @@ public delegate void TNewHeadPositionCallback(
     double worldPosX,
     double worldPosY,
     double worldPosZ,
-    IntPtr listener
-);
-
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate void TNewShaderParametersCallback(
-    in G3DShaderParameters shaderParameters,
     IntPtr listener
 );
 
@@ -262,15 +252,108 @@ public class LibInterface
 
     // ------------------------------------------------
 
-    public void registerHeadPositionChangedCallback(
-        IntPtr listener,
-        TNewHeadPositionCallback callback
-    ) { // TODO
+    private void TranslateNewHeadPositionCallback(
+        [MarshalAs(UnmanagedType.U1)] bool headDetected,
+        [MarshalAs(UnmanagedType.U1)] bool imagePosIsValid,
+        int imagePosX,
+        int imagePosY,
+        double worldPosX,
+        double worldPosY,
+        double worldPosZ,
+        IntPtr listener
+    )
+    {
+        // translate intptr to interface instance
+        // call interface instance callback
+        GCHandle gch = GCHandle.FromIntPtr(listener);
+        ITNewHeadPositionCallback interfaceInstance = (ITNewHeadPositionCallback)gch.Target;
+
+        interfaceInstance.NewHeadPositionCallback(
+            headDetected,
+            imagePosIsValid,
+            imagePosX,
+            imagePosY,
+            worldPosX,
+            worldPosY,
+            worldPosZ
+        );
     }
 
-    public void unregisterHeadPositionChangedCallback(
-        IntPtr listener
-    ) { // TODO
+    public void registerHeadPositionChangedCallback(
+        ITNewHeadPositionCallback inferfaceInstance,
+        TNewHeadPositionCallback callback
+    )
+    {
+        GCHandle gch = GCHandle.Alloc(inferfaceInstance);
+
+        TNewHeadPositionCallbackInternal cppTranslationCallback =
+            new TNewHeadPositionCallbackInternal(TranslateNewHeadPositionCallback);
+
+        int result = LibInterfaceCpp.registerHeadPositionChangedCallback(
+            GCHandle.ToIntPtr(gch),
+            cppTranslationCallback
+        );
+        gch.Free();
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: registerHeadPositionChangedCallback result: " + result);
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException(
+                "G3D library: this callback has already been registered."
+            );
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library not initialized.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library: an unknown error occurred when registering the head position changed callback."
+            );
+        }
+    }
+
+    public void unregisterHeadPositionChangedCallback(ITNewHeadPositionCallback inferfaceInstance)
+    {
+        GCHandle gch = GCHandle.Alloc(inferfaceInstance);
+        int result = LibInterfaceCpp.unregisterHeadPositionChangedCallback(GCHandle.ToIntPtr(gch));
+        gch.Free();
+
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: unregisterHeadPositionChangedCallback result: " + result);
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException(
+                "G3D library: this callback has already been unregistered."
+            );
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library: callback not registered.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library: an unknown error occurred when unregistering the head position changed callback."
+            );
+        }
     }
 
     public void registerShaderParametersChangedCallback(
@@ -1071,7 +1154,7 @@ public class LibInterface
 /// <summary>
 /// This class provides the raw C++ interface to the G3D Universal Head Tracking Library.
 /// </summary>
-internal static file class LibInterfaceCpp
+internal static class LibInterfaceCpp
 {
     // Error codes
     const int E_OK = 0;
@@ -1125,7 +1208,7 @@ internal static file class LibInterfaceCpp
     )]
     public static extern int registerHeadPositionChangedCallback(
         IntPtr listener,
-        TNewHeadPositionCallback callback
+        TNewHeadPositionCallbackInternal callback
     );
 
     [DllImport(
