@@ -20,6 +20,16 @@ internal delegate void TNewHeadPositionCallbackInternal(
     IntPtr listener
 );
 
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+internal delegate void TNewErrorMessageCallbackInternal(
+    EMessageSeverity severity,
+    byte[] sender,
+    byte[] caption,
+    byte[] cause,
+    byte[] remedy,
+    IntPtr listener
+);
+
 public enum EMessageSeverity
 {
     MS_INFO = 1,
@@ -367,15 +377,104 @@ public class LibInterface
     ) { // TODO
     }
 
-    public void registerMessageCallback(
-        IntPtr listener,
-        TNewErrorMessageCallback callback
-    ) { // TODO
+    private void TranslateNewErrorMessageCallback(
+        EMessageSeverity severity,
+        byte[] sender,
+        byte[] caption,
+        byte[] cause,
+        byte[] remedy,
+        IntPtr listener
+    )
+    {
+        // translate intptr to interface instance
+        // call interface instance callback
+        GCHandle gch = GCHandle.FromIntPtr(listener);
+        ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback)gch.Target;
+
+        interfaceInstance.NewErrorMessageCallback(
+            severity,
+            System.Text.Encoding.ASCII.GetString(sender),
+            System.Text.Encoding.ASCII.GetString(caption),
+            System.Text.Encoding.ASCII.GetString(cause),
+            System.Text.Encoding.ASCII.GetString(remedy)
+        );
     }
 
-    public void unregisterMessageCallback(
-        IntPtr listener
-    ) { // TODO
+    public void registerMessageCallback(
+        ITNewErrorMessageCallback inferfaceInstance,
+        TNewErrorMessageCallback callback
+    )
+    {
+        GCHandle gch = GCHandle.Alloc(listener);
+
+        TNewErrorMessageCallbackInternal cppTranslationCallback =
+            new TNewErrorMessageCallbackInternal(TranslateNewErrorMessageCallback);
+
+        int result = LibInterfaceCpp.registerMessageCallback(
+            GCHandle.ToIntPtr(gch),
+            cppTranslationCallback
+        );
+        gch.Free();
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: registerMessageCallback result: " + result);
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException(
+                "G3D library: this callback has already been registered."
+            );
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library not initialized.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library: an unknown error occurred when registering the message callback."
+            );
+        }
+    }
+
+    public void unregisterMessageCallback(ITNewErrorMessageCallback inferfaceInstance)
+    {
+        GCHandle gch = GCHandle.Alloc(listener);
+        int result = LibInterfaceCpp.unregisterMessageCallback(GCHandle.ToIntPtr(gch));
+        gch.Free();
+
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: unregisterMessageCallback result: " + result);
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException(
+                "G3D library: this callback has already been unregistered."
+            );
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library: callback not registered.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library: an unknown error occurred when unregistering the message callback."
+            );
+        }
     }
 
     // ------------------------------------------------
