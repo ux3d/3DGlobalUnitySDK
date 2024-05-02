@@ -14,9 +14,7 @@ public class G3DHeadTracking
 
     public bool registerCallbacks = true;
 
-    private IntPtr headTrackingDevice = new IntPtr();
-
-    private LibInterface  libInterface;
+    private LibInterface libInterface;
 
     // Start is called before the first frame update
     void Start()
@@ -29,7 +27,6 @@ public class G3DHeadTracking
             libInterface.registerShaderParametersChangedCallback(this);
             libInterface.registerMessageCallback(this);
         }
-        libInterface.registerHeadPositionChangedCallback(this);
     }
 
     // Update is called once per frame
@@ -37,9 +34,16 @@ public class G3DHeadTracking
 
     void OnDestroy()
     {
-        libInterface.unregisterHeadPositionChangedCallback(this);
-        libInterface.unregisterShaderParametersChangedCallback(this);
-        libInterface.registerMessageCallback(this);
+        if (registerCallbacks)
+        {
+            libInterface.unregisterHeadPositionChangedCallback(this);
+            libInterface.unregisterShaderParametersChangedCallback(this);
+            libInterface.unregisterMessageCallback(this);
+        }
+
+        // manual garbage collection here to force library destruction when unity "playback" is stopped
+        // TODO Remove this
+        libInterface = null;
     }
 
     public void NewHeadPositionCallback(
@@ -84,7 +88,9 @@ public class G3DHeadTracking
         Debug.Log("Remedy: " + remedy);
     }
 
-    void ITNewShaderParametersCallback.NewShaderParametersCallback(G3DShaderParameters shaderParameters)
+    void ITNewShaderParametersCallback.NewShaderParametersCallback(
+        G3DShaderParameters shaderParameters
+    )
     {
         Debug.Log("New shader parameters received");
         Debug.Log("Shader parameters: " + shaderParameters);
