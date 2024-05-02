@@ -1,5 +1,3 @@
-using System;
-
 public delegate void TNewErrorMessageCallback(
     EMessageSeverity severity,
     string sender,
@@ -10,7 +8,7 @@ public delegate void TNewErrorMessageCallback(
 
 public interface ITNewErrorMessageCallback
 {
-    void NewErrorMessageCallback(
+    public void NewErrorMessageCallback(
         EMessageSeverity severity,
         string sender,
         string caption,

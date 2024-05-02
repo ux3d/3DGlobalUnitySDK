@@ -1,5 +1,3 @@
-using System;
-
 public delegate void TNewHeadPositionCallback(
     bool headDetected,
     bool imagePosIsValid,

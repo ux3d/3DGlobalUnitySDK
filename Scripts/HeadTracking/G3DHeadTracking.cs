@@ -2,20 +2,33 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-public class G3DHeadTracking : MonoBehaviour, ITNewHeadPositionCallback
+public class G3DHeadTracking
+    : MonoBehaviour,
+        ITNewHeadPositionCallback,
+        ITNewShaderParametersCallback,
+        ITNewErrorMessageCallback
 {
     public string calibrationPath = "";
     public string configPath = "";
     public string configFileName = "";
 
+    public bool registerCallbacks = true;
+
     private IntPtr headTrackingDevice = new IntPtr();
 
-    private LibInterface libInterface;
+    private LibInterface  libInterface;
 
     // Start is called before the first frame update
     void Start()
     {
         libInterface = new LibInterface(calibrationPath, configPath, configFileName, true);
+
+        if (registerCallbacks)
+        {
+            libInterface.registerHeadPositionChangedCallback(this);
+            libInterface.registerShaderParametersChangedCallback(this);
+            libInterface.registerMessageCallback(this);
+        }
         libInterface.registerHeadPositionChangedCallback(this);
     }
 
@@ -25,6 +38,8 @@ public class G3DHeadTracking : MonoBehaviour, ITNewHeadPositionCallback
     void OnDestroy()
     {
         libInterface.unregisterHeadPositionChangedCallback(this);
+        libInterface.unregisterShaderParametersChangedCallback(this);
+        libInterface.registerMessageCallback(this);
     }
 
     public void NewHeadPositionCallback(
@@ -51,5 +66,27 @@ public class G3DHeadTracking : MonoBehaviour, ITNewHeadPositionCallback
         {
             Debug.Log("Head not detected");
         }
+    }
+
+    void ITNewErrorMessageCallback.NewErrorMessageCallback(
+        EMessageSeverity severity,
+        string sender,
+        string caption,
+        string cause,
+        string remedy
+    )
+    {
+        Debug.Log("Error message received");
+        Debug.Log("Severity: " + severity);
+        Debug.Log("Sender: " + sender);
+        Debug.Log("Caption: " + caption);
+        Debug.Log("Cause: " + cause);
+        Debug.Log("Remedy: " + remedy);
+    }
+
+    void ITNewShaderParametersCallback.NewShaderParametersCallback(G3DShaderParameters shaderParameters)
+    {
+        Debug.Log("New shader parameters received");
+        Debug.Log("Shader parameters: " + shaderParameters);
     }
 }
