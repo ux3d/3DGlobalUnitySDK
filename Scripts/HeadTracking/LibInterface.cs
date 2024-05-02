@@ -74,29 +74,107 @@ public struct G3DShaderParameters
     int zCompensationValue; // OLD: zkom
 };
 
-public class LibInterface
+// TODO turn this into a singleton
+public sealed class LibInterface
 {
     public bool logToConsole = true;
 
-    public LibInterface(
+    private static readonly LibInterface internalInstance = new LibInterface();
+
+    // Explicit static constructor to tell C# compiler
+    // not to mark type as beforefieldinit
+    static LibInterface() { }
+
+    private LibInterface() { }
+
+    public static LibInterface Instance
+    {
+        get { return internalInstance; }
+    }
+
+    private bool initialized = false;
+
+    public void init(
         string calibrationPath,
         string configPath,
         string configFileName,
-        bool logToConsole = true
+        bool logToConsole = true,
+        bool useHimaxD2XXDevice = true,
+        bool usePmdFlexxDevice = true
     )
     {
+        if (initialized)
+        {
+            Debug.Log("G3D head tracking library is already initialized.");
+            return;
+        }
+
         this.logToConsole = logToConsole;
 
-        initLibrary();
+        if (calibrationPath == "" || configPath == "" || configFileName == "")
+        {
+            throw new System.Exception(
+                "G3D head tracking library: Configuration paths have to be set. Aborting initialization."
+            );
+        }
 
-        // setCalibrationPath(calibrationPath);
-        // setConfigPath(configPath);
-        // setConfigFileName(configFileName);
+        try
+        {
+            initLibrary();
+        }
+        catch (G3D_AlreadyInitializedException e)
+        {
+            Debug.Log("G3D head tracking library has already been initialized.");
+        }
+        catch (Exception e)
+        {
+            throw e;
+        }
 
-        useHimaxD2XXDevices();
-        usePmdFlexxDevices();
-        initHeadTracking();
+        try
+        {
+            setCalibrationPath(calibrationPath);
+            setConfigPath(configPath);
+            setConfigFileName(configFileName);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+            deinitLibrary();
+            throw new System.Exception(
+                "G3D head tracking library: an error occured when setting the calibration paths. Aborting initialization"
+            );
+        }
 
+        try
+        {
+            if (useHimaxD2XXDevice)
+            {
+                useHimaxD2XXDevices();
+            }
+
+            if (usePmdFlexxDevice)
+            {
+                usePmdFlexxDevices();
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+        }
+
+        try
+        {
+            initHeadTracking();
+        }
+        catch (G3D_AlreadyInitializedException e)
+        {
+            Debug.Log("G3D head tracking has already been initialized.");
+        }
+        catch (Exception e)
+        {
+            throw e;
+        }
         Debug.Log("tracking device count " + getHeadTrackingDeviceCount());
     }
 
@@ -104,6 +182,7 @@ public class LibInterface
     {
         deinitHeadTracking();
         deinitLibrary();
+        Debug.Log("destroy library");
     }
 
     private void initLibrary()

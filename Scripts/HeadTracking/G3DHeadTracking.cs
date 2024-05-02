@@ -14,12 +14,23 @@ public class G3DHeadTracking
 
     public bool registerCallbacks = true;
 
+    public bool useHimaxD2XXDevices = true;
+    public bool usePmdFlexxDevices = true;
+
     private LibInterface libInterface;
 
     // Start is called before the first frame update
     void Start()
     {
-        libInterface = new LibInterface(calibrationPath, configPath, configFileName, true);
+        libInterface = LibInterface.Instance;
+        libInterface.init(
+            calibrationPath,
+            configPath,
+            configFileName,
+            true,
+            useHimaxD2XXDevices,
+            usePmdFlexxDevices
+        );
 
         if (registerCallbacks)
         {
@@ -36,9 +47,16 @@ public class G3DHeadTracking
     {
         if (registerCallbacks)
         {
-            libInterface.unregisterHeadPositionChangedCallback(this);
-            libInterface.unregisterShaderParametersChangedCallback(this);
-            libInterface.unregisterMessageCallback(this);
+            try
+            {
+                libInterface.unregisterHeadPositionChangedCallback(this);
+                libInterface.unregisterShaderParametersChangedCallback(this);
+                libInterface.unregisterMessageCallback(this);
+            }
+            catch (Exception e)
+            {
+                Debug.Log(e);
+            }
         }
 
         // manual garbage collection here to force library destruction when unity "playback" is stopped
