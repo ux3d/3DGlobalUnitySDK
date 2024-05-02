@@ -1395,7 +1395,7 @@ internal static class LibInterfaceCpp
 
     [DllImport(
         "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?registerShaderParametersChangedCallback@G3D_UHTL@@YAHPEAXP6AXPEBUG3DShaderParameters@@0@Z@Z",
+        EntryPoint = "?registerShaderParametersChangedCallback@G3D_UHTL@@YAHPEAXP6AXPEBUCG3DShaderParameters@@0@Z@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int registerShaderParametersChangedCallback(
