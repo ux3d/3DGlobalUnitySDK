@@ -45,6 +45,11 @@ public class G3DHeadTracking
 
     void OnDestroy()
     {
+        if (libInterface == null || !libInterface.isInitialized())
+        {
+            return;
+        }
+
         if (registerCallbacks)
         {
             try

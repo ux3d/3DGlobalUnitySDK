@@ -176,6 +176,8 @@ public sealed class LibInterface
             throw e;
         }
         Debug.Log("tracking device count " + getHeadTrackingDeviceCount());
+
+        initialized = true;
     }
 
     ~LibInterface()
@@ -183,6 +185,11 @@ public sealed class LibInterface
         deinitHeadTracking();
         deinitLibrary();
         Debug.Log("destroy library");
+    }
+
+    public bool isInitialized()
+    {
+        return initialized;
     }
 
     private void initLibrary()
