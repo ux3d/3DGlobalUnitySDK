@@ -365,6 +365,15 @@ public sealed class LibInterface
         IntPtr listener
     )
     {
+        Debug.log("TranslateNewHeadPositionCallback called ");
+        Debug.log("headDetected: " + headDetected);
+        Debug.log("imagePosIsValid: " + imagePosIsValid);
+        Debug.log("imagePosX: " + imagePosX);
+        Debug.log("imagePosY: " + imagePosY);
+        Debug.log("worldPosX: " + worldPosX);
+        Debug.log("worldPosY: " + worldPosY);
+        Debug.log("worldPosZ: " + worldPosZ);
+
         // translate intptr to interface instance
         // call interface instance callback
         GCHandle gch = GCHandle.FromIntPtr(listener);

@@ -134,6 +134,8 @@ public class G3DHeadTracking
         headPosition.worldPosX = worldPosX;
         headPosition.worldPosY = worldPosY;
         headPosition.worldPosZ = worldPosZ;
+
+        Debug.Log("Head position changed: " + headPosition);
     }
 
     void ITNewErrorMessageCallback.NewErrorMessageCallback(
