@@ -74,6 +74,12 @@ public struct G3DShaderParameters
     int zCompensationValue; // OLD: zkom
 };
 
+public struct HeadTrackingStatus
+{
+    public bool hasTrackingDevice;
+    public bool isTrackingActive;
+}
+
 // TODO turn this into a singleton
 public sealed class LibInterface
 {
@@ -1139,7 +1145,7 @@ public sealed class LibInterface
     /// <exception cref="G3D_NotInitializedException"></exception>
     /// <exception cref="G3D_IndexOutOfRangeException"></exception>
     /// <exception cref="Exception"></exception>
-    public Tuple<bool, bool> getHeadTrackingStatus()
+    public HeadTrackingStatus getHeadTrackingStatus()
     {
         bool hasDevice = false;
         bool isTracking = false;
@@ -1169,7 +1175,11 @@ public sealed class LibInterface
             );
         }
 
-        return new Tuple<bool, bool>(hasDevice, isTracking);
+        HeadTrackingStatus headTrackingStatus = new HeadTrackingStatus();
+        headTrackingStatus.hasTrackingDevice = hasDevice;
+        headTrackingStatus.isTrackingActive = isTracking;
+
+        return headTrackingStatus;
     }
 
     // ------------------------------------------------

@@ -2,6 +2,17 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
+public struct HeadPosition
+{
+    public bool headDetected;
+    public bool imagePosIsValid;
+    public int imagePosX;
+    public int imagePosY;
+    public double worldPosX;
+    public double worldPosY;
+    public double worldPosZ;
+}
+
 public class G3DHeadTracking
     : MonoBehaviour,
         ITNewHeadPositionCallback,
@@ -18,6 +29,8 @@ public class G3DHeadTracking
     public bool usePmdFlexxDevices = true;
 
     private LibInterface libInterface;
+
+    private HeadPosition headPosition;
 
     // Start is called before the first frame update
     void Start()
@@ -38,6 +51,15 @@ public class G3DHeadTracking
             libInterface.registerShaderParametersChangedCallback(this);
             libInterface.registerMessageCallback(this);
         }
+
+        headPosition = new HeadPosition();
+        headPosition.headDetected = false;
+        headPosition.imagePosIsValid = false;
+        headPosition.imagePosX = 0;
+        headPosition.imagePosY = 0;
+        headPosition.worldPosX = 0.0;
+        headPosition.worldPosY = 0.0;
+        headPosition.worldPosZ = 0.0;
     }
 
     // Update is called once per frame
@@ -69,7 +91,33 @@ public class G3DHeadTracking
         libInterface = null;
     }
 
-    public void NewHeadPositionCallback(
+    public HeadPosition getHeadPosition()
+    {
+        return headPosition;
+    }
+
+    public void toggleHeadTrackingStatus()
+    {
+        if (libInterface == null || !libInterface.isInitialized())
+        {
+            return;
+        }
+
+        HeadTrackingStatus headTrackingState = libInterface.getHeadTrackingStatus();
+        if (headTrackingState.hasTrackingDevice)
+        {
+            if (!headTrackingState.isTrackingActive)
+            {
+                libInterface.startHeadTracking();
+            }
+            else
+            {
+                libInterface.stopHeadTracking();
+            }
+        }
+    }
+
+    void ITNewHeadPositionCallback.NewHeadPositionCallback(
         bool headDetected,
         bool imagePosIsValid,
         int imagePosX,
@@ -79,20 +127,13 @@ public class G3DHeadTracking
         double worldPosZ
     )
     {
-        if (headDetected)
-        {
-            Debug.Log("Head detected");
-            Debug.Log("Image position is valid: " + imagePosIsValid);
-            Debug.Log("Image position X: " + imagePosX);
-            Debug.Log("Image position Y: " + imagePosY);
-            Debug.Log("World position X: " + worldPosX);
-            Debug.Log("World position Y: " + worldPosY);
-            Debug.Log("World position Z: " + worldPosZ);
-        }
-        else
-        {
-            Debug.Log("Head not detected");
-        }
+        headPosition.headDetected = headDetected;
+        headPosition.imagePosIsValid = imagePosIsValid;
+        headPosition.imagePosX = imagePosX;
+        headPosition.imagePosY = imagePosY;
+        headPosition.worldPosX = worldPosX;
+        headPosition.worldPosY = worldPosY;
+        headPosition.worldPosZ = worldPosZ;
     }
 
     void ITNewErrorMessageCallback.NewErrorMessageCallback(
@@ -103,12 +144,26 @@ public class G3DHeadTracking
         string remedy
     )
     {
-        Debug.Log("Error message received");
-        Debug.Log("Severity: " + severity);
-        Debug.Log("Sender: " + sender);
-        Debug.Log("Caption: " + caption);
-        Debug.Log("Cause: " + cause);
-        Debug.Log("Remedy: " + remedy);
+        string messageText = formatErrorMessage(caption, cause, remedy);
+        switch (severity)
+        {
+            case EMessageSeverity.MS_EXCEPTION:
+                Debug.LogError(messageText);
+                break;
+            case EMessageSeverity.MS_ERROR:
+                Debug.LogError(messageText);
+                break;
+            case EMessageSeverity.MS_WARNING:
+                Debug.LogWarning(messageText);
+                break;
+            case EMessageSeverity.MS_INFO:
+
+                Debug.Log(messageText);
+                break;
+            default:
+                Debug.Log(messageText);
+                break;
+        }
     }
 
     void ITNewShaderParametersCallback.NewShaderParametersCallback(
@@ -117,5 +172,17 @@ public class G3DHeadTracking
     {
         Debug.Log("New shader parameters received");
         Debug.Log("Shader parameters: " + shaderParameters);
+    }
+
+    private string formatErrorMessage(string caption, string cause, string remedy)
+    {
+        string messageText = caption + "\n\n" + cause;
+
+        if (String.IsNullOrEmpty(remedy) == false)
+        {
+            messageText = messageText + "\n\n" + remedy;
+        }
+
+        return messageText;
     }
 }
