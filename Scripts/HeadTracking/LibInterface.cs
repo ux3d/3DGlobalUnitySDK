@@ -365,14 +365,14 @@ public sealed class LibInterface
         IntPtr listener
     )
     {
-        Debug.log("TranslateNewHeadPositionCallback called ");
-        Debug.log("headDetected: " + headDetected);
-        Debug.log("imagePosIsValid: " + imagePosIsValid);
-        Debug.log("imagePosX: " + imagePosX);
-        Debug.log("imagePosY: " + imagePosY);
-        Debug.log("worldPosX: " + worldPosX);
-        Debug.log("worldPosY: " + worldPosY);
-        Debug.log("worldPosZ: " + worldPosZ);
+        Debug.Log("TranslateNewHeadPositionCallback called ");
+        Debug.Log("headDetected: " + headDetected);
+        Debug.Log("imagePosIsValid: " + imagePosIsValid);
+        Debug.Log("imagePosX: " + imagePosX);
+        Debug.Log("imagePosY: " + imagePosY);
+        Debug.Log("worldPosX: " + worldPosX);
+        Debug.Log("worldPosY: " + worldPosY);
+        Debug.Log("worldPosZ: " + worldPosZ);
 
         // translate intptr to interface instance
         // call interface instance callback
