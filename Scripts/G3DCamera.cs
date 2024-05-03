@@ -1,37 +1,67 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Collections;
 using UnityEngine.Experimental.Rendering;
 
 [RequireComponent(typeof(Camera))]
-public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
-
+public class G3DCamera : MonoBehaviour, IXmlSettingsListener
+{
     #region Properties
 
     [Header("Camera")]
     public bool testviews_active = false;
     public bool testcolors_active = false;
-    [Range(1.0f, 100.0f)] public float resolution = 100.0f;
-    [Range(1, 16)] public int cameracount = 2;
+
+    [Range(1.0f, 100.0f)]
+    public float resolution = 100.0f;
+
+    [Range(1, 16)]
+    public int cameracount = 2;
     public bool camera_position_circular = false;
-    [Range(0.00001f, 1.0f)] public float eyedistance = 0.65f;
-    [Range(0f, 1f)] public float stereo_depth = 0.0f;
-    [Range(-5f, 5f)] public float stereo_plane = 5f;
-    [Range(0.00001f, 1.0f)] public float angle = 0.05f;
-    [Range(1f, 200f)] public float distance = 30.0f;
+
+    [Range(0.00001f, 1.0f)]
+    public float eyedistance = 0.65f;
+
+    [Range(0f, 1f)]
+    public float stereo_depth = 0.0f;
+
+    [Range(-5f, 5f)]
+    public float stereo_plane = 5f;
+
+    [Range(0.00001f, 1.0f)]
+    public float angle = 0.05f;
+
+    [Range(1f, 200f)]
+    public float distance = 30.0f;
 
     [Header("Modes")]
     public int rendermode = 1; //algo, viewmap, vector, ztracking
-    [Range(0, 48)] public int viewshift = 0;
+
+    [Range(0, 48)]
+    public int viewshift = 0;
     public bool invert_headtracking = false;
-    [Range(0f, 3f)] public float stereo_delimiter_space = 0.1f;
-    [Range(0f, 5f)] public float stereo_eyearea_space = 0.4f;
-    [Range(0f, 100f)] public float stereo_zone_distance = 1f;
-    [Range(0f, 500f)] public float stereo_zone_width = 1f;
-    [Range(1, 20)] public int algo_angle_counter = 1;
-    [Range(1, 20)] public int algo_angle_denominator = 1;
-    [Range(2, 100)] public int algo_hqviews = 10;
+
+    [Range(0f, 3f)]
+    public float stereo_delimiter_space = 0.1f;
+
+    [Range(0f, 5f)]
+    public float stereo_eyearea_space = 0.4f;
+
+    [Range(0f, 100f)]
+    public float stereo_zone_distance = 1f;
+
+    [Range(0f, 500f)]
+    public float stereo_zone_width = 1f;
+
+    [Range(1, 20)]
+    public int algo_angle_counter = 1;
+
+    [Range(1, 20)]
+    public int algo_angle_denominator = 1;
+
+    [Range(2, 100)]
+    public int algo_hqviews = 10;
     public bool algo_direction = false;
     public int blur_factor = 200;
 
@@ -46,8 +76,9 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
     private Camera maincamera = null;
     private List<Camera> cameras = null;
     private GameObject cameraParent = null;
-    
-    
+
+    private G3DHeadTracking headTracking = null;
+
     public void setCameras()
     {
         //initialize cameras
@@ -59,7 +90,8 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
             cameraParent.transform.parent = transform;
 
             cameras = new List<Camera>();
-            for (int i = 0; i < MAX_CAMERAS; i++) {
+            for (int i = 0; i < MAX_CAMERAS; i++)
+            {
                 cameras.Add(new GameObject(CAMERA_NAME_PREFIX + i).AddComponent<Camera>());
                 cameras[i].transform.SetParent(cameraParent.transform, true);
                 cameras[i].gameObject.SetActive(false);
@@ -68,13 +100,11 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
         var mi = apiGetMonitorInfo();
 
-
         //put camera host gameobject in easy-to-handle situation and save its position/rotation for resetting after "parenting" the child cameras
         Vector3 savedCameraPosition = transform.position;
         Quaternion savedCameraRotation = transform.rotation;
         cameraParent.transform.position = new Vector3(0, 0, 0);
         cameraParent.transform.rotation = Quaternion.Euler(0.0f, 0.0f, 0.0f);
-
 
         //calculate camera positions and matrices
         for (int i = 0; i < cameracount; i++)
@@ -101,9 +131,16 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
                 );
 
                 camera.transform.localPosition = new Vector3(
-                    cameraParent.transform.position.x - ((float)(           distance * Math.Sin(currentView * angle * (Math.PI / 180)))),
+                    cameraParent.transform.position.x
+                        - ((float)(distance * Math.Sin(currentView * angle * (Math.PI / 180)))),
                     cameraParent.transform.position.y,
-                    cameraParent.transform.position.z + ((float)(distance - distance * Math.Cos(currentView * angle * (Math.PI / 180))))
+                    cameraParent.transform.position.z
+                        + (
+                            (float)(
+                                distance
+                                - distance * Math.Cos(currentView * angle * (Math.PI / 180))
+                            )
+                        )
                 );
             }
             else
@@ -114,27 +151,32 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
                 float EyeDistance = eyedistance * 100;
 
                 // calculate eye distance in pixel
-                int StereoViewIPDOffset = (int)currentView * (int)(EyeDistance / mi.MonitorWidth * ScreenWidth / 2);  // offset for left/right eye in pixel (eye distance (in mm) / monitor width (in mm) * monitor width (in pixel) / 2)
+                int StereoViewIPDOffset =
+                    (int)currentView * (int)(EyeDistance / mi.MonitorWidth * ScreenWidth / 2); // offset for left/right eye in pixel (eye distance (in mm) / monitor width (in mm) * monitor width (in pixel) / 2)
 
-                // get view size               
+                // get view size
                 int ViewWidth = camera.pixelWidth;
 
                 // calculate offset for projection matrix
-                float ProjOffset = StereoViewIPDOffset * stereo_depth / ViewWidth;  // real offset (pixel offset * factor / view size (fullscreen here))
+                float ProjOffset = StereoViewIPDOffset * stereo_depth / ViewWidth; // real offset (pixel offset * factor / view size (fullscreen here))
 
                 // calculate adjusted projection matrix
-                Matrix4x4 tempMatrix = camera.projectionMatrix;  // original matrix
-                tempMatrix[0, 2] = tempMatrix[0, 2] + ProjOffset;  // apply offset
+                Matrix4x4 tempMatrix = camera.projectionMatrix; // original matrix
+                tempMatrix[0, 2] = tempMatrix[0, 2] + ProjOffset; // apply offset
 
                 // calculate offset for view matrix
                 float ViewOffset = 0.0f;
                 float FC = tempMatrix[2, 2];
                 float FD = tempMatrix[2, 3];
-                if ((Math.Abs(tempMatrix[0, 0]) > 1E-3) && (Math.Abs(FC - 1) > 1E-4))  // projection matrix is valid and calculation possible
+                if ((Math.Abs(tempMatrix[0, 0]) > 1E-3) && (Math.Abs(FC - 1) > 1E-4)) // projection matrix is valid and calculation possible
                 {
-                    float Near = ((FC + 1) / (FC - 1) - 1) / 2 * FD;  // near of current projection matrix
-                    float DataWidth = 2 * Near / tempMatrix[0, 0];  // width
-                    ViewOffset = (float)StereoViewIPDOffset / (float)ViewWidth * DataWidth * (float)(stereo_depth - (stereo_plane));
+                    float Near = ((FC + 1) / (FC - 1) - 1) / 2 * FD; // near of current projection matrix
+                    float DataWidth = 2 * Near / tempMatrix[0, 0]; // width
+                    ViewOffset =
+                        (float)StereoViewIPDOffset
+                        / (float)ViewWidth
+                        * DataWidth
+                        * (float)(stereo_depth - (stereo_plane));
                 }
 
                 // apply new projection matrix
@@ -145,13 +187,13 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
             camera.gameObject.SetActive(true);
         }
-        
+
         //reset parent position/rotation
         cameraParent.transform.position = savedCameraPosition;
         cameraParent.transform.rotation = savedCameraRotation;
 
         //disable all the other cameras, we are not using them with this cameracount
-        for (int i = cameracount; i < MAX_CAMERAS; i++) 
+        for (int i = cameracount; i < MAX_CAMERAS; i++)
             cameras[i].gameObject.SetActive(false);
 
         updateShaderViews();
@@ -165,7 +207,7 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
     private const int SUPPORTED_REPITITIONS = 2;
 
     private static Material material;
-    
+
     private Texture[] testviews;
     private Texture[] testcolors;
 
@@ -195,38 +237,46 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
     private int id_VectorMap;
     private int[] id_View = new int[MAX_CAMERAS];
     private int[] id_VectorIndexMap = new int[SUPPORTED_REPITITIONS * 2]; //2 for each rep
-
     #endregion
 
     private void updateVectorRenderingZones()
     {
-        if (material == null) return;
+        if (material == null)
+            return;
 
         var mi = apiGetMonitorInfo();
 
-        material.SetVector(id_viewPositions, new Vector4(
-            0 - mi.VectorMapStereoZoneDistanceHeadTracking * stereo_zone_distance / 2 - mi.VectorMapStereoZoneWidthHeadTracking * stereo_zone_width,
-            0 - mi.VectorMapStereoZoneDistanceHeadTracking * stereo_zone_distance / 2,
-            0 + mi.VectorMapStereoZoneDistanceHeadTracking * stereo_zone_distance / 2,
-            0 + mi.VectorMapStereoZoneDistanceHeadTracking * stereo_zone_distance / 2 + mi.VectorMapStereoZoneWidthHeadTracking * stereo_zone_width
-        ));
+        material.SetVector(
+            id_viewPositions,
+            new Vector4(
+                0
+                    - mi.VectorMapStereoZoneDistanceHeadTracking * stereo_zone_distance / 2
+                    - mi.VectorMapStereoZoneWidthHeadTracking * stereo_zone_width,
+                0 - mi.VectorMapStereoZoneDistanceHeadTracking * stereo_zone_distance / 2,
+                0 + mi.VectorMapStereoZoneDistanceHeadTracking * stereo_zone_distance / 2,
+                0
+                    + mi.VectorMapStereoZoneDistanceHeadTracking * stereo_zone_distance / 2
+                    + mi.VectorMapStereoZoneWidthHeadTracking * stereo_zone_width
+            )
+        );
     }
 
     private void reinitializeShader()
     {
         material = null;
-        if (apiGetMonitorInfo().ViewCount < 2) return; //null material will be handled by the features as blitting
+        if (apiGetMonitorInfo().ViewCount < 2)
+            return; //null material will be handled by the features as blitting
 
-        switch(rendermode)
+        switch (rendermode)
         {
             case 0: //algo
-            #if HDRP
+#if HDRP
                 material = new Material(Shader.Find("G3D/AlgoShaderHDRP"));
-            #elif URP
+#elif URP
                 material = new Material(Shader.Find("G3D/AlgoShaderURP"));
-            #else
+#else
                 material = new Material(Shader.Find("G3D/AlgoShader"));
-            #endif
+#endif
                 setMonitorViewcount();
                 setAngleCounter();
                 setAngleDenominator();
@@ -236,13 +286,13 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
                 break;
             case 1: //viewmap
-            #if HDRP
+#if HDRP
                 material = new Material(Shader.Find("G3D/ViewmapShaderHDRP"));
-            #elif URP
+#elif URP
                 material = new Material(Shader.Find("G3D/ViewmapShaderURP"));
-            #else
+#else
                 material = new Material(Shader.Find("G3D/ViewmapShader"));
-            #endif
+#endif
                 if (cache_loadedViewmap != null)
                     material.SetTexture(id_ViewMap, cache_loadedViewmap);
                 setMonitorViewcount();
@@ -251,30 +301,34 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
                 setIndexMap();
                 break;
             case 2: //vector
-            #if HDRP
+#if HDRP
                 material = new Material(Shader.Find("G3D/VectorShaderHDRP"));
-            #elif URP
+#elif URP
                 material = new Material(Shader.Find("G3D/VectorShaderURP"));
-            #else
+#else
                 material = new Material(Shader.Find("G3D/VectorShader"));
-            #endif
+#endif
 
                 material.SetTexture(id_PositionMap, cache_positionMap);
                 material.SetTexture(id_VectorMap, cache_vectorMap);
 
-                for (int i = 0; i < cache_vectorIndexMaps.Length && i < SUPPORTED_REPITITIONS * 2; i++)
+                for (
+                    int i = 0;
+                    i < cache_vectorIndexMaps.Length && i < SUPPORTED_REPITITIONS * 2;
+                    i++
+                )
                     material.SetTexture(id_VectorIndexMap[i], cache_vectorIndexMaps[i]);
 
                 updateVectorRenderingZones();
                 break;
             case 3: //ztracking
-            #if HDRP
+#if HDRP
                 material = new Material(Shader.Find("G3D/ZTrackingShaderHDRP"));
-            #elif URP
+#elif URP
                 material = new Material(Shader.Find("G3D/ZTrackingShaderURP"));
-            #else
+#else
                 material = new Material(Shader.Find("G3D/ZTrackingShader"));
-            #endif
+#endif
                 setMonitorViewcount();
                 setAngleCounter();
                 setAngleDenominator();
@@ -288,15 +342,16 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
         setWindowPosition();
     }
 
-
     private void setIndexMap()
     {
-        if (rendermode == 2) return; //vectorrendering does not use the indexmap
-        if (material == null) return;
+        if (rendermode == 2)
+            return; //vectorrendering does not use the indexmap
+        if (material == null)
+            return;
 
         float[] indexMap = new float[cache_views_monitor];
 
-        if(cache_views_monitor == 1)
+        if (cache_views_monitor == 1)
         {
             //no 3d
             indexMap[0] = 0;
@@ -308,7 +363,7 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
             //value sanity check
             float sds = stereo_delimiter_space;
             float eas = stereo_eyearea_space;
-            if(sds + 2 * eas > 1.0)
+            if (sds + 2 * eas > 1.0)
             {
                 float diff = (sds + 2 * eas) - 1.0f;
                 sds -= diff / 3;
@@ -321,12 +376,17 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
             int endDelimViews = cache_views_monitor - delimViews - eyeViews * 2 - startDelimViews;
 
             int i = 0;
-            for (; startDelimViews > 0; startDelimViews--)  indexMap[i++] = 255f;
-            for (int j = 0; j < eyeViews; j++)              indexMap[i++] = 0f;
-            for (; delimViews > 0; delimViews--)            indexMap[i++] = 255f;
-            for (int j = 0; j < eyeViews; j++)              indexMap[i++] = 1f;
-            for (; endDelimViews > 0; endDelimViews--)      indexMap[i++] = 255f;
-        } 
+            for (; startDelimViews > 0; startDelimViews--)
+                indexMap[i++] = 255f;
+            for (int j = 0; j < eyeViews; j++)
+                indexMap[i++] = 0f;
+            for (; delimViews > 0; delimViews--)
+                indexMap[i++] = 255f;
+            for (int j = 0; j < eyeViews; j++)
+                indexMap[i++] = 1f;
+            for (; endDelimViews > 0; endDelimViews--)
+                indexMap[i++] = 255f;
+        }
         else
         {
             //multiview is spaced as evenly as possible, starting and ending with a delimiter view
@@ -338,7 +398,7 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
             for (int viewIndex = 0; viewIndex < cameracount; viewIndex++)
             {
                 int offset = 0;
-                if(spaceLeftover > 0)
+                if (spaceLeftover > 0)
                 {
                     offset = 1;
                     spaceLeftover--;
@@ -354,45 +414,59 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
         material.SetFloatArray(id_indexMap, indexMap);
     }
-    
+
     private void setViewCount()
     {
-        if (rendermode == 2) return; //vectorrendering does not use a viewcount
+        if (rendermode == 2)
+            return; //vectorrendering does not use a viewcount
         material?.SetFloat(id_view_count, cameracount);
     }
 
     private void setWindowPosition()
     {
-        material?.SetVector(id_windowPosition, new Vector4(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y, Screen.width, Screen.height));
+        material?.SetVector(
+            id_windowPosition,
+            new Vector4(
+                Screen.mainWindowPosition.x,
+                Screen.mainWindowPosition.y,
+                Screen.width,
+                Screen.height
+            )
+        );
     }
 
     private void setViewOffset()
     {
-        if (rendermode == 2) return; //vectorrendering does not use a viewcount
+        if (rendermode == 2)
+            return; //vectorrendering does not use a viewcount
         material?.SetFloat(id_view_offset, viewshift);
     }
 
     private void setAngleCounter()
     {
-        if (rendermode == 1 || rendermode == 2) return; //vectorrendering does not use a viewcount
+        if (rendermode == 1 || rendermode == 2)
+            return; //vectorrendering does not use a viewcount
         material?.SetInt(id_algo_angle_counter, algo_angle_counter);
     }
 
     private void setAngleDenominator()
     {
-        if (rendermode == 1 || rendermode == 2) return; //vectorrendering does not use a viewcount
+        if (rendermode == 1 || rendermode == 2)
+            return; //vectorrendering does not use a viewcount
         material?.SetInt(id_algo_angle_denominator, algo_angle_denominator);
     }
 
     private void setAlgoDirection()
     {
-        if (rendermode == 1 || rendermode == 2) return; //vectorrendering does not use a viewcount
+        if (rendermode == 1 || rendermode == 2)
+            return; //vectorrendering does not use a viewcount
         material?.SetInt(id_algo_direction, algo_direction ? 1 : -1);
     }
 
     private void setBlurFactor()
     {
-        if (rendermode != 3) return;
+        if (rendermode != 3)
+            return;
         material?.SetInt(id_blur_factor, blur_factor);
     }
 
@@ -401,30 +475,38 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
         if (rendermode == 1 || rendermode == 2)
         {
             material?.SetInt(id_view_count_monitor_hq, cache_views_monitor);
-        } else
+        }
+        else
         {
             material?.SetInt(id_view_count_monitor_hq, algo_hqviews);
         }
     }
 
-    public void updateShaderViews() {
-        if (material == null) return;
-        if (cameras == null) return;
+    public void updateShaderViews()
+    {
+        if (material == null)
+            return;
+        if (cameras == null)
+            return;
 
         //prevent any memory leaks
-        for (int i = 0; i < MAX_CAMERAS; i++) 
+        for (int i = 0; i < MAX_CAMERAS; i++)
             cameras[i].targetTexture?.Release();
-        
+
         //set only those we need
         for (int i = 0; i < cameracount; i++)
         {
             Texture tex;
-            if (testviews_active) 
+            if (testviews_active)
                 tex = testviews[i % 16];
-            else if (testcolors_active) 
+            else if (testcolors_active)
                 tex = testcolors[i % 4];
-            else 
-                tex = cameras[i].targetTexture = new RenderTexture((int)(Screen.width * resolution / 100), (int)(Screen.height * resolution / 100), 0);
+            else
+                tex = cameras[i].targetTexture = new RenderTexture(
+                    (int)(Screen.width * resolution / 100),
+                    (int)(Screen.height * resolution / 100),
+                    0
+                );
 
             material.SetTexture(id_View[i], tex);
         }
@@ -435,7 +517,7 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
         return material;
     }
 
-#endregion
+    #endregion
 
 
     #region Monobehaviour
@@ -443,30 +525,30 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         //legacy support (no URP or HDRP)
-        if(material == null) 
+        if (material == null)
             Graphics.Blit(source, destination);
-        else 
+        else
             Graphics.Blit(source, destination, material);
     }
 
     private void Awake()
     {
         //shader id caching
-        id_windowPosition               = Shader.PropertyToID("windowPosition");
-        id_indexMap                     = Shader.PropertyToID("indexMap");
-        id_view_count                   = Shader.PropertyToID("view_count");
-        id_algo_angle_counter           = Shader.PropertyToID("angle_counter");
-        id_algo_angle_denominator       = Shader.PropertyToID("angle_denominator");
-        id_algo_direction               = Shader.PropertyToID("direction");
-        id_blur_factor                  = Shader.PropertyToID("blur_factor");
-        id_view_count_monitor_hq        = Shader.PropertyToID("view_count_monitor_hq");
-        id_view_offset                  = Shader.PropertyToID("view_offset");
-        id_view_offset_headtracking     = Shader.PropertyToID("view_offset_headtracking");
-        id_userPosition                 = Shader.PropertyToID("userPosition");
-        id_viewPositions                = Shader.PropertyToID("viewPositions");
-        id_ViewMap                      = Shader.PropertyToID("_ViewMap");
-        id_PositionMap                  = Shader.PropertyToID("_PositionMap");
-        id_VectorMap                    = Shader.PropertyToID("_VectorMap");
+        id_windowPosition = Shader.PropertyToID("windowPosition");
+        id_indexMap = Shader.PropertyToID("indexMap");
+        id_view_count = Shader.PropertyToID("view_count");
+        id_algo_angle_counter = Shader.PropertyToID("angle_counter");
+        id_algo_angle_denominator = Shader.PropertyToID("angle_denominator");
+        id_algo_direction = Shader.PropertyToID("direction");
+        id_blur_factor = Shader.PropertyToID("blur_factor");
+        id_view_count_monitor_hq = Shader.PropertyToID("view_count_monitor_hq");
+        id_view_offset = Shader.PropertyToID("view_offset");
+        id_view_offset_headtracking = Shader.PropertyToID("view_offset_headtracking");
+        id_userPosition = Shader.PropertyToID("userPosition");
+        id_viewPositions = Shader.PropertyToID("viewPositions");
+        id_ViewMap = Shader.PropertyToID("_ViewMap");
+        id_PositionMap = Shader.PropertyToID("_PositionMap");
+        id_VectorMap = Shader.PropertyToID("_VectorMap");
 
         for (int i = 0; i < MAX_CAMERAS; i++)
             id_View[i] = Shader.PropertyToID("_View_" + i);
@@ -474,16 +556,17 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
         for (int i = 0; i < SUPPORTED_REPITITIONS * 2; i++)
             id_VectorIndexMap[i] = Shader.PropertyToID("_VectorIndexMap" + i);
 
-
         //settings initialization from script on first creation
         settingsAwake();
 
         //load test textures only once
         testviews = new Texture[16];
-        for (int i = 0; i < 16; i++) testviews[i] = Resources.Load<Texture>("testviews/" + i);
+        for (int i = 0; i < 16; i++)
+            testviews[i] = Resources.Load<Texture>("testviews/" + i);
 
         testcolors = new Texture[4];
-        for (int i = 0; i < 4; i++) testcolors[i] = Resources.Load<Texture>("testcolors/" + i);
+        for (int i = 0; i < 4; i++)
+            testcolors[i] = Resources.Load<Texture>("testcolors/" + i);
 
         //reset test toggles
         XmlSettings.Instance.SetValue(XmlSettingsKey.TESTVIEWS, false.ToString());
@@ -497,7 +580,8 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
         reinitializeShader();
     }
 
-    private void Start() {
+    private void Start()
+    {
         settingsStart();
 
         StartCoroutine(LateStart());
@@ -506,47 +590,64 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
     private IEnumerator LateStart()
     {
         yield return new WaitForEndOfFrame();
-        //LateStart 
+        //LateStart
 
         setCameras(); //fov bug fix
+
+        //headtracking
+        try
+        {
+            headTracking = GetComponent<G3DHeadTracking>();
+        }
+        catch (Exception e)
+        {
+            // TODO improve error message (specificaly the standard headtracking part)
+            Debug.LogWarning(
+                "G3DHeadTracking not found on G3DCamera. Defaulting to standard headtracking."
+            );
+        }
     }
 
-
     private float time_passed_since_last_update = 0;
+
     private void Update()
     {
         //headtracking values
         var trackingData = apiGetHeadtrackingData();
 
-        switch(rendermode)
+        switch (rendermode)
         {
             case 0: //algo
             case 1: //viewmap
-                material?.SetFloat(id_view_offset_headtracking, invert_headtracking
-                ? (cache_views_monitor - trackingData.w)
-                : trackingData.w);
+                material?.SetFloat(
+                    id_view_offset_headtracking,
+                    invert_headtracking ? (cache_views_monitor - trackingData.w) : trackingData.w
+                );
                 break;
             case 2: //vectorrendering
-                material?.SetVector(id_userPosition, new Vector3(
-                    trackingData.x + (invert_headtracking ? viewshift : -viewshift) * 10, //this might be far from mature, but it does the trick
-                    trackingData.y,
-                    trackingData.z));
+                material?.SetVector(
+                    id_userPosition,
+                    new Vector3(
+                        trackingData.x + (invert_headtracking ? viewshift : -viewshift) * 10, //this might be far from mature, but it does the trick
+                        trackingData.y,
+                        trackingData.z
+                    )
+                );
                 break;
             case 3: //ztracking
-                material?.SetFloat(id_view_offset_headtracking, invert_headtracking
-                ? (cache_views_monitor - trackingData.w)
-                : trackingData.w);
-                material?.SetVector(id_userPosition, new Vector3(
-                    trackingData.x,
-                    trackingData.y,
-                    trackingData.z));
+                material?.SetFloat(
+                    id_view_offset_headtracking,
+                    invert_headtracking ? (cache_views_monitor - trackingData.w) : trackingData.w
+                );
+                material?.SetVector(
+                    id_userPosition,
+                    new Vector3(trackingData.x, trackingData.y, trackingData.z)
+                );
                 break;
-
         }
 
         //window pos
         setWindowPosition();
-
 
         if (!Screen.fullScreen)
         {
@@ -556,15 +657,18 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
                 time_passed_since_last_update -= 1;
 
                 //window handling
-                if (windowResized()) setCameras();
+                if (windowResized())
+                    setCameras();
 
                 //monitor handling
-                if(apiMonitorChanged()) reinitializeShader();
+                if (apiMonitorChanged())
+                    reinitializeShader();
             }
         }
     }
 
     private Vector2 cache_window_dim;
+
     private bool windowResized()
     {
         var window_dim = new Vector2(Screen.width, Screen.height);
@@ -576,7 +680,6 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
         return false;
     }
 
-
     private void OnApplicationQuit()
     {
         apiFree();
@@ -584,7 +687,8 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
     private void OnValidate()
     {
-        if (Application.isPlaying) return;
+        if (Application.isPlaying)
+            return;
 
         apiOnValidate();
     }
@@ -593,8 +697,6 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
     {
         settingsDestroy();
     }
-
-
 
     #endregion
 
@@ -611,19 +713,43 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
             XmlSettings.Instance.SetValue(XmlSettingsKey.EYEDISTANCE, eyedistance.ToString());
             XmlSettings.Instance.SetValue(XmlSettingsKey.TESTVIEWS, testviews_active.ToString());
             XmlSettings.Instance.SetValue(XmlSettingsKey.TESTCOLORS, testcolors_active.ToString());
-            XmlSettings.Instance.SetValue(XmlSettingsKey.STEREODELIMITERSPACE, stereo_delimiter_space.ToString());
+            XmlSettings.Instance.SetValue(
+                XmlSettingsKey.STEREODELIMITERSPACE,
+                stereo_delimiter_space.ToString()
+            );
             XmlSettings.Instance.SetValue(XmlSettingsKey.MODE_VIEWMAP, rendermode.ToString());
-            XmlSettings.Instance.SetValue(XmlSettingsKey.STEREOEYEAREASPACE, stereo_eyearea_space.ToString());
+            XmlSettings.Instance.SetValue(
+                XmlSettingsKey.STEREOEYEAREASPACE,
+                stereo_eyearea_space.ToString()
+            );
             XmlSettings.Instance.SetValue(XmlSettingsKey.STEREODEPTH, stereo_depth.ToString());
             XmlSettings.Instance.SetValue(XmlSettingsKey.STEREOPLANE, stereo_plane.ToString());
-            XmlSettings.Instance.SetValue(XmlSettingsKey.CAMPOSITIONCIRCULAR, camera_position_circular.ToString());
+            XmlSettings.Instance.SetValue(
+                XmlSettingsKey.CAMPOSITIONCIRCULAR,
+                camera_position_circular.ToString()
+            );
             XmlSettings.Instance.SetValue(XmlSettingsKey.CIRCLE_ANGLE, angle.ToString());
             XmlSettings.Instance.SetValue(XmlSettingsKey.CIRCLE_DISTANCE, distance.ToString());
-            XmlSettings.Instance.SetValue(XmlSettingsKey.STEREO_ZONE_DISTANCE, stereo_zone_distance.ToString());
-            XmlSettings.Instance.SetValue(XmlSettingsKey.STEREO_ZONE_WIDTH, stereo_zone_width.ToString());
-            XmlSettings.Instance.SetValue(XmlSettingsKey.INVERT_HEADTRACKING, invert_headtracking.ToString());
-            XmlSettings.Instance.SetValue(XmlSettingsKey.ALGO_ANGLE_COUNTER, algo_angle_counter.ToString());
-            XmlSettings.Instance.SetValue(XmlSettingsKey.ALGO_ANGLE_DENOMINATOR, algo_angle_denominator.ToString());
+            XmlSettings.Instance.SetValue(
+                XmlSettingsKey.STEREO_ZONE_DISTANCE,
+                stereo_zone_distance.ToString()
+            );
+            XmlSettings.Instance.SetValue(
+                XmlSettingsKey.STEREO_ZONE_WIDTH,
+                stereo_zone_width.ToString()
+            );
+            XmlSettings.Instance.SetValue(
+                XmlSettingsKey.INVERT_HEADTRACKING,
+                invert_headtracking.ToString()
+            );
+            XmlSettings.Instance.SetValue(
+                XmlSettingsKey.ALGO_ANGLE_COUNTER,
+                algo_angle_counter.ToString()
+            );
+            XmlSettings.Instance.SetValue(
+                XmlSettingsKey.ALGO_ANGLE_DENOMINATOR,
+                algo_angle_denominator.ToString()
+            );
             XmlSettings.Instance.SetValue(XmlSettingsKey.ALGO_HQVIEWS, algo_hqviews.ToString());
             XmlSettings.Instance.SetValue(XmlSettingsKey.ALGO_DIRECTION, algo_direction.ToString());
             XmlSettings.Instance.SetValue(XmlSettingsKey.BLUR_FACTOR, blur_factor.ToString());
@@ -848,12 +974,11 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
         }
     }
 
-
     #endregion
 
 
     #region API
-    
+
     private void apiOnValidate()
     {
         G3DAPI.free(); //make sure we unload this if coming from the editor
@@ -861,11 +986,13 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
     private void apiInitialize()
     {
-    #if UNITY_EDITOR
-        G3DAPI.init($"{Application.productName} - {UnityEngine.SceneManagement.SceneManager.GetActiveScene().name} - Windows, Mac, Linux - Unity {Application.unityVersion} Personal <DX11>"); //todo: totally reconstruct unity editors name or find a better way
-    #else
+#if UNITY_EDITOR
+        G3DAPI.init(
+            $"{Application.productName} - {UnityEngine.SceneManagement.SceneManager.GetActiveScene().name} - Windows, Mac, Linux - Unity {Application.unityVersion} Personal <DX11>"
+        ); //todo: totally reconstruct unity editors name or find a better way
+#else
         G3DAPI.init(Application.productName);
-    #endif
+#endif
 
         G3DAPI.update();
     }
@@ -881,7 +1008,8 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
         if (G3DAPI.detectMonitorChange())
         {
             G3DAPI.update();
-            if (G3DAPI.GetCurrentMonitorInfo().Value.ViewCount > 1) apiLoadData();
+            if (G3DAPI.GetCurrentMonitorInfo().Value.ViewCount > 1)
+                apiLoadData();
             return true;
         }
         return false;
@@ -889,30 +1017,54 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
     private Vector4 apiGetHeadtrackingData()
     {
+        if (headTracking != null)
+        {
+            HeadPosition headPosition = headTracking.getHeadPosition();
+            return new Vector4(
+                (float)headPosition.worldPosX,
+                (float)headPosition.worldPosY,
+                (float)headPosition.worldPosZ,
+                1
+            );
+        }
+
         var state = G3DAPI.G3DHeadTrackingGetStateA();
-        if (state == null) return Vector4.zero;
-        return new Vector4(state.Value.EyeCenterPosMMV1.X, state.Value.EyeCenterPosMMV1.Y, state.Value.EyeCenterPosMMV1.Z, state.Value.TrackingOffset);
+        if (state == null)
+            return Vector4.zero;
+        return new Vector4(
+            state.Value.EyeCenterPosMMV1.X,
+            state.Value.EyeCenterPosMMV1.Y,
+            state.Value.EyeCenterPosMMV1.Z,
+            state.Value.TrackingOffset
+        );
     }
 
     private void loadViewmap(G3DAPI.Viewmap viewmap)
     {
-        if (viewmap == null) return;
+        if (viewmap == null)
+            return;
 
         Color32[] data = new Color32[viewmap.width * viewmap.height];
 
         //format in memory is bgr, but we need rgb
-        for (int y = 0; y < viewmap.height; y++) for (int x = 0; x < viewmap.width; x++)
-            {
-                data[y * viewmap.width + x] = new Color32(
-                    viewmap.data[y * viewmap.width * 3 + x * 3 + 2],
-                    viewmap.data[y * viewmap.width * 3 + x * 3 + 1],
-                    viewmap.data[y * viewmap.width * 3 + x * 3 + 0],
-                    255
-                );
-            }
+        for (int y = 0; y < viewmap.height; y++)
+        for (int x = 0; x < viewmap.width; x++)
+        {
+            data[y * viewmap.width + x] = new Color32(
+                viewmap.data[y * viewmap.width * 3 + x * 3 + 2],
+                viewmap.data[y * viewmap.width * 3 + x * 3 + 1],
+                viewmap.data[y * viewmap.width * 3 + x * 3 + 0],
+                255
+            );
+        }
 
         Destroy(cache_loadedViewmap);
-        cache_loadedViewmap = new Texture2D(viewmap.width, viewmap.height, GraphicsFormat.R8G8B8A8_UNorm, 0);
+        cache_loadedViewmap = new Texture2D(
+            viewmap.width,
+            viewmap.height,
+            GraphicsFormat.R8G8B8A8_UNorm,
+            0
+        );
         cache_views_monitor = viewmap.viewcount;
 
         cache_loadedViewmap.filterMode = FilterMode.Point;
@@ -922,11 +1074,17 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
     private void loadVectorMap(G3DAPI.Vectormap vectormap)
     {
-        if (vectormap == null) return;
+        if (vectormap == null)
+            return;
 
         //position map
         Destroy(cache_positionMap);
-        cache_positionMap = new Texture2D(vectormap.data.PositionMap.Length, 1, TextureFormat.RFloat, false);
+        cache_positionMap = new Texture2D(
+            vectormap.data.PositionMap.Length,
+            1,
+            TextureFormat.RFloat,
+            false
+        );
         for (int x = 0; x < vectormap.data.PositionMap.Length; x++)
             cache_positionMap.SetPixel(x, 0, new Color(vectormap.data.PositionMap[x], 0, 0));
         cache_positionMap.filterMode = FilterMode.Point;
@@ -934,25 +1092,44 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
 
         //vectormap
         Destroy(cache_vectorMap);
-        cache_vectorMap = new Texture2D(vectormap.data.VectorMap.Length, 1, TextureFormat.RFloat, false);
+        cache_vectorMap = new Texture2D(
+            vectormap.data.VectorMap.Length,
+            1,
+            TextureFormat.RFloat,
+            false
+        );
         for (int x = 0; x < vectormap.data.VectorMap.Length; x++)
             cache_vectorMap.SetPixel(x, 0, new Color(vectormap.data.VectorMap[x], 0, 0));
         cache_vectorMap.filterMode = FilterMode.Point;
         cache_vectorMap.Apply();
 
         //vector index maps
-        for(int i = 0; cache_vectorIndexMaps != null && i < cache_vectorIndexMaps.Length; i++) 
+        for (int i = 0; cache_vectorIndexMaps != null && i < cache_vectorIndexMaps.Length; i++)
             Destroy(cache_vectorIndexMaps[i]);
         cache_vectorIndexMaps = new Texture2D[vectormap.info.Repetition * 2];
-        for (int currentRepitition = 0; currentRepitition < vectormap.info.Repetition; currentRepitition++)
+        for (
+            int currentRepitition = 0;
+            currentRepitition < vectormap.info.Repetition;
+            currentRepitition++
+        )
         {
             var indexData = vectormap.indexMaps[currentRepitition];
 
             //unfortunately, no fitting and widely available 16bit format is available here.
             //values are split in high and low and reconstructed in the shader.
             //you know a better way? do it!
-            cache_vectorIndexMaps[currentRepitition * 2 + 0] = new Texture2D((int)vectormap.info.Width, (int)vectormap.info.Height, GraphicsFormat.R8G8B8A8_UNorm, TextureCreationFlags.None); //L bits
-            cache_vectorIndexMaps[currentRepitition * 2 + 1] = new Texture2D((int)vectormap.info.Width, (int)vectormap.info.Height, GraphicsFormat.R8G8B8A8_UNorm, TextureCreationFlags.None); //H bits
+            cache_vectorIndexMaps[currentRepitition * 2 + 0] = new Texture2D(
+                (int)vectormap.info.Width,
+                (int)vectormap.info.Height,
+                GraphicsFormat.R8G8B8A8_UNorm,
+                TextureCreationFlags.None
+            ); //L bits
+            cache_vectorIndexMaps[currentRepitition * 2 + 1] = new Texture2D(
+                (int)vectormap.info.Width,
+                (int)vectormap.info.Height,
+                GraphicsFormat.R8G8B8A8_UNorm,
+                TextureCreationFlags.None
+            ); //H bits
             cache_vectorIndexMaps[currentRepitition * 2 + 0].filterMode = FilterMode.Point;
             cache_vectorIndexMaps[currentRepitition * 2 + 1].filterMode = FilterMode.Point;
 
@@ -961,8 +1138,18 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
             for (int i_src = 0, i_dst = 0; i_src < indexData.Indices.Length; i_src += 6, i_dst++)
             {
                 //format in memory: bbggrr
-                L[i_dst] = new Color32(indexData.Indices[i_src + 4], indexData.Indices[i_src + 2], indexData.Indices[i_src + 0], 255);
-                H[i_dst] = new Color32(indexData.Indices[i_src + 5], indexData.Indices[i_src + 3], indexData.Indices[i_src + 1], 255);
+                L[i_dst] = new Color32(
+                    indexData.Indices[i_src + 4],
+                    indexData.Indices[i_src + 2],
+                    indexData.Indices[i_src + 0],
+                    255
+                );
+                H[i_dst] = new Color32(
+                    indexData.Indices[i_src + 5],
+                    indexData.Indices[i_src + 3],
+                    indexData.Indices[i_src + 1],
+                    255
+                );
             }
             cache_vectorIndexMaps[currentRepitition * 2 + 0].SetPixels32(L);
             cache_vectorIndexMaps[currentRepitition * 2 + 1].SetPixels32(H);
@@ -983,5 +1170,4 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener {
     }
 
     #endregion
-
 }
