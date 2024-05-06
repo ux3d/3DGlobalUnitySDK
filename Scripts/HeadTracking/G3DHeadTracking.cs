@@ -32,6 +32,8 @@ public class G3DHeadTracking
 
     private HeadPosition headPosition;
 
+    private static object headPosLock = new object();
+
     // Start is called before the first frame update
     void Start()
     {
@@ -93,7 +95,10 @@ public class G3DHeadTracking
 
     public HeadPosition getHeadPosition()
     {
-        return headPosition;
+        lock (headPosLock)
+        {
+            return headPosition;
+        }
     }
 
     public void toggleHeadTrackingStatus()
@@ -127,15 +132,16 @@ public class G3DHeadTracking
         double worldPosZ
     )
     {
-        headPosition.headDetected = headDetected;
-        headPosition.imagePosIsValid = imagePosIsValid;
-        headPosition.imagePosX = imagePosX;
-        headPosition.imagePosY = imagePosY;
-        headPosition.worldPosX = worldPosX;
-        headPosition.worldPosY = worldPosY;
-        headPosition.worldPosZ = worldPosZ;
-
-        Debug.Log("Head position changed: " + headPosition);
+        lock (headPosLock)
+        {
+            headPosition.headDetected = headDetected;
+            headPosition.imagePosIsValid = imagePosIsValid;
+            headPosition.imagePosX = imagePosX;
+            headPosition.imagePosY = imagePosY;
+            headPosition.worldPosX = worldPosX;
+            headPosition.worldPosY = worldPosY;
+            headPosition.worldPosZ = worldPosZ;
+        }
     }
 
     void ITNewErrorMessageCallback.NewErrorMessageCallback(
