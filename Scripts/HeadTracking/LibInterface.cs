@@ -23,10 +23,10 @@ internal delegate void TNewHeadPositionCallbackInternal(
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 internal delegate void TNewErrorMessageCallbackInternal(
     EMessageSeverity severity,
-    byte[] sender,
-    byte[] caption,
-    byte[] cause,
-    byte[] remedy,
+    in IntPtr sender,
+    in IntPtr caption,
+    in IntPtr cause,
+    in IntPtr remedy,
     IntPtr listener
 );
 
@@ -365,37 +365,37 @@ public sealed class LibInterface
         IntPtr listener
     )
     {
-        Debug.Log("TranslateNewHeadPositionCallback called ");
-        Debug.Log("headDetected: " + headDetected);
-        Debug.Log("imagePosIsValid: " + imagePosIsValid);
-        Debug.Log("imagePosX: " + imagePosX);
-        Debug.Log("imagePosY: " + imagePosY);
-        Debug.Log("worldPosX: " + worldPosX);
-        Debug.Log("worldPosY: " + worldPosY);
-        Debug.Log("worldPosZ: " + worldPosZ);
+        try
+        {
+            // translate intptr to interface instance
+            // call interface instance callback
+            GCHandle gch = GCHandle.FromIntPtr(listener);
+            ITNewHeadPositionCallback interfaceInstance = (ITNewHeadPositionCallback)gch.Target;
 
-        // translate intptr to interface instance
-        // call interface instance callback
-        GCHandle gch = GCHandle.FromIntPtr(listener);
-        ITNewHeadPositionCallback interfaceInstance = (ITNewHeadPositionCallback)gch.Target;
-
-        interfaceInstance.NewHeadPositionCallback(
-            headDetected,
-            imagePosIsValid,
-            imagePosX,
-            imagePosY,
-            worldPosX,
-            worldPosY,
-            worldPosZ
-        );
+            interfaceInstance.NewHeadPositionCallback(
+                headDetected,
+                imagePosIsValid,
+                imagePosX,
+                imagePosY,
+                worldPosX,
+                worldPosY,
+                worldPosZ
+            );
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e.ToString());
+        }
     }
 
-    public void registerHeadPositionChangedCallback(ITNewHeadPositionCallback inferfaceInstance)
+    public void registerHeadPositionChangedCallback(in ITNewHeadPositionCallback inferfaceInstance)
     {
         GCHandle gch = GCHandle.Alloc(inferfaceInstance);
 
         TNewHeadPositionCallbackInternal cppTranslationCallback =
             new TNewHeadPositionCallbackInternal(TranslateNewHeadPositionCallback);
+
+        IntPtr test = GCHandle.ToIntPtr(gch);
 
         int result = LibInterfaceCpp.registerHeadPositionChangedCallback(
             GCHandle.ToIntPtr(gch),
@@ -430,7 +430,9 @@ public sealed class LibInterface
         }
     }
 
-    public void unregisterHeadPositionChangedCallback(ITNewHeadPositionCallback inferfaceInstance)
+    public void unregisterHeadPositionChangedCallback(
+        in ITNewHeadPositionCallback inferfaceInstance
+    )
     {
         GCHandle gch = GCHandle.Alloc(inferfaceInstance);
         int result = LibInterfaceCpp.unregisterHeadPositionChangedCallback(GCHandle.ToIntPtr(gch));
@@ -469,16 +471,24 @@ public sealed class LibInterface
         IntPtr listener
     )
     {
-        // translate intptr to interface instance
-        // call interface instance callback
-        GCHandle gch = GCHandle.FromIntPtr(listener);
-        ITNewShaderParametersCallback interfaceInstance = (ITNewShaderParametersCallback)gch.Target;
+        try
+        {
+            // translate intptr to interface instance
+            // call interface instance callback
+            GCHandle gch = GCHandle.FromIntPtr(listener);
+            ITNewShaderParametersCallback interfaceInstance = (ITNewShaderParametersCallback)
+                gch.Target;
 
-        interfaceInstance.NewShaderParametersCallback(shaderParameters);
+            interfaceInstance.NewShaderParametersCallback(shaderParameters);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e.ToString());
+        }
     }
 
     public void registerShaderParametersChangedCallback(
-        ITNewShaderParametersCallback interfaceInstance
+        in ITNewShaderParametersCallback interfaceInstance
     )
     {
         GCHandle gch = GCHandle.Alloc(interfaceInstance);
@@ -520,7 +530,7 @@ public sealed class LibInterface
     }
 
     public void unregisterShaderParametersChangedCallback(
-        ITNewShaderParametersCallback interfaceInstance
+        in ITNewShaderParametersCallback interfaceInstance
     )
     {
         GCHandle gch = GCHandle.Alloc(interfaceInstance);
@@ -559,28 +569,39 @@ public sealed class LibInterface
 
     private void TranslateNewErrorMessageCallback(
         EMessageSeverity severity,
-        byte[] sender,
-        byte[] caption,
-        byte[] cause,
-        byte[] remedy,
+        in IntPtr sender,
+        in IntPtr caption,
+        in IntPtr cause,
+        in IntPtr remedy,
         IntPtr listener
     )
     {
-        // translate intptr to interface instance
-        // call interface instance callback
-        GCHandle gch = GCHandle.FromIntPtr(listener);
-        ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback)gch.Target;
+        try
+        {
+            // translate intptr to interface instance
+            // call interface instance callback
+            GCHandle gch = GCHandle.FromIntPtr(listener);
+            ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback) gch.Target;
 
-        interfaceInstance.NewErrorMessageCallback(
-            severity,
-            System.Text.Encoding.ASCII.GetString(sender),
-            System.Text.Encoding.ASCII.GetString(caption),
-            System.Text.Encoding.ASCII.GetString(cause),
-            System.Text.Encoding.ASCII.GetString(remedy)
-        );
+            Debug.Log("" + Marshal.PtrToStringAuto(sender) + " " + Marshal.PtrToStringAuto(caption) + " " +Marshal.PtrToStringAuto(cause) + " " +  Marshal.PtrToStringAuto(remedy));
+
+
+
+            // interfaceInstance.NewErrorMessageCallback(
+            //     severity,
+            //     Marshal.PtrToStringAuto(sender),
+            //     Marshal.PtrToStringAuto(caption),
+            //     Marshal.PtrToStringAuto(cause),
+            //     Marshal.PtrToStringAuto(remedy)
+            // );
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e.ToString());
+        }
     }
 
-    public void registerMessageCallback(ITNewErrorMessageCallback inferfaceInstance)
+    public void registerMessageCallback(in ITNewErrorMessageCallback inferfaceInstance)
     {
         GCHandle gch = GCHandle.Alloc(inferfaceInstance);
 
@@ -620,7 +641,7 @@ public sealed class LibInterface
         }
     }
 
-    public void unregisterMessageCallback(ITNewErrorMessageCallback inferfaceInstance)
+    public void unregisterMessageCallback(in ITNewErrorMessageCallback inferfaceInstance)
     {
         GCHandle gch = GCHandle.Alloc(inferfaceInstance);
         int result = LibInterfaceCpp.unregisterMessageCallback(GCHandle.ToIntPtr(gch));

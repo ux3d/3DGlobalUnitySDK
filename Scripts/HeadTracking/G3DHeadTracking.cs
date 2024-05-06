@@ -62,6 +62,8 @@ public class G3DHeadTracking
         headPosition.worldPosX = 0.0;
         headPosition.worldPosY = 0.0;
         headPosition.worldPosZ = 0.0;
+
+        libInterface.startHeadTracking();
     }
 
     // Update is called once per frame
@@ -73,6 +75,8 @@ public class G3DHeadTracking
         {
             return;
         }
+
+        libInterface.stopHeadTracking();
 
         if (registerCallbacks)
         {
