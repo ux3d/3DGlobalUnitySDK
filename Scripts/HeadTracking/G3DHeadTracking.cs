@@ -194,11 +194,11 @@ public class G3DHeadTracking
 
     private string formatErrorMessage(string caption, string cause, string remedy)
     {
-        string messageText = caption + "\n\n" + cause;
+        string messageText = caption + ": " + cause;
 
         if (String.IsNullOrEmpty(remedy) == false)
         {
-            messageText = messageText + "\n\n" + remedy;
+            messageText = messageText + "\n" + remedy;
         }
 
         return messageText;
