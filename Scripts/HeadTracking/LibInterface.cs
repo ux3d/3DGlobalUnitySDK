@@ -27,7 +27,7 @@ internal delegate void TNewErrorMessageCallbackInternal(
     in IntPtr caption,
     in IntPtr cause,
     in IntPtr remedy,
-    IntPtr listener
+    in IntPtr listener
 );
 
 public enum EMessageSeverity
@@ -573,7 +573,7 @@ public sealed class LibInterface
         in IntPtr caption,
         in IntPtr cause,
         in IntPtr remedy,
-        IntPtr listener
+        in IntPtr listener
     )
     {
         try
@@ -581,11 +581,18 @@ public sealed class LibInterface
             // translate intptr to interface instance
             // call interface instance callback
             GCHandle gch = GCHandle.FromIntPtr(listener);
-            ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback) gch.Target;
+            ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback)gch.Target;
 
-            Debug.Log("" + Marshal.PtrToStringAuto(sender) + " " + Marshal.PtrToStringAuto(caption) + " " +Marshal.PtrToStringAuto(cause) + " " +  Marshal.PtrToStringAuto(remedy));
-
-
+            Debug.Log(
+                ""
+                    + Marshal.PtrToStringAuto(sender)
+                    + " "
+                    + Marshal.PtrToStringAuto(caption)
+                    + " "
+                    + Marshal.PtrToStringAuto(cause)
+                    + " "
+                    + Marshal.PtrToStringAuto(remedy)
+            );
 
             // interfaceInstance.NewErrorMessageCallback(
             //     severity,
