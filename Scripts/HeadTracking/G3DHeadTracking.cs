@@ -34,8 +34,17 @@ public class G3DHeadTracking
 
     private static object headPosLock = new object();
 
-    // Start is called before the first frame update
     void Start()
+    {
+        initLibrary();
+    }
+
+    void OnApplicationQuit()
+    {
+        deinitLibrary();
+    }
+
+    private void initLibrary()
     {
         libInterface = LibInterface.Instance;
         libInterface.init(
@@ -54,22 +63,21 @@ public class G3DHeadTracking
             libInterface.registerMessageCallback(this);
         }
 
-        headPosition = new HeadPosition();
-        headPosition.headDetected = false;
-        headPosition.imagePosIsValid = false;
-        headPosition.imagePosX = 0;
-        headPosition.imagePosY = 0;
-        headPosition.worldPosX = 0.0;
-        headPosition.worldPosY = 0.0;
-        headPosition.worldPosZ = 0.0;
+        headPosition = new HeadPosition
+        {
+            headDetected = false,
+            imagePosIsValid = false,
+            imagePosX = 0,
+            imagePosY = 0,
+            worldPosX = 0.0,
+            worldPosY = 0.0,
+            worldPosZ = 0.0
+        };
 
         libInterface.startHeadTracking();
     }
 
-    // Update is called once per frame
-    void Update() { }
-
-    void OnDestroy()
+    private void deinitLibrary()
     {
         if (libInterface == null || !libInterface.isInitialized())
         {
@@ -92,9 +100,7 @@ public class G3DHeadTracking
             }
         }
 
-        // manual garbage collection here to force library destruction when unity "playback" is stopped
-        // TODO Remove this
-        libInterface = null;
+        libInterface.deinit();
     }
 
     public HeadPosition getHeadPosition()

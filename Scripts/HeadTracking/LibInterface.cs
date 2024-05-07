@@ -23,11 +23,11 @@ internal delegate void TNewHeadPositionCallbackInternal(
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 internal delegate void TNewErrorMessageCallbackInternal(
     EMessageSeverity severity,
-    in IntPtr sender,
-    in IntPtr caption,
-    in IntPtr cause,
-    in IntPtr remedy,
-    in IntPtr listener
+    IntPtr sender,
+    IntPtr caption,
+    IntPtr cause,
+    IntPtr remedy,
+    IntPtr listener
 );
 
 public enum EMessageSeverity
@@ -186,11 +186,57 @@ public sealed class LibInterface
         initialized = true;
     }
 
+    public void deinit()
+    {
+        // this is in its own try catch to continue deinit if this fails
+        try
+        {
+            stopHeadTracking();
+        }
+        catch (Exception e)
+        {
+            // only log this if actually initialized.
+            // otherwise this was probably called from an uninitialized state and the exception reflects that.
+            if (initialized)
+            {
+                Debug.LogError(e.ToString());
+            }
+        }
+
+        // this is in its own try catch to continue deinit if this fails
+        try
+        {
+            deinitHeadTracking();
+        }
+        catch (Exception e)
+        {
+            if (initialized)
+            {
+                Debug.LogError(e.ToString());
+            }
+        }
+
+        // this is in its own try catch to continue deinit if this fails
+        try
+        {
+            deinitLibrary();
+        }
+        catch (Exception e)
+        {
+            if (initialized)
+            {
+                Debug.LogError(e.ToString());
+            }
+        }
+
+        Debug.Log("destroy library");
+
+        initialized = false;
+    }
+
     ~LibInterface()
     {
-        deinitHeadTracking();
-        deinitLibrary();
-        Debug.Log("destroy library");
+        deinit();
     }
 
     public bool isInitialized()
@@ -401,7 +447,8 @@ public sealed class LibInterface
             GCHandle.ToIntPtr(gch),
             cppTranslationCallback
         );
-        gch.Free();
+        // TODO figure out if this results in memory leaks
+        // gch.Free();
         if (logToConsole)
         {
             Debug.Log("G3D library: registerHeadPositionChangedCallback result: " + result);
@@ -500,7 +547,8 @@ public sealed class LibInterface
             GCHandle.ToIntPtr(gch),
             cppTranslationCallback
         );
-        gch.Free();
+        // TODO figure out if this results in memory leaks
+        // gch.Free();
         if (logToConsole)
         {
             Debug.Log("G3D library: registerShaderParametersChangedCallback result: " + result);
@@ -569,11 +617,11 @@ public sealed class LibInterface
 
     private void TranslateNewErrorMessageCallback(
         EMessageSeverity severity,
-        in IntPtr sender,
-        in IntPtr caption,
-        in IntPtr cause,
-        in IntPtr remedy,
-        in IntPtr listener
+        IntPtr sender,
+        IntPtr caption,
+        IntPtr cause,
+        IntPtr remedy,
+        IntPtr listener
     )
     {
         try
@@ -583,24 +631,18 @@ public sealed class LibInterface
             GCHandle gch = GCHandle.FromIntPtr(listener);
             ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback)gch.Target;
 
-            Debug.Log(
-                ""
-                    + Marshal.PtrToStringAuto(sender)
-                    + " "
-                    + Marshal.PtrToStringAuto(caption)
-                    + " "
-                    + Marshal.PtrToStringAuto(cause)
-                    + " "
-                    + Marshal.PtrToStringAuto(remedy)
-            );
+            string senderString = Marshal.PtrToStringAnsi(sender);
+            string captionString = Marshal.PtrToStringAnsi(caption);
+            string causeString = Marshal.PtrToStringAnsi(cause);
+            string remedyString = Marshal.PtrToStringAnsi(remedy);
 
-            // interfaceInstance.NewErrorMessageCallback(
-            //     severity,
-            //     Marshal.PtrToStringAuto(sender),
-            //     Marshal.PtrToStringAuto(caption),
-            //     Marshal.PtrToStringAuto(cause),
-            //     Marshal.PtrToStringAuto(remedy)
-            // );
+            interfaceInstance.NewErrorMessageCallback(
+                severity,
+                senderString,
+                captionString,
+                causeString,
+                remedyString
+            );
         }
         catch (Exception e)
         {
@@ -619,7 +661,8 @@ public sealed class LibInterface
             GCHandle.ToIntPtr(gch),
             cppTranslationCallback
         );
-        gch.Free();
+        // TODO figure out if this results in memory leaks
+        // gch.Free();
         if (logToConsole)
         {
             Debug.Log("G3D library: registerMessageCallback result: " + result);
