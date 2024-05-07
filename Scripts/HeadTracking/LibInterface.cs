@@ -84,6 +84,9 @@ public struct HeadTrackingStatus
 public sealed class LibInterface
 {
     public bool logToConsole = true;
+    private TNewHeadPositionCallbackInternal newHeadPosCppCallback;
+    private TNewShaderParametersCallbackInternal newShaderparamsCppCallback;
+    TNewErrorMessageCallbackInternal newErrorMessagesCppCallback;
 
     private static readonly LibInterface internalInstance = new LibInterface();
 
@@ -91,7 +94,20 @@ public sealed class LibInterface
     // not to mark type as beforefieldinit
     static LibInterface() { }
 
-    private LibInterface() { }
+    private LibInterface()
+    {
+        newHeadPosCppCallback = new TNewHeadPositionCallbackInternal(
+            TranslateNewHeadPositionCallback
+        );
+
+        newShaderparamsCppCallback = new TNewShaderParametersCallbackInternal(
+            TranslateShaderParametersCallback
+        );
+
+        newErrorMessagesCppCallback = new TNewErrorMessageCallbackInternal(
+            TranslateNewErrorMessageCallback
+        );
+    }
 
     public static LibInterface Instance
     {
@@ -438,14 +454,9 @@ public sealed class LibInterface
     {
         GCHandle gch = GCHandle.Alloc(inferfaceInstance);
 
-        TNewHeadPositionCallbackInternal cppTranslationCallback =
-            new TNewHeadPositionCallbackInternal(TranslateNewHeadPositionCallback);
-
-        IntPtr test = GCHandle.ToIntPtr(gch);
-
         int result = LibInterfaceCpp.registerHeadPositionChangedCallback(
             GCHandle.ToIntPtr(gch),
-            cppTranslationCallback
+            newHeadPosCppCallback
         );
         // TODO figure out if this results in memory leaks
         // gch.Free();
@@ -540,12 +551,9 @@ public sealed class LibInterface
     {
         GCHandle gch = GCHandle.Alloc(interfaceInstance);
 
-        TNewShaderParametersCallbackInternal cppTranslationCallback =
-            new TNewShaderParametersCallbackInternal(TranslateShaderParametersCallback);
-
         int result = LibInterfaceCpp.registerShaderParametersChangedCallback(
             GCHandle.ToIntPtr(gch),
-            cppTranslationCallback
+            newShaderparamsCppCallback
         );
         // TODO figure out if this results in memory leaks
         // gch.Free();
@@ -654,12 +662,9 @@ public sealed class LibInterface
     {
         GCHandle gch = GCHandle.Alloc(inferfaceInstance);
 
-        TNewErrorMessageCallbackInternal cppTranslationCallback =
-            new TNewErrorMessageCallbackInternal(TranslateNewErrorMessageCallback);
-
         int result = LibInterfaceCpp.registerMessageCallback(
             GCHandle.ToIntPtr(gch),
-            cppTranslationCallback
+            newErrorMessagesCppCallback
         );
         // TODO figure out if this results in memory leaks
         // gch.Free();

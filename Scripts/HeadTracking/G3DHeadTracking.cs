@@ -189,7 +189,7 @@ public class G3DHeadTracking
     )
     {
         Debug.Log("New shader parameters received");
-        Debug.Log("Shader parameters: " + shaderParameters);
+        // Debug.Log("Shader parameters: " + shaderParameters.ToString());
     }
 
     private string formatErrorMessage(string caption, string cause, string remedy)
