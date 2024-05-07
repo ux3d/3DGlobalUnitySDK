@@ -598,6 +598,7 @@ public class G3DCamera : MonoBehaviour, IXmlSettingsListener
         try
         {
             headTracking = GetComponent<G3DHeadTracking>();
+            Debug.Log(headTracking);
         }
         catch (Exception e)
         {
