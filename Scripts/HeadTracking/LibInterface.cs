@@ -114,7 +114,7 @@ public sealed class LibInterface
         get { return internalInstance; }
     }
 
-    private bool initialized = false;
+    private bool isInitialized = false;
 
     public void init(
         string calibrationPath,
@@ -125,7 +125,7 @@ public sealed class LibInterface
         bool usePmdFlexxDevice = true
     )
     {
-        if (initialized)
+        if (isInitialized)
         {
             Debug.Log("G3D head tracking library is already initialized.");
             return;
@@ -199,7 +199,7 @@ public sealed class LibInterface
         }
         Debug.Log("tracking device count " + getHeadTrackingDeviceCount());
 
-        initialized = true;
+        isInitialized = true;
     }
 
     public void deinit()
@@ -213,7 +213,7 @@ public sealed class LibInterface
         {
             // only log this if actually initialized.
             // otherwise this was probably called from an uninitialized state and the exception reflects that.
-            if (initialized)
+            if (isInitialized)
             {
                 Debug.LogError(e.ToString());
             }
@@ -226,7 +226,7 @@ public sealed class LibInterface
         }
         catch (Exception e)
         {
-            if (initialized)
+            if (isInitialized)
             {
                 Debug.LogError(e.ToString());
             }
@@ -239,7 +239,7 @@ public sealed class LibInterface
         }
         catch (Exception e)
         {
-            if (initialized)
+            if (isInitialized)
             {
                 Debug.LogError(e.ToString());
             }
@@ -247,7 +247,7 @@ public sealed class LibInterface
 
         Debug.Log("destroy library");
 
-        initialized = false;
+        isInitialized = false;
     }
 
     ~LibInterface()
@@ -257,7 +257,7 @@ public sealed class LibInterface
 
     public bool isInitialized()
     {
-        return initialized;
+        return isInitialized;
     }
 
     private void initLibrary()
