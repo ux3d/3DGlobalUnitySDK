@@ -19,12 +19,31 @@ public class G3DHeadTracking
         ITNewShaderParametersCallback,
         ITNewErrorMessageCallback
 {
+    #region Callibration
+    [Header("Calibration and configuration files")]
+    [Tooltip(
+        "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
+    )]
     public string calibrationPath = "";
+
+    [Tooltip(
+        "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
+    )]
     public string configPath = "";
     public string configFileName = "";
+    #endregion
 
+    #region Device settings
+    [Header("Device settings")]
     public bool useHimaxD2XXDevices = true;
     public bool usePmdFlexxDevices = true;
+    #endregion
+
+    #region Debugging
+    [Header("Debugging")]
+    [Tooltip("If set to true, the library will print debug messages to the console.")]
+    public bool debugMessages = false;
+    #endregion
 
     private LibInterface libInterface;
 
@@ -52,7 +71,7 @@ public class G3DHeadTracking
             this,
             this,
             this,
-            true,
+            debugMessages,
             useHimaxD2XXDevices,
             usePmdFlexxDevices
         );
