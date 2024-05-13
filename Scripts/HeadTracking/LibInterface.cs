@@ -10,8 +10,8 @@ public delegate void TNewShaderParametersCallbackInternal(
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 internal delegate void TNewHeadPositionCallbackInternal(
-    [MarshalAs(UnmanagedType.U1)] bool headDetected,
-    [MarshalAs(UnmanagedType.U1)] bool imagePosIsValid,
+    int headDetected,
+    int imagePosIsValid,
     int imagePosX,
     int imagePosY,
     double worldPosX,
@@ -320,7 +320,7 @@ public sealed class LibInterface
 
     public void setCalibrationPath(string calibrationPath)
     {
-        byte[] calibPathBytes = System.Text.Encoding.ASCII.GetBytes(calibrationPath);
+        byte[] calibPathBytes = System.Text.Encoding.UTF8.GetBytes(calibrationPath + "\0");
         int result = LibInterfaceCpp.setCalibrationPath(calibPathBytes);
         if (logToConsole)
         {
@@ -352,7 +352,7 @@ public sealed class LibInterface
 
     public void setConfigPath(string configPath)
     {
-        byte[] configPathBytes = System.Text.Encoding.ASCII.GetBytes(configPath);
+        byte[] configPathBytes = System.Text.Encoding.UTF8.GetBytes(configPath + "\0");
         int result = LibInterfaceCpp.setConfigPath(configPathBytes);
         if (logToConsole)
         {
@@ -384,7 +384,7 @@ public sealed class LibInterface
 
     public void setConfigFileName(string configFileName)
     {
-        byte[] configFileNameBytes = System.Text.Encoding.ASCII.GetBytes(configFileName);
+        byte[] configFileNameBytes = System.Text.Encoding.UTF8.GetBytes(configFileName + "\0");
         int result = LibInterfaceCpp.setConfigFileName(configFileNameBytes);
         if (logToConsole)
         {
@@ -416,9 +416,21 @@ public sealed class LibInterface
 
     // ------------------------------------------------
 
+    /// <summary>
+    /// headDetected: 0 = no head detected, 1 >= head detected
+    /// imagePosIsValid: 0 = invalid, 1 >= valid
+    /// </summary>
+    /// <param name="headDetected"></param>
+    /// <param name="imagePosIsValid"></param>
+    /// <param name="imagePosX"></param>
+    /// <param name="imagePosY"></param>
+    /// <param name="worldPosX"></param>
+    /// <param name="worldPosY"></param>
+    /// <param name="worldPosZ"></param>
+    /// <param name="listener"></param>
     private void TranslateNewHeadPositionCallback(
-        [MarshalAs(UnmanagedType.U1)] bool headDetected,
-        [MarshalAs(UnmanagedType.U1)] bool imagePosIsValid,
+        int headDetected,
+        int imagePosIsValid,
         int imagePosX,
         int imagePosY,
         double worldPosX,
@@ -435,8 +447,8 @@ public sealed class LibInterface
             ITNewHeadPositionCallback interfaceInstance = (ITNewHeadPositionCallback)gch.Target;
 
             interfaceInstance.NewHeadPositionCallback(
-                headDetected,
-                imagePosIsValid,
+                headDetected != 0,
+                imagePosIsValid != 0,
                 imagePosX,
                 imagePosY,
                 worldPosX,
@@ -639,10 +651,10 @@ public sealed class LibInterface
             GCHandle gch = GCHandle.FromIntPtr(listener);
             ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback)gch.Target;
 
-            string senderString = Marshal.PtrToStringAnsi(sender);
-            string captionString = Marshal.PtrToStringAnsi(caption);
-            string causeString = Marshal.PtrToStringAnsi(cause);
-            string remedyString = Marshal.PtrToStringAnsi(remedy);
+            string senderString = Marshal.PtrToStringUTF8(sender);
+            string captionString = Marshal.PtrToStringUTF8(caption);
+            string causeString = Marshal.PtrToStringUTF8(cause);
+            string remedyString = Marshal.PtrToStringUTF8(remedy);
 
             interfaceInstance.NewErrorMessageCallback(
                 severity,
@@ -919,7 +931,7 @@ public sealed class LibInterface
             );
         }
 
-        return Marshal.PtrToStringAnsi(deviceName);
+        return Marshal.PtrToStringUTF8(deviceName);
     }
 
     public string getCurrentHeadTrackingDevice()
@@ -953,12 +965,12 @@ public sealed class LibInterface
             );
         }
 
-        return Marshal.PtrToStringAnsi(device);
+        return Marshal.PtrToStringUTF8(device);
     }
 
     public void setCurrentHeadTrackingDevice(string device)
     {
-        byte[] deviceNameBytes = System.Text.Encoding.ASCII.GetBytes(device);
+        byte[] deviceNameBytes = System.Text.Encoding.UTF8.GetBytes(device);
         int result = LibInterfaceCpp.setCurrentHeadTrackingDevice(deviceNameBytes);
         if (logToConsole)
         {
@@ -1539,27 +1551,27 @@ internal static class LibInterfaceCpp
         EntryPoint = "?setCalibrationPath@G3D_UHTL@@YAHPEBD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
-    public static extern int setCalibrationPath(in byte[] path);
+    public static extern int setCalibrationPath(byte[] path);
 
     [DllImport(
         "G3D_UniversalHeadTrackingLibrary.dll",
         EntryPoint = "?setConfigPath@G3D_UHTL@@YAHPEBD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
-    public static extern int setConfigPath(in byte[] path);
+    public static extern int setConfigPath(byte[] path);
 
     [DllImport(
         "G3D_UniversalHeadTrackingLibrary.dll",
         EntryPoint = "?setConfigFileName@G3D_UHTL@@YAHPEBD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
-    public static extern int setConfigFileName(in byte[] path);
+    public static extern int setConfigFileName(byte[] path);
 
     // ------------------------------------------------
 
     [DllImport(
         "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?registerHeadPositionChangedCallback@G3D_UHTL@@YAHPEAXP6AX_N1HHNNN0@Z@Z",
+        EntryPoint = "?registerHeadPositionChangedCallback@G3D_UHTL@@YAHPEAXP6AXHHHHNNN0@Z@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int registerHeadPositionChangedCallback(
