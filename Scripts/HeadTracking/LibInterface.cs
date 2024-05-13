@@ -1607,11 +1607,11 @@ public sealed class LibInterface
 internal static class LibInterfaceCpp
 {
     // Error codes
-    const int E_OK = 0;
-    const int E_INITIALIZED_ALREADY = -100;
-    const int E_NOT_INITIALIZED = -101;
-    const int E_INDEX_OUT_OF_RANGE = -102;
-    const int E_EXCEPTION_ERROR = -200;
+    // const int E_OK = 0;
+    // const int E_INITIALIZED_ALREADY = -100;
+    // const int E_NOT_INITIALIZED = -101;
+    // const int E_INDEX_OUT_OF_RANGE = -102;
+    // const int E_EXCEPTION_ERROR = -200;
 
     //function definitions
     [DllImport(
