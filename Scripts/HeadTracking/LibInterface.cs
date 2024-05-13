@@ -116,17 +116,67 @@ public sealed class LibInterface
 
     private bool initialized = false;
 
+    /// <summary>
+    /// Initializes the G3D head tracking library. If it is already initialized, this function only registers the callbacks.
+    /// If the library is already initialized, this function will not set the useHimaxD2XXDevice and usePmdFlexxDevice Flag, neither the logToConsole flag.
+    ///
+    /// This function has to be called before any other function of this class is called.
+    ///
+    /// This function does not start the head tracking. To start the head tracking, call startHeadTracking().
+    ///
+    /// You do not have to call the destructor manually. It is called, when the last reference to the singeleton is removed.
+    /// </summary>
+    /// <param name="calibrationPath"></param>
+    /// <param name="configPath"></param>
+    /// <param name="configFileName"></param>
+    /// <param name="newHeadInferfaceInstance"></param>
+    /// <param name="shaderInterfaceInstance"></param>
+    /// <param name="errorInterfaceInstance"></param>
+    /// <param name="logToConsole"></param>
+    /// <param name="useHimaxD2XXDevice"></param>
+    /// <param name="usePmdFlexxDevice"></param>
+    /// <exception cref="System.Exception"></exception>
     public void init(
         string calibrationPath,
         string configPath,
         string configFileName,
+        in ITNewHeadPositionCallback newHeadInferfaceInstance,
+        in ITNewShaderParametersCallback shaderInterfaceInstance,
+        in ITNewErrorMessageCallback errorInterfaceInstance,
         bool logToConsole = true,
         bool useHimaxD2XXDevice = true,
         bool usePmdFlexxDevice = true
     )
     {
+        // register callbacks in case the library is already initialized
+        // afterwards, return
         if (initialized)
         {
+            try
+            {
+                registerHeadPositionChangedCallback(newHeadInferfaceInstance);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+            try
+            {
+                registerShaderParametersChangedCallback(shaderInterfaceInstance);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+            try
+            {
+                registerMessageCallback(errorInterfaceInstance);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+
             Debug.Log("G3D head tracking library is already initialized.");
             return;
         }
@@ -168,13 +218,45 @@ public sealed class LibInterface
             );
         }
 
+        // register callbacks
+        try
+        {
+            registerHeadPositionChangedCallback(newHeadInferfaceInstance);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+        }
+        try
+        {
+            registerShaderParametersChangedCallback(shaderInterfaceInstance);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+        }
+        try
+        {
+            registerMessageCallback(errorInterfaceInstance);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+        }
+
         try
         {
             if (useHimaxD2XXDevice)
             {
                 useHimaxD2XXDevices();
             }
-
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+        }
+        try
+        {
             if (usePmdFlexxDevice)
             {
                 usePmdFlexxDevices();
