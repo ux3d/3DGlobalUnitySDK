@@ -154,6 +154,8 @@ public class G3DHeadTracking
     {
         lock (headPosLock)
         {
+            Debug.Log("New head position received");
+            Debug.Log("Head detected: " + headDetected);
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
             headPosition.imagePosX = imagePosX;
