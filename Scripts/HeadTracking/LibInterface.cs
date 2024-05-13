@@ -347,7 +347,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.initLibrary();
         if (logToConsole)
         {
-            Debug.Log("G3D library initialization result: " + result);
+            Debug.Log("G3D library initialization successfull.");
         }
         if (result == -100)
         {
@@ -376,7 +376,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.deinitLibrary();
         if (logToConsole)
         {
-            Debug.Log("G3D library deinitialization result: " + result);
+            Debug.Log("G3D library deinitialization successfull.");
         }
         if (result == -100)
         {
@@ -406,7 +406,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setCalibrationPath(calibPathBytes);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setCalibrationPath result: " + result);
+            Debug.Log("G3D library: setCalibrationPath success.");
         }
         if (result == -100)
         {
@@ -438,7 +438,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setConfigPath(configPathBytes);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setConfigPath result: " + result);
+            Debug.Log("G3D library: setConfigPath success.");
         }
         if (result == -100)
         {
@@ -470,7 +470,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setConfigFileName(configFileNameBytes);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setConfigFileName result: " + result);
+            Debug.Log("G3D library: setConfigFileName success.");
         }
         if (result == -100)
         {
@@ -556,7 +556,7 @@ public sealed class LibInterface
         // gch.Free();
         if (logToConsole)
         {
-            Debug.Log("G3D library: registerHeadPositionChangedCallback result: " + result);
+            Debug.Log("G3D library: registerHeadPositionChangedCallback success.");
         }
         if (result == -100)
         {
@@ -592,7 +592,7 @@ public sealed class LibInterface
 
         if (logToConsole)
         {
-            Debug.Log("G3D library: unregisterHeadPositionChangedCallback result: " + result);
+            Debug.Log("G3D library: unregisterHeadPositionChangedCallback success.");
         }
         if (result == -100)
         {
@@ -653,7 +653,7 @@ public sealed class LibInterface
         // gch.Free();
         if (logToConsole)
         {
-            Debug.Log("G3D library: registerShaderParametersChangedCallback result: " + result);
+            Debug.Log("G3D library: registerShaderParametersChangedCallback success.");
         }
         if (result == -100)
         {
@@ -691,7 +691,7 @@ public sealed class LibInterface
 
         if (logToConsole)
         {
-            Debug.Log("G3D library: unregisterShaderParametersChangedCallback result: " + result);
+            Debug.Log("G3D library: unregisterShaderParametersChangedCallback success.");
         }
         if (result == -100)
         {
@@ -764,7 +764,7 @@ public sealed class LibInterface
         // gch.Free();
         if (logToConsole)
         {
-            Debug.Log("G3D library: registerMessageCallback result: " + result);
+            Debug.Log("G3D library: registerMessageCallback success.");
         }
         if (result == -100)
         {
@@ -798,7 +798,7 @@ public sealed class LibInterface
 
         if (logToConsole)
         {
-            Debug.Log("G3D library: unregisterMessageCallback result: " + result);
+            Debug.Log("G3D library: unregisterMessageCallback success.");
         }
         if (result == -100)
         {
@@ -831,7 +831,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.useHimaxD2XXDevices();
         if (logToConsole)
         {
-            Debug.Log("G3D library: useHimaxD2XXDevices result: " + result);
+            Debug.Log("G3D library: useHimaxD2XXDevices success.");
         }
         if (result == -100)
         {
@@ -860,7 +860,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.usePmdFlexxDevices();
         if (logToConsole)
         {
-            Debug.Log("G3D library: usePmdFlexxDevices result: " + result);
+            Debug.Log("G3D library: usePmdFlexxDevices success.");
         }
         if (result == -100)
         {
@@ -889,7 +889,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.initHeadTracking();
         if (logToConsole)
         {
-            Debug.Log("G3D library: initHeadTracking result: " + result);
+            Debug.Log("G3D library: initHeadTracking success.");
         }
         if (result == -100)
         {
@@ -920,7 +920,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.deinitHeadTracking();
         if (logToConsole)
         {
-            Debug.Log("G3D library: deinitHeadTracking result: " + result);
+            Debug.Log("G3D library: deinitHeadTracking success.");
         }
         if (result == -100)
         {
@@ -954,7 +954,9 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.getHeadTrackingDeviceCount(out deviceCount);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getHeadTrackingDeviceCount result: " + result);
+            Debug.Log(
+                "G3D library: getHeadTrackingDeviceCount success. Device count: " + deviceCount
+            );
         }
         if (result == -100)
         {
@@ -984,11 +986,17 @@ public sealed class LibInterface
 
     public string getHeadTrackingDeviceName(int deviceNumber)
     {
-        IntPtr deviceName = new IntPtr();
-        int result = LibInterfaceCpp.getHeadTrackingDeviceName(deviceNumber, out deviceName);
+        IntPtr deviceNamePtr;
+        int result = LibInterfaceCpp.getHeadTrackingDeviceName(deviceNumber, out deviceNamePtr);
+        string deviceName = Marshal.PtrToStringUTF8(deviceNamePtr);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getHeadTrackingDeviceName result: " + result);
+            Debug.Log(
+                "G3D library: getHeadTrackingDeviceName success. Device with index "
+                    + deviceNumber
+                    + "has name: "
+                    + deviceName
+            );
         }
         if (result == -100)
         {
@@ -1013,16 +1021,20 @@ public sealed class LibInterface
             );
         }
 
-        return Marshal.PtrToStringUTF8(deviceName);
+        return deviceName;
     }
 
     public string getCurrentHeadTrackingDevice()
     {
-        IntPtr device = new IntPtr();
+        IntPtr device;
         int result = LibInterfaceCpp.getCurrentHeadTrackingDevice(out device);
+        string deviceName = Marshal.PtrToStringUTF8(device);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getCurrentHeadTrackingDevice result: " + result);
+            Debug.Log(
+                "G3D library: getCurrentHeadTrackingDevice success. Current device name: "
+                    + deviceName
+            );
         }
         if (result == -100)
         {
@@ -1047,7 +1059,7 @@ public sealed class LibInterface
             );
         }
 
-        return Marshal.PtrToStringUTF8(device);
+        return deviceName;
     }
 
     public void setCurrentHeadTrackingDevice(string device)
@@ -1056,7 +1068,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setCurrentHeadTrackingDevice(deviceNameBytes);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setCurrentHeadTrackingDevice result: " + result);
+            Debug.Log("G3D library: setCurrentHeadTrackingDevice success");
         }
         if (result == -100)
         {
@@ -1092,15 +1104,20 @@ public sealed class LibInterface
     /// <exception cref="Exception"></exception>
     public Tuple<int, int> getHeadTrackingDeviceResolution()
     {
-        int horizontalResolution = -1;
-        int verticalResolution = -1;
+        int horizontalResolution;
+        int verticalResolution;
         int result = LibInterfaceCpp.getHeadTrackingDeviceResolution(
             out horizontalResolution,
             out verticalResolution
         );
         if (logToConsole)
         {
-            Debug.Log("G3D library: getHeadTrackingDeviceResolution result: " + result);
+            Debug.Log(
+                "G3D library: getHeadTrackingDeviceResolution success. Horizontal resolution: "
+                    + horizontalResolution
+                    + ", vertical resolution: "
+                    + verticalResolution
+            );
         }
         if (result == -100)
         {
@@ -1130,11 +1147,11 @@ public sealed class LibInterface
 
     public int getFirstValidCalibrationMatrixCol()
     {
-        int value = -1;
+        int value;
         int result = LibInterfaceCpp.getFirstValidCalibrationMatrixCol(out value);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getFirstValidCalibrationMatrixCol result: " + result);
+            Debug.Log("G3D library: getFirstValidCalibrationMatrixCol success. Value: " + value);
         }
         if (result == -100)
         {
@@ -1162,11 +1179,11 @@ public sealed class LibInterface
 
     public int getLastValidCalibrationMatrixCol()
     {
-        int value = -1;
+        int value;
         int result = LibInterfaceCpp.getLastValidCalibrationMatrixCol(out value);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getLastValidCalibrationMatrixCol result: " + result);
+            Debug.Log("G3D library: getLastValidCalibrationMatrixCol success. Value: " + value);
         }
         if (result == -100)
         {
@@ -1194,11 +1211,11 @@ public sealed class LibInterface
 
     public int getFirstValidCalibrationMatrixRow()
     {
-        int value = -1;
+        int value;
         int result = LibInterfaceCpp.getFirstValidCalibrationMatrixRow(out value);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getFirstValidCalibrationMatrixRow result: " + result);
+            Debug.Log("G3D library: getFirstValidCalibrationMatrixRow success. Value: " + value);
         }
         if (result == -100)
         {
@@ -1226,11 +1243,11 @@ public sealed class LibInterface
 
     public int getLastValidCalibrationMatrixRow()
     {
-        int value = -1;
+        int value;
         int result = LibInterfaceCpp.getLastValidCalibrationMatrixRow(out value);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getLastValidCalibrationMatrixRow result: " + result);
+            Debug.Log("G3D library: getLastValidCalibrationMatrixRow success. Value: " + value);
         }
         if (result == -100)
         {
@@ -1263,7 +1280,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.startHeadTracking();
         if (logToConsole)
         {
-            Debug.Log("G3D library: startHeadTracking result: " + result);
+            Debug.Log("G3D library: head tracking started successfully.");
         }
         if (result == -100)
         {
@@ -1292,7 +1309,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.stopHeadTracking();
         if (logToConsole)
         {
-            Debug.Log("G3D library: stopHeadTracking result: " + result);
+            Debug.Log("G3D library: head tracking stopped successfully.");
         }
         if (result == -100)
         {
@@ -1326,12 +1343,12 @@ public sealed class LibInterface
     /// <exception cref="Exception"></exception>
     public HeadTrackingStatus getHeadTrackingStatus()
     {
-        bool hasDevice = false;
-        bool isTracking = false;
+        bool hasDevice;
+        bool isTracking;
         int result = LibInterfaceCpp.getHeadTrackingStatus(out hasDevice, out isTracking);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getHeadTrackingStatus result: " + result);
+            Debug.Log("G3D library: getHeadTrackingStatus success");
         }
         if (result == -100)
         {
@@ -1354,9 +1371,11 @@ public sealed class LibInterface
             );
         }
 
-        HeadTrackingStatus headTrackingStatus = new HeadTrackingStatus();
-        headTrackingStatus.hasTrackingDevice = hasDevice;
-        headTrackingStatus.isTrackingActive = isTracking;
+        HeadTrackingStatus headTrackingStatus = new HeadTrackingStatus
+        {
+            hasTrackingDevice = hasDevice,
+            isTrackingActive = isTracking
+        };
 
         return headTrackingStatus;
     }
@@ -1365,11 +1384,11 @@ public sealed class LibInterface
 
     public G3DShaderParameters getCurrentShaderParameters()
     {
-        G3DShaderParameters parameters = new G3DShaderParameters();
+        G3DShaderParameters parameters;
         int result = LibInterfaceCpp.getCurrentShaderParameters(out parameters);
         if (logToConsole)
         {
-            Debug.Log("G3D library: getCurrentShaderParameters result: " + result);
+            Debug.Log("G3D library: getCurrentShaderParameters success");
         }
         if (result == -100)
         {
@@ -1400,7 +1419,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setWindowPosition(left, top);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setWindowPosition result: " + result);
+            Debug.Log("G3D library: setWindowPosition success");
         }
         if (result == -100)
         {
@@ -1429,7 +1448,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setWindowSize(width, height);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setWindowSize result: " + result);
+            Debug.Log("G3D library: setWindowSize success");
         }
         if (result == -100)
         {
@@ -1458,7 +1477,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setViewportOffset(left, top);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setViewportOffset result: " + result);
+            Debug.Log("G3D library: setViewportOffset success");
         }
         if (result == -100)
         {
@@ -1487,7 +1506,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setViewportSize(width, height);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setViewportSize result: " + result);
+            Debug.Log("G3D library: setViewportSize success");
         }
         if (result == -100)
         {
@@ -1516,7 +1535,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.setScreenSize(width, height);
         if (logToConsole)
         {
-            Debug.Log("G3D library: setScreenSize result: " + result);
+            Debug.Log("G3D library: setScreenSize success");
         }
         if (result == -100)
         {
@@ -1547,7 +1566,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.shiftViewToLeft();
         if (logToConsole)
         {
-            Debug.Log("G3D library: shiftViewToLeft result: " + result);
+            Debug.Log("G3D library: shiftViewToLeft success");
         }
         if (result == -100)
         {
@@ -1576,7 +1595,7 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.shiftViewToRight();
         if (logToConsole)
         {
-            Debug.Log("G3D library: shiftViewToRight result: " + result);
+            Debug.Log("G3D library: shiftViewToRight success");
         }
         if (result == -100)
         {
