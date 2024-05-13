@@ -23,8 +23,6 @@ public class G3DHeadTracking
     public string configPath = "";
     public string configFileName = "";
 
-    public bool registerCallbacks = true;
-
     public bool useHimaxD2XXDevices = true;
     public bool usePmdFlexxDevices = true;
 
@@ -51,17 +49,13 @@ public class G3DHeadTracking
             calibrationPath,
             configPath,
             configFileName,
+            this,
+            this,
+            this,
             true,
             useHimaxD2XXDevices,
             usePmdFlexxDevices
         );
-
-        if (registerCallbacks)
-        {
-            libInterface.registerHeadPositionChangedCallback(this);
-            libInterface.registerShaderParametersChangedCallback(this);
-            libInterface.registerMessageCallback(this);
-        }
 
         headPosition = new HeadPosition
         {
@@ -86,18 +80,15 @@ public class G3DHeadTracking
 
         libInterface.stopHeadTracking();
 
-        if (registerCallbacks)
+        try
         {
-            try
-            {
-                libInterface.unregisterHeadPositionChangedCallback(this);
-                libInterface.unregisterShaderParametersChangedCallback(this);
-                libInterface.unregisterMessageCallback(this);
-            }
-            catch (Exception e)
-            {
-                Debug.Log(e);
-            }
+            libInterface.unregisterHeadPositionChangedCallback(this);
+            libInterface.unregisterShaderParametersChangedCallback(this);
+            libInterface.unregisterMessageCallback(this);
+        }
+        catch (Exception e)
+        {
+            Debug.Log(e);
         }
 
         libInterface.deinit();
