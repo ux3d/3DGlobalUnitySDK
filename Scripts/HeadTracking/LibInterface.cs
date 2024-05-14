@@ -41,37 +41,37 @@ public enum EMessageSeverity
 public struct G3DShaderParameters
 {
     // Viewport properties
-    int leftViewportPosition; //< The left   position of the viewport in screen coordinates
-    int bottomViewportPosition; //< The bottom position of the viewport in screen coordinates
+    public int leftViewportPosition; //< The left   position of the viewport in screen coordinates
+    public int bottomViewportPosition; //< The bottom position of the viewport in screen coordinates
 
     // Monitor properties
-    int screenWidth; //< The screen width in pixels
-    int screenHeight; //< The screen height in pixels
+    public int screenWidth; //< The screen width in pixels
+    public int screenHeight; //< The screen height in pixels
 
-    int nativeViewCount; // OLD: viewcount
-    int angleRatioNumerator; // OLD: zwinkel
-    int angleRatioDenominator; // OLD: nwinkel
-    int leftLensOrientation; // OLD: isleft
-    int BGRPixelLayout; // OLD: isbgr
+    public int nativeViewCount; // OLD: viewcount
+    public int angleRatioNumerator; // OLD: zwinkel
+    public int angleRatioDenominator; // OLD: nwinkel
+    public int leftLensOrientation; // OLD: isleft
+    public int BGRPixelLayout; // OLD: isbgr
 
-    int mstart; // TODO:   rename to viewOffset
-    int showTestFrame; // OLD: test
-    int showTestStripe; // OLD: stest
-    int testGapWidth; // OLD: testgap
-    int track;
-    int hqViewCount; // OLD: hqview
-    int hviews1;
-    int hviews2;
-    int blur;
-    int blackBorder; // OLD: bborder
-    int blackSpace; // OLD: bspace
-    int bls;
-    int ble;
-    int brs;
-    int bre;
+    public int mstart; // TODO:   rename to viewOffset
+    public int showTestFrame; // OLD: test
+    public int showTestStripe; // OLD: stest
+    public int testGapWidth; // OLD: testgap
+    public int track;
+    public int hqViewCount; // OLD: hqview
+    public int hviews1;
+    public int hviews2;
+    public int blur;
+    public int blackBorder; // OLD: bborder
+    public int blackSpace; // OLD: bspace
+    public int bls;
+    public int ble;
+    public int brs;
+    public int bre;
 
-    int zCorrectionValue; // OLD: tvx
-    int zCompensationValue; // OLD: zkom
+    public int zCorrectionValue; // OLD: tvx
+    public int zCompensationValue; // OLD: zkom
 };
 
 public struct HeadTrackingStatus

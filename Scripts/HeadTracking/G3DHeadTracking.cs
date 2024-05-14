@@ -37,6 +37,7 @@ public class G3DHeadTracking
     [Header("Device settings")]
     public bool useHimaxD2XXDevices = true;
     public bool usePmdFlexxDevices = true;
+    public int scaleCorrectionFactor = 500;
     #endregion
 
     #region Debugging
@@ -154,15 +155,13 @@ public class G3DHeadTracking
     {
         lock (headPosLock)
         {
-            Debug.Log("New head position received");
-            Debug.Log("Head detected: " + headDetected);
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
-            headPosition.imagePosX = imagePosX;
-            headPosition.imagePosY = imagePosY;
-            headPosition.worldPosX = worldPosX;
-            headPosition.worldPosY = worldPosY;
-            headPosition.worldPosZ = worldPosZ;
+            headPosition.imagePosX = imagePosX / scaleCorrectionFactor;
+            headPosition.imagePosY = imagePosY / scaleCorrectionFactor;
+            headPosition.worldPosX = worldPosX / scaleCorrectionFactor;
+            headPosition.worldPosY = worldPosY / scaleCorrectionFactor;
+            headPosition.worldPosZ = worldPosZ / scaleCorrectionFactor;
         }
     }
 
