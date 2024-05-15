@@ -41,7 +41,7 @@ public enum EMessageSeverity
 public struct G3DShaderParameters
 {
     // Viewport properties
-    public int leftViewportPosition; //< The left   position of the viewport in screen coordinates
+    public int leftViewportPosition; //< The left position of the viewport in screen coordinates
     public int bottomViewportPosition; //< The bottom position of the viewport in screen coordinates
 
     // Monitor properties

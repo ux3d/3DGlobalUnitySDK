@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Codice.Client.Common.GameUI;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -13,6 +14,46 @@ public struct HeadPosition
     public double worldPosX;
     public double worldPosY;
     public double worldPosZ;
+}
+
+/// <summary>
+/// This struct is used to store the shader parameter handles for the individual shader parameters.
+/// Its members should always be updated when the G3DShaderParameters struct changes.
+/// </summary>
+struct ShaderHandles
+{
+    // Viewport properties
+    public int leftViewportPosition; //< The left   position of the viewport in screen coordinates
+    public int bottomViewportPosition; //< The bottom position of the viewport in screen coordinates
+
+    // Monitor properties
+    public int screenWidth; //< The screen width in pixels
+    public int screenHeight; //< The screen height in pixels
+
+    public int nativeViewCount;
+    public int angleRatioNumerator;
+    public int angleRatioDenominator;
+    public int leftLensOrientation;
+    public int BGRPixelLayout;
+
+    public int mstart;
+    public int showTestFrame;
+    public int showTestStripe;
+    public int testGapWidth;
+    public int track;
+    public int hqViewCount;
+    public int hviews1;
+    public int hviews2;
+    public int blur;
+    public int blackBorder;
+    public int blackSpace;
+    public int bls;
+    public int ble;
+    public int brs;
+    public int bre;
+
+    public int zCorrectionValue;
+    public int zCompensationValue;
 }
 
 [RequireComponent(typeof(Camera))]
@@ -44,6 +85,9 @@ public class G3DHeadTracking
     [Range(1, 16)]
     private int cameraCount = 2;
 
+    [Tooltip(
+        "The distance between the two eyes in meters. This value is used to calculate the stereo effect."
+    )]
     [Range(0.00001f, 0.1f)]
     public float eyeSeparation = 0.065f;
 
@@ -54,6 +98,9 @@ public class G3DHeadTracking
     public float stereo_plane = 5f;
     private const int MAX_CAMERAS = 2; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public const string CAMERA_NAME_PREFIX = "g3dcam_";
+
+    [Range(1.0f, 100.0f)]
+    public float resolution = 100.0f;
     #endregion
 
     #region Device settings
@@ -79,6 +126,7 @@ public class G3DHeadTracking
     private HeadPosition headPosition;
 
     private static object headPosLock = new object();
+    private static object shaderLock = new object();
 
     private Camera mainCamera;
     private Vector3 cameraStartPosition;
@@ -86,6 +134,9 @@ public class G3DHeadTracking
     private GameObject cameraParent = null;
 
     private static Material material;
+    private int[] id_View = new int[MAX_CAMERAS];
+    private ShaderHandles shaderHandles;
+    private G3DShaderParameters shaderParameters;
 
     void Start()
     {
@@ -108,7 +159,41 @@ public class G3DHeadTracking
             cameras[i].gameObject.SetActive(false);
         }
 
-        // TODO Initialize the material
+        for (int i = 0; i < MAX_CAMERAS; i++)
+            id_View[i] = Shader.PropertyToID("_View_" + i);
+
+        reinitializeShader();
+        updateCameras();
+
+        shaderHandles = new ShaderHandles()
+        {
+            leftViewportPosition = Shader.PropertyToID("v_pos_x"),
+            bottomViewportPosition = Shader.PropertyToID("v_pos_y"),
+            screenWidth = Shader.PropertyToID("s_width"),
+            screenHeight = Shader.PropertyToID("s_height"),
+            nativeViewCount = Shader.PropertyToID("viewcount"),
+            angleRatioNumerator = Shader.PropertyToID("zwinkel"),
+            angleRatioDenominator = Shader.PropertyToID("nwinkel"),
+            leftLensOrientation = Shader.PropertyToID("isleft"),
+            // BGRPixelLayout = Shader.PropertyToID("windowPosition"),
+            mstart = Shader.PropertyToID("mstart"),
+            showTestFrame = Shader.PropertyToID("test"),
+            showTestStripe = Shader.PropertyToID("stest"),
+            testGapWidth = Shader.PropertyToID("testgap"),
+            track = Shader.PropertyToID("track"),
+            hqViewCount = Shader.PropertyToID("hqview"),
+            hviews1 = Shader.PropertyToID("hviews1"),
+            hviews2 = Shader.PropertyToID("hviews2"),
+            blur = Shader.PropertyToID("blur"),
+            blackBorder = Shader.PropertyToID("bborder"),
+            blackSpace = Shader.PropertyToID("bspace"),
+            bls = Shader.PropertyToID("bls"),
+            ble = Shader.PropertyToID("ble"),
+            brs = Shader.PropertyToID("brs"),
+            bre = Shader.PropertyToID("bre"),
+            zCorrectionValue = Shader.PropertyToID("tvx"),
+            zCompensationValue = Shader.PropertyToID("zkom"),
+        };
     }
 
     void OnApplicationQuit()
@@ -182,6 +267,53 @@ public class G3DHeadTracking
         }
     }
 
+    private void updateShaderParameters()
+    {
+        lock (shaderLock)
+        {
+            material?.SetInt(
+                shaderHandles.leftViewportPosition,
+                shaderParameters.leftViewportPosition
+            );
+            material?.SetInt(
+                shaderHandles.bottomViewportPosition,
+                shaderParameters.bottomViewportPosition
+            );
+            material?.SetInt(shaderHandles.screenWidth, shaderParameters.screenWidth);
+            material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
+            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
+            material?.SetInt(
+                shaderHandles.angleRatioNumerator,
+                shaderParameters.angleRatioNumerator
+            );
+            material?.SetInt(
+                shaderHandles.angleRatioDenominator,
+                shaderParameters.angleRatioDenominator
+            );
+            material?.SetInt(
+                shaderHandles.leftLensOrientation,
+                shaderParameters.leftLensOrientation
+            );
+            material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
+            material?.SetInt(shaderHandles.showTestFrame, shaderParameters.showTestFrame);
+            material?.SetInt(shaderHandles.showTestStripe, shaderParameters.showTestStripe);
+            material?.SetInt(shaderHandles.testGapWidth, shaderParameters.testGapWidth);
+            material?.SetInt(shaderHandles.track, shaderParameters.track);
+            material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
+            material?.SetInt(shaderHandles.hviews1, shaderParameters.hviews1);
+            material?.SetInt(shaderHandles.hviews2, shaderParameters.hviews2);
+            material?.SetInt(shaderHandles.blur, shaderParameters.blur);
+            material?.SetInt(shaderHandles.blackBorder, shaderParameters.blackBorder);
+            material?.SetInt(shaderHandles.blackSpace, shaderParameters.blackSpace);
+            material?.SetInt(shaderHandles.bls, shaderParameters.bls);
+            material?.SetInt(shaderHandles.ble, shaderParameters.ble);
+            material?.SetInt(shaderHandles.brs, shaderParameters.brs);
+            material?.SetInt(shaderHandles.bre, shaderParameters.bre);
+            material?.SetInt(shaderHandles.zCorrectionValue, shaderParameters.zCorrectionValue);
+            material?.SetInt(shaderHandles.zCompensationValue, shaderParameters.zCompensationValue);
+        }
+    }
+
     [ContextMenu("Toggle head tracking status")]
     public void toggleHeadTrackingStatus()
     {
@@ -218,8 +350,11 @@ public class G3DHeadTracking
 
             transform.position = cameraStartPosition + headPositionWorld;
         }
+
+        updateShaderParameters();
     }
 
+    // TODO call this every time the head position changed callback fires
     void updateCameras()
     {
         //put camera host gameobject in easy-to-handle situation and save its position/rotation for resetting after "parenting" the child cameras
@@ -232,7 +367,7 @@ public class G3DHeadTracking
         for (int i = 0; i < cameraCount; i++)
         {
             var camera = cameras[i];
-            float currentView = -cameraCount / 2 + i;
+            int currentView = -cameraCount / 2 + i;
 
             //copy any changes to the main camera
             camera.fieldOfView = mainCamera.fieldOfView;
@@ -242,46 +377,15 @@ public class G3DHeadTracking
             camera.transform.position = cameraParent.transform.position;
             camera.transform.rotation = cameraParent.transform.rotation;
 
-            int ScreenWidth = Screen.currentResolution.width;
+            float offset = currentView * eyeSeparation / 2;
 
-            // eye distance
-            float EyeDistance = eyeSeparation * 100;
-
-            // calculate eye distance in pixel
-            // TODO this was the original code here. Handle correctly (see mi.MonitorWidth in the original code)
-            // int StereoViewIPDOffset =
-            //     (int)currentView * (int)(EyeDistance / mi.MonitorWidth * ScreenWidth / 2); // offset for left/right eye in pixel (eye distance (in mm) / monitor width (in mm) * monitor width (in pixel) / 2)
-            int StereoViewIPDOffset = (int)currentView * (int)(EyeDistance / ScreenWidth / 2); // offset for left/right eye in pixel (eye distance (in mm) / monitor width (in mm) * monitor width (in pixel) / 2)
-
-            // get view size
-            int ViewWidth = camera.pixelWidth;
-
-            // calculate offset for projection matrix
-            float ProjOffset = StereoViewIPDOffset * stereo_depth / ViewWidth; // real offset (pixel offset * factor / view size (fullscreen here))
-
-            // calculate adjusted projection matrix
             Matrix4x4 tempMatrix = camera.projectionMatrix; // original matrix
-            tempMatrix[0, 2] = tempMatrix[0, 2] + ProjOffset; // apply offset
-
-            // calculate offset for view matrix
-            float ViewOffset = 0.0f;
-            float FC = tempMatrix[2, 2];
-            float FD = tempMatrix[2, 3];
-            if ((Math.Abs(tempMatrix[0, 0]) > 1E-3) && (Math.Abs(FC - 1) > 1E-4)) // projection matrix is valid and calculation possible
-            {
-                float Near = ((FC + 1) / (FC - 1) - 1) / 2 * FD; // near of current projection matrix
-                float DataWidth = 2 * Near / tempMatrix[0, 0]; // width
-                ViewOffset =
-                    (float)StereoViewIPDOffset
-                    / (float)ViewWidth
-                    * DataWidth
-                    * (float)(stereo_depth - (stereo_plane));
-            }
+            tempMatrix[0, 2] = tempMatrix[0, 2] + offset; // apply offset
 
             // apply new projection matrix
             camera.projectionMatrix = tempMatrix;
 
-            camera.transform.localPosition = new Vector3(ViewOffset, 0, 0);
+            camera.transform.localPosition = new Vector3(offset, 0, 0);
 
             camera.gameObject.SetActive(true);
         }
@@ -297,6 +401,11 @@ public class G3DHeadTracking
         updateShaderViews();
     }
 
+    private void reinitializeShader()
+    {
+        material = new Material(Shader.Find("G3D/HeadTracking"));
+    }
+
     public void updateShaderViews()
     {
         if (material == null)
@@ -309,22 +418,27 @@ public class G3DHeadTracking
             cameras[i].targetTexture?.Release();
 
         //set only those we need
-        for (int i = 0; i < cameracount; i++)
+        for (int i = 0; i < cameraCount; i++)
         {
             Texture tex;
-            if (testviews_active)
-                tex = testviews[i % 16];
-            else if (testcolors_active)
-                tex = testcolors[i % 4];
-            else
-                tex = cameras[i].targetTexture = new RenderTexture(
-                    (int)(Screen.width * resolution / 100),
-                    (int)(Screen.height * resolution / 100),
-                    0
-                );
+            tex = cameras[i].targetTexture = new RenderTexture(
+                (int)(Screen.width * resolution / 100),
+                (int)(Screen.height * resolution / 100),
+                0
+            );
 
             material.SetTexture(id_View[i], tex);
         }
+    }
+
+    void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        // This is where the material and shader are applied to the camera image.
+        //legacy support (no URP or HDRP)
+        if (material == null)
+            Graphics.Blit(source, destination);
+        else
+            Graphics.Blit(source, destination, material);
     }
 
     #region callback handling
@@ -380,19 +494,26 @@ public class G3DHeadTracking
         }
     }
 
+    /// <summary>
+    /// The shader parameters contain everything necessary for the shader to render the 3D effect.
+    /// These are updated every time a new head position is received.
+    /// </summary>
+    /// <param name="shaderParameters"></param>
     void ITNewShaderParametersCallback.NewShaderParametersCallback(
         G3DShaderParameters shaderParameters
     )
     {
-        Debug.Log("New shader parameters received");
-        // Debug.Log("Shader parameters: " + shaderParameters.ToString());
+        lock (shaderLock)
+        {
+            this.shaderParameters = shaderParameters;
+        }
     }
 
     private string formatErrorMessage(string caption, string cause, string remedy)
     {
         string messageText = caption + ": " + cause;
 
-        if (String.IsNullOrEmpty(remedy) == false)
+        if (string.IsNullOrEmpty(remedy) == false)
         {
             messageText = messageText + "\n" + remedy;
         }
