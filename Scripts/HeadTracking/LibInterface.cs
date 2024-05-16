@@ -1851,7 +1851,7 @@ internal static class LibInterfaceCpp
 
     [DllImport(
         "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getCurrentShaderParameters@G3D_UHTL@@YAHPEAUG3DShaderParameters@@@Z",
+        EntryPoint = "?getCurrentShaderParameters@G3D_UHTL@@YAHPEAUCG3DShaderParameters@@@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getCurrentShaderParameters(out G3DShaderParameters shaderParameters);

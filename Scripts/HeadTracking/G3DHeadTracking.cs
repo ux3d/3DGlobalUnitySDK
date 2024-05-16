@@ -162,8 +162,8 @@ public class G3DHeadTracking
         for (int i = 0; i < MAX_CAMERAS; i++)
             id_View[i] = Shader.PropertyToID("_View_" + i);
 
-        reinitializeShader();
         updateCameras();
+        reinitializeShader();
 
         shaderHandles = new ShaderHandles()
         {
@@ -216,6 +216,7 @@ public class G3DHeadTracking
             usePmdFlexxDevices
         );
 
+        // set initial values
         headPosition = new HeadPosition
         {
             headDetected = false,
@@ -226,6 +227,10 @@ public class G3DHeadTracking
             worldPosY = 0.0,
             worldPosZ = 0.0
         };
+        shaderParameters = libInterface.getCurrentShaderParameters();
+
+        libInterface.setScreenSize(Screen.width, Screen.height);
+        libInterface.setViewportSize(mainCamera.pixelWidth, mainCamera.pixelHeight);
 
         libInterface.startHeadTracking();
     }
@@ -351,6 +356,7 @@ public class G3DHeadTracking
             transform.position = cameraStartPosition + headPositionWorld;
         }
 
+        // updateCameras();
         updateShaderParameters();
     }
 
@@ -403,7 +409,7 @@ public class G3DHeadTracking
 
     private void reinitializeShader()
     {
-        material = new Material(Shader.Find("G3D/HeadTracking"));
+        material = new Material(Shader.Find("G3D/GLSLHeadTracking"));
     }
 
     public void updateShaderViews()
