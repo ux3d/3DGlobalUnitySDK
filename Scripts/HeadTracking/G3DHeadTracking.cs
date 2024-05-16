@@ -193,8 +193,8 @@ public class G3DHeadTracking
 
         initLibrary();
         updateScreenViewportProperties();
-        updateCameras();
         reinitializeShader();
+        updateCameras();
     }
 
     void OnApplicationQuit()
