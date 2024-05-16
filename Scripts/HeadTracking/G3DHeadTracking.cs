@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using Codice.Client.Common.GameUI;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UIElements;
 
 public struct HeadPosition
 {
@@ -91,12 +92,7 @@ public class G3DHeadTracking
     [Range(0.00001f, 0.1f)]
     public float eyeSeparation = 0.065f;
 
-    [Range(0f, 1f)]
-    public float stereo_depth = 0.0f;
-
-    [Range(-5f, 5f)]
-    public float stereo_plane = 5f;
-    private const int MAX_CAMERAS = 2; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
+    private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public const string CAMERA_NAME_PREFIX = "g3dcam_";
 
     [Range(1.0f, 100.0f)]
@@ -107,13 +103,16 @@ public class G3DHeadTracking
     [Header("Device settings")]
     public bool useHimaxD2XXDevices = true;
     public bool usePmdFlexxDevices = true;
-    public int scaleCorrectionFactor = 500;
+    public int scaleCorrectionFactor = -1000;
     #endregion
 
     #region Debugging
     [Header("Debugging")]
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
+    public KeyCode toggleHeadTrackingKey = KeyCode.Space;
+    public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
+    public KeyCode shiftViewRightKey = KeyCode.RightArrow;
     #endregion
 
     private LibInterface libInterface;
@@ -138,10 +137,10 @@ public class G3DHeadTracking
     private ShaderHandles shaderHandles;
     private G3DShaderParameters shaderParameters;
 
+    // TODO Handle viewport resizing/ moving
+
     void Start()
     {
-        initLibrary();
-
         mainCamera = GetComponent<Camera>();
 
         cameraStartPosition = transform.position;
@@ -161,9 +160,6 @@ public class G3DHeadTracking
 
         for (int i = 0; i < MAX_CAMERAS; i++)
             id_View[i] = Shader.PropertyToID("_View_" + i);
-
-        updateCameras();
-        reinitializeShader();
 
         shaderHandles = new ShaderHandles()
         {
@@ -194,6 +190,11 @@ public class G3DHeadTracking
             zCorrectionValue = Shader.PropertyToID("tvx"),
             zCompensationValue = Shader.PropertyToID("zkom"),
         };
+
+        initLibrary();
+        updateScreenViewportProperties();
+        updateCameras();
+        reinitializeShader();
     }
 
     void OnApplicationQuit()
@@ -228,9 +229,23 @@ public class G3DHeadTracking
             worldPosZ = 0.0
         };
         shaderParameters = libInterface.getCurrentShaderParameters();
+    }
 
+    private void updateScreenViewportProperties()
+    {
+        // This is the size of the entire monitor screen
         libInterface.setScreenSize(Screen.width, Screen.height);
-        libInterface.setViewportSize(mainCamera.pixelWidth, mainCamera.pixelHeight);
+        // this revers to the window in which the 3D effect is rendered (including eg windows top window menu)
+        libInterface.setWindowPosition(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
+        libInterface.setWindowSize(
+            Screen.mainWindowDisplayInfo.width,
+            Screen.mainWindowDisplayInfo.height
+        );
+
+        // This revers to the actual viewport in which the 3D effect is rendered
+        RectInt vieportRect = Screen.mainWindowDisplayInfo.workArea;
+        libInterface.setViewportSize(vieportRect.width, vieportRect.height);
+        libInterface.setViewportOffset(vieportRect.x, vieportRect.y);
 
         libInterface.startHeadTracking();
     }
@@ -358,6 +373,8 @@ public class G3DHeadTracking
 
         // updateCameras();
         updateShaderParameters();
+
+        handleKeyPresses();
     }
 
     // TODO call this every time the head position changed callback fires
@@ -374,6 +391,10 @@ public class G3DHeadTracking
         {
             var camera = cameras[i];
             int currentView = -cameraCount / 2 + i;
+            if (cameraCount % 2 == 0 && currentView >= 0)
+            {
+                currentView += 1;
+            }
 
             //copy any changes to the main camera
             camera.fieldOfView = mainCamera.fieldOfView;
@@ -434,6 +455,22 @@ public class G3DHeadTracking
             );
 
             material.SetTexture(id_View[i], tex);
+        }
+    }
+
+    private void handleKeyPresses()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            toggleHeadTrackingStatus();
+        }
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            libInterface.shiftViewToLeft();
+        }
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            libInterface.shiftViewToRight();
         }
     }
 
@@ -503,6 +540,7 @@ public class G3DHeadTracking
     /// <summary>
     /// The shader parameters contain everything necessary for the shader to render the 3D effect.
     /// These are updated every time a new head position is received.
+    /// They do not update the head position itself.
     /// </summary>
     /// <param name="shaderParameters"></param>
     void ITNewShaderParametersCallback.NewShaderParametersCallback(
