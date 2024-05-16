@@ -159,7 +159,7 @@ public class G3DHeadTracking
         }
 
         for (int i = 0; i < MAX_CAMERAS; i++)
-            id_View[i] = Shader.PropertyToID("_View_" + i);
+            id_View[i] = Shader.PropertyToID("_view_" + i);
 
         shaderHandles = new ShaderHandles()
         {
@@ -430,7 +430,7 @@ public class G3DHeadTracking
 
     private void reinitializeShader()
     {
-        material = new Material(Shader.Find("G3D/GLSLHeadTracking"));
+        material = new Material(Shader.Find("G3D/HeadTracking"));
     }
 
     public void updateShaderViews()
