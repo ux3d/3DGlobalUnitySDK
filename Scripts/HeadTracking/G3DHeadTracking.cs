@@ -195,6 +195,8 @@ public class G3DHeadTracking
         updateScreenViewportProperties();
         reinitializeShader();
         updateCameras();
+
+        libInterface.startHeadTracking();
     }
 
     void OnApplicationQuit()
@@ -233,21 +235,17 @@ public class G3DHeadTracking
 
     private void updateScreenViewportProperties()
     {
+        DisplayInfo mainDisplayInfo = Screen.mainWindowDisplayInfo;
         // This is the size of the entire monitor screen
-        libInterface.setScreenSize(Screen.width, Screen.height);
+        libInterface.setScreenSize(mainDisplayInfo.width, mainDisplayInfo.height);
+
         // this revers to the window in which the 3D effect is rendered (including eg windows top window menu)
+        libInterface.setWindowSize(Screen.width, Screen.height);
         libInterface.setWindowPosition(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
-        libInterface.setWindowSize(
-            Screen.mainWindowDisplayInfo.width,
-            Screen.mainWindowDisplayInfo.height
-        );
 
         // This revers to the actual viewport in which the 3D effect is rendered
-        RectInt vieportRect = Screen.mainWindowDisplayInfo.workArea;
-        libInterface.setViewportSize(vieportRect.width, vieportRect.height);
-        libInterface.setViewportOffset(vieportRect.x, vieportRect.y);
-
-        libInterface.startHeadTracking();
+        libInterface.setViewportSize(Screen.width, Screen.height);
+        libInterface.setViewportOffset(0, 0);
     }
 
     private void deinitLibrary()
