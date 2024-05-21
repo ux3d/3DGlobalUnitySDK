@@ -119,24 +119,8 @@ Shader "G3D/HeadTracking"
 				return float4(0, 0, 0, 0);
             }
 
-            // Modulo Funktion fuer INT
-            int  modg3d(int  a, int  b)
-            {
-                return (a-((a/int(b)) * b));
-            }
-
-            // Modulo Funktion fuer IVEC3
-            int3 modiv3g3d(int3 a, int  b)
-            {
-                return (a-((a/b) * b));
-            }
-
             fixed4 frag (v2f i) : SV_Target
             {
-                // Die folie wird in einem winkel aufgeklebt. das könnte hier der winkel sein
-
-                
-                
                 // Start der Berechnung von dynamische Daten
                 int  xScreenCoords = int(i.screenPos.x) + v_pos_x;     // transform x position from viewport to screen coordinates
                 // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
@@ -149,13 +133,13 @@ Shader "G3D/HeadTracking"
 
                 //Start native Renderberechnung
                 int  sr = (xScreenCoords * 3) + yw;
-                // int3 xwert = int3(sr + 0, sr + 1, sr + 2) % viewcount;                              // #### viewcount->lt03
-                int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), viewcount);                              // #### viewcount->lt03
+                int3 xwert = int3(sr + 0, sr + 1, sr + 2) % viewcount;                              // #### viewcount->lt03
+                // int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), viewcount);                              // #### viewcount->lt03
 
                 // Start HQ-Renderberechnung inklusive Z-Korrektur
 
-                // int  hqwert = ((yScreenCoords % nwinkel) * zwinkel) % nwinkel;
-                int  hqwert = modg3d((modg3d(yScreenCoords, nwinkel) * zwinkel), nwinkel);
+                int  hqwert = ((yScreenCoords % nwinkel) * zwinkel) % nwinkel;
+                // int  hqwert = modg3d((modg3d(yScreenCoords, nwinkel) * zwinkel), nwinkel);
                 if (isleft == 1)
                 {
                     hqwert = (nwinkel - 1) - hqwert;
@@ -175,8 +159,8 @@ Shader "G3D/HeadTracking"
                 }
 
                 int3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
-                // xwert = hviews1 - (mtmp % hqview);
-                xwert = hviews1 - modiv3g3d(mtmp, hqview);
+                xwert = hviews1 - (mtmp % hqview);
+                // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
                 // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
                 float4 colRight = sampleFromView(0, i.uv);             // Pixeldaten rechtes Bild
