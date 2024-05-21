@@ -1,10 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using Codice.Client.Common.GameUI;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.UIElements;
 
 public struct HeadPosition
 {
@@ -246,6 +242,9 @@ public class G3DHeadTracking
         // This revers to the actual viewport in which the 3D effect is rendered
         libInterface.setViewportSize(Screen.width, Screen.height);
         libInterface.setViewportOffset(0, 0);
+
+        material?.SetInt(Shader.PropertyToID("viewportWidth"), Screen.width);
+        material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.width);
     }
 
     private void deinitLibrary()
