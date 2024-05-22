@@ -401,7 +401,7 @@ public class G3DHeadTracking
             camera.transform.position = cameraParent.transform.position;
             camera.transform.rotation = cameraParent.transform.rotation;
 
-            float offset = currentView * eyeSeparation / 2;
+            float offset = currentView * (eyeSeparation / 4);
 
             Matrix4x4 tempMatrix = camera.projectionMatrix; // original matrix
             tempMatrix[0, 2] = tempMatrix[0, 2] + offset; // apply offset

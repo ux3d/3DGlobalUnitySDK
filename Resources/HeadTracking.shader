@@ -78,7 +78,7 @@ Shader "G3D/HeadTracking"
 			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_15);
 			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_16);
 
-            float4 sampleFromView(int  viewIndex, float2 uv) {
+            float4 sampleFromView(int viewIndex, float2 uv) {
 				switch (viewIndex) {
 				case 0:
 					return UNITY_SAMPLE_TEX2D(_view_0, uv);
@@ -148,12 +148,12 @@ Shader "G3D/HeadTracking"
                 {
                     hqwert = hqwert * -1;
                 }
-                int  zwert = 0;
+                int zwert = 0;
                 if (tvx != 0) {
                     zwert = (sr / tvx) - zkom;
                 }
 
-                int  tr2d = 0;
+                int tr2d = 0;
                 if (track < 0) {
                     tr2d = track;
                 }
@@ -165,7 +165,7 @@ Shader "G3D/HeadTracking"
                 // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
                 float4 colRight = sampleFromView(0, i.uv);             // Pixeldaten rechtes Bild
                 float4 colLeft = sampleFromView(1, i.uv);              // Pixeldaten linkes Bild
-                float cor=0.0, cog=0.0 , cob=0.0;
+                float cor=0.0, cog=0.0, cob=0.0;
 
                 
                 if ( (xwert.r >= bls) && (xwert.r <= ble) )  cor = colRight.r ;
@@ -196,12 +196,10 @@ Shader "G3D/HeadTracking"
 
                 // Teststreifen Rot Schwarz volle Kanäle ohne Blackmatrix !
                 if (yScreenCoords > (s_height - 200) && stest == 1) {
-                    color = float4(0.0,0.0,0.0,1.0);
+                    color = float4(0.0, 0.0, 0.0, 1.0);
                     if (xwert.r<=hviews2) color = float4(1.0, 0.0, 0.0, 1.0);     // rechtes Auge sieht einen roten Streifen
                     if (xwert.g>hviews2) color = float4(0.0, 1.0, 0.0, 1.0);
                 }  // linkes Auge sieht einen gruenen Streifen
-
-
 
                 // Bildausgabe
                 return color;
