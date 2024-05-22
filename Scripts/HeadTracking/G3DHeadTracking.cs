@@ -109,6 +109,8 @@ public class G3DHeadTracking
     public KeyCode toggleHeadTrackingKey = KeyCode.Space;
     public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
     public KeyCode shiftViewRightKey = KeyCode.RightArrow;
+
+    public bool showTestFrame = false;
     #endregion
 
     private LibInterface libInterface;
@@ -481,6 +483,11 @@ public class G3DHeadTracking
             Graphics.Blit(source, destination, material);
     }
 
+    public static Material GetMaterial()
+    {
+        return material;
+    }
+
     #region callback handling
     void ITNewHeadPositionCallback.NewHeadPositionCallback(
         bool headDetected,
@@ -547,6 +554,15 @@ public class G3DHeadTracking
         lock (shaderLock)
         {
             this.shaderParameters = shaderParameters;
+
+            if (showTestFrame)
+            {
+                this.shaderParameters.showTestFrame = 1;
+            }
+            else
+            {
+                this.shaderParameters.showTestFrame = 0;
+            }
         }
     }
 
