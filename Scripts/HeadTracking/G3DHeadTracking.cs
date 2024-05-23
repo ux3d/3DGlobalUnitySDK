@@ -85,8 +85,14 @@ public class G3DHeadTracking
     [Tooltip(
         "The distance between the two eyes in meters. This value is used to calculate the stereo effect."
     )]
-    [Range(0.00001f, 0.1f)]
+    [Range(0.00001f, 1.0f)]
     public float eyeSeparation = 0.065f;
+
+    [Range(0f, 1f)]
+    public float stereo_depth = 0.0f;
+
+    [Range(-5f, 5f)]
+    public float stereo_plane = 5f;
 
     private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public const string CAMERA_NAME_PREFIX = "g3dcam_";
@@ -113,6 +119,8 @@ public class G3DHeadTracking
     public bool showTestFrame = false;
     #endregion
 
+    #region Private variables
+
     private LibInterface libInterface;
 
     /// <summary>
@@ -135,8 +143,14 @@ public class G3DHeadTracking
     private ShaderHandles shaderHandles;
     private G3DShaderParameters shaderParameters;
 
+    private Vector2Int cachedWindowPosition;
+    private Vector2Int cachedWindowSize;
+    private int cachedCameraCount;
+    #endregion
+
     // TODO Handle viewport resizing/ moving
 
+    #region Initialization
     void Start()
     {
         mainCamera = GetComponent<Camera>();
@@ -194,7 +208,18 @@ public class G3DHeadTracking
         reinitializeShader();
         updateCameras();
 
+        lock (shaderLock)
+        {
+            shaderParameters = libInterface.getCurrentShaderParameters();
+        }
         libInterface.startHeadTracking();
+
+        cachedWindowPosition = new Vector2Int(
+            Screen.mainWindowPosition.x,
+            Screen.mainWindowPosition.y
+        );
+        cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
+        cachedCameraCount = cameraCount;
     }
 
     void OnApplicationQuit()
@@ -231,24 +256,6 @@ public class G3DHeadTracking
         shaderParameters = libInterface.getCurrentShaderParameters();
     }
 
-    private void updateScreenViewportProperties()
-    {
-        DisplayInfo mainDisplayInfo = Screen.mainWindowDisplayInfo;
-        // This is the size of the entire monitor screen
-        libInterface.setScreenSize(mainDisplayInfo.width, mainDisplayInfo.height);
-
-        // this revers to the window in which the 3D effect is rendered (including eg windows top window menu)
-        libInterface.setWindowSize(Screen.width, Screen.height);
-        libInterface.setWindowPosition(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
-
-        // This revers to the actual viewport in which the 3D effect is rendered
-        libInterface.setViewportSize(Screen.width, Screen.height);
-        libInterface.setViewportOffset(0, 0);
-
-        material?.SetInt(Shader.PropertyToID("viewportWidth"), Screen.width);
-        material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.width);
-    }
-
     private void deinitLibrary()
     {
         if (libInterface == null || !libInterface.isInitialized())
@@ -272,18 +279,54 @@ public class G3DHeadTracking
         libInterface.deinit();
     }
 
-    /// <summary>
-    /// always use this method to get the current head position.
-    /// NEVER access headPosition directly, as it is updated in a different thread.
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public HeadPosition getHeadPosition()
+    private void reinitializeShader()
     {
-        lock (headPosLock)
+        material = new Material(Shader.Find("G3D/HeadTracking"));
+    }
+    #endregion
+
+    #region Updates
+    void Update()
+    {
+        HeadPosition headPosition = getHeadPosition();
+        if (headPosition.headDetected)
         {
-            return headPosition;
+            Vector3 headPositionWorld = new Vector3(
+                (float)headPosition.worldPosX,
+                (float)headPosition.worldPosY,
+                (float)headPosition.worldPosZ
+            );
+
+            transform.position = cameraStartPosition + headPositionWorld;
         }
+
+        updateCameras();
+        updateShaderParameters();
+
+        handleKeyPresses();
+
+        if (windowResized() || windowMoved())
+        {
+            updateScreenViewportProperties();
+        }
+    }
+
+    private void updateScreenViewportProperties()
+    {
+        DisplayInfo mainDisplayInfo = Screen.mainWindowDisplayInfo;
+        // This is the size of the entire monitor screen
+        libInterface.setScreenSize(mainDisplayInfo.width, mainDisplayInfo.height);
+
+        // this revers to the window in which the 3D effect is rendered (including eg windows top window menu)
+        libInterface.setWindowSize(Screen.width, Screen.height);
+        libInterface.setWindowPosition(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
+
+        // This revers to the actual viewport in which the 3D effect is rendered
+        libInterface.setViewportSize(Screen.width, Screen.height);
+        libInterface.setViewportOffset(0, 0);
+
+        material?.SetInt(Shader.PropertyToID("viewportWidth"), Screen.width);
+        material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.width);
     }
 
     private void updateShaderParameters()
@@ -356,24 +399,26 @@ public class G3DHeadTracking
         }
     }
 
-    void Update()
+    private bool windowResized()
     {
-        HeadPosition headPosition = getHeadPosition();
-        if (headPosition.headDetected)
+        var window_dim = new Vector2Int(Screen.width, Screen.height);
+        if (cachedWindowSize != window_dim)
         {
-            Vector3 headPositionWorld = new Vector3(
-                (float)headPosition.worldPosX,
-                (float)headPosition.worldPosY,
-                (float)headPosition.worldPosZ
-            );
-
-            transform.position = cameraStartPosition + headPositionWorld;
+            cachedWindowSize = window_dim;
+            return true;
         }
+        return false;
+    }
 
-        // updateCameras();
-        updateShaderParameters();
-
-        handleKeyPresses();
+    private bool windowMoved()
+    {
+        var window_pos = new Vector2Int(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
+        if (cachedWindowPosition != window_pos)
+        {
+            cachedWindowPosition = window_pos;
+            return true;
+        }
+        return false;
     }
 
     // TODO call this every time the head position changed callback fires
@@ -403,15 +448,42 @@ public class G3DHeadTracking
             camera.transform.position = cameraParent.transform.position;
             camera.transform.rotation = cameraParent.transform.rotation;
 
-            float offset = currentView * (eyeSeparation / 4);
+            // eye distance
+            float EyeDistance = eyeSeparation;
 
+            // monitor width in pixel
+            int monitorWidth;
+            lock (shaderLock)
+            {
+                monitorWidth = shaderParameters.screenWidth;
+            }
+
+            // calculate eye distance in pixel
+            float StereoViewIPDOffset = currentView * (EyeDistance / 2); // offset for left/right
+
+            // calculate offset for projection matrix
+            float ProjOffset = StereoViewIPDOffset * stereo_depth; // real offset (pixel offset * factor / view size (fullscreen here))
+
+            // calculate adjusted projection matrix
             Matrix4x4 tempMatrix = camera.projectionMatrix; // original matrix
-            tempMatrix[0, 2] = tempMatrix[0, 2] + offset; // apply offset
+            tempMatrix[0, 2] = tempMatrix[0, 2] + ProjOffset; // apply offset
+
+            // calculate offset for view matrix
+            float ViewOffset = 0.0f;
+            float FC = tempMatrix[2, 2];
+            float FD = tempMatrix[2, 3];
+            if ((Math.Abs(tempMatrix[0, 0]) > 1E-3) && (Math.Abs(FC - 1) > 1E-4)) // projection matrix is valid and calculation possible
+            {
+                float Near = ((FC + 1) / (FC - 1) - 1) / 2 * FD; // near of current projection matrix
+                float DataWidth = 2 * Near / tempMatrix[0, 0]; // width
+                ViewOffset =
+                    (float)StereoViewIPDOffset * DataWidth * (float)(stereo_depth - (stereo_plane));
+            }
 
             // apply new projection matrix
             camera.projectionMatrix = tempMatrix;
 
-            camera.transform.localPosition = new Vector3(offset, 0, 0);
+            camera.transform.localPosition = new Vector3(ViewOffset, 0, 0);
 
             camera.gameObject.SetActive(true);
         }
@@ -422,14 +494,15 @@ public class G3DHeadTracking
 
         //disable all the other cameras, we are not using them with this cameracount
         for (int i = cameraCount; i < MAX_CAMERAS; i++)
+        {
             cameras[i].gameObject.SetActive(false);
+        }
 
-        updateShaderViews();
-    }
-
-    private void reinitializeShader()
-    {
-        material = new Material(Shader.Find("G3D/HeadTracking"));
+        if (cachedCameraCount != cameraCount)
+        {
+            cachedCameraCount = cameraCount;
+            updateShaderViews();
+        }
     }
 
     public void updateShaderViews()
@@ -482,10 +555,25 @@ public class G3DHeadTracking
         else
             Graphics.Blit(source, destination, material);
     }
+    #endregion
 
     public static Material GetMaterial()
     {
         return material;
+    }
+
+    /// <summary>
+    /// always use this method to get the current head position.
+    /// NEVER access headPosition directly, as it is updated in a different thread.
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public HeadPosition getHeadPosition()
+    {
+        lock (headPosLock)
+        {
+            return headPosition;
+        }
     }
 
     #region callback handling
