@@ -325,7 +325,7 @@ public class G3DHeadTracking
         libInterface.setViewportSize(Screen.width, Screen.height);
         libInterface.setViewportOffset(0, 0);
 
-        material?.SetInt(Shader.PropertyToID("viewportWidth"), Screen.width);
+        // this parameter is used in the shader to invert the y axis
         material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.width);
     }
 
