@@ -194,7 +194,7 @@ public sealed class LibInterface
         {
             initLibrary();
         }
-        catch (G3D_AlreadyInitializedException e)
+        catch (G3D_AlreadyInitializedException)
         {
             Debug.Log("G3D head tracking library has already been initialized.");
         }
@@ -271,7 +271,7 @@ public sealed class LibInterface
         {
             initHeadTracking();
         }
-        catch (G3D_AlreadyInitializedException e)
+        catch (G3D_AlreadyInitializedException)
         {
             Debug.Log("G3D head tracking has already been initialized.");
         }
