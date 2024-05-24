@@ -39,61 +39,32 @@ Shader "G3D/HeadTrackingHDRP"
     // to do this we need the actual viewport height
     int viewportHeight;
 
-    Texture2D _view_0;
-    sampler sampler_0;
-    Texture2D _view_1;
-    Texture2D _view_2;
-    Texture2D _view_3;
-    Texture2D _view_4;
-    Texture2D _view_5;
-    Texture2D _view_6;
-    Texture2D _view_7;
-    Texture2D _view_8;
-    Texture2D _view_9;
-    Texture2D _view_10;
-    Texture2D _view_11;
-    Texture2D _view_12;
-    Texture2D _view_13;
-    Texture2D _view_14;
-    Texture2D _view_15;
-    Texture2D _view_16;
+    Texture2D texture0;
+    SamplerState sampler_texture0;
+    Texture2D texture1;
+    Texture2D texture2;
+    Texture2D texture3;
+    Texture2D texture4;
+    Texture2D texture5;
+    Texture2D texture6;
+    Texture2D texture7;
+    Texture2D texture8;
+    Texture2D texture9;
+    Texture2D texture10;
+    Texture2D texture11;
+    Texture2D texture12;
+    Texture2D texture13;
+    Texture2D texture14;
+    Texture2D texture15;
 
     float4 sampleFromView(int viewIndex, float2 uv) {
         switch (viewIndex) {
         case 0:
-            return SAMPLE_TEXTURE2D(_view_0, sampler_0, uv);
+            return texture0.Sample(sampler_texture0, uv);
         case 1:
-            return SAMPLE_TEXTURE2D(_view_1, sampler_0, uv);
+            return texture1.Sample(sampler_texture0, uv);
         case 2:
-            return SAMPLE_TEXTURE2D(_view_2, sampler_0, uv);
-        case 3:										 
-            return SAMPLE_TEXTURE2D(_view_3, sampler_0, uv);
-        case 4:										 
-            return SAMPLE_TEXTURE2D(_view_4, sampler_0, uv);
-        case 5:									 
-            return SAMPLE_TEXTURE2D(_view_5, sampler_0, uv);
-        case 6:										
-            return SAMPLE_TEXTURE2D(_view_6, sampler_0, uv);
-        case 7:									
-            return SAMPLE_TEXTURE2D(_view_7, sampler_0, uv);
-        case 8:										
-            return SAMPLE_TEXTURE2D(_view_8, sampler_0, uv);
-        case 9:										
-            return SAMPLE_TEXTURE2D(_view_9, sampler_0, uv);
-        case 10:
-            return SAMPLE_TEXTURE2D(_view_10, sampler_0, uv);
-        case 11:
-            return SAMPLE_TEXTURE2D(_view_11, sampler_0, uv);
-        case 12:
-            return SAMPLE_TEXTURE2D(_view_12, sampler_0, uv);
-        case 13:
-            return SAMPLE_TEXTURE2D(_view_13, sampler_0, uv);
-        case 14:
-            return SAMPLE_TEXTURE2D(_view_14, sampler_0, uv);
-        case 15:
-            return SAMPLE_TEXTURE2D(_view_15, sampler_0, uv);
-        case 16:
-            return SAMPLE_TEXTURE2D(_view_16, sampler_0, uv);
+            return texture2.Sample(sampler_texture0, uv);
         }
 
         return float4(0, 0, 0, 0);

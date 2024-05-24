@@ -60,60 +60,18 @@ Shader "G3D/HeadTracking"
                 return o;
             }
 
-            UNITY_DECLARE_TEX2D(_view_0);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_1);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_2);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_3);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_4);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_5);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_6);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_7);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_8);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_9);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_10);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_11);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_12);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_13);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_14);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_15);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(_view_16);
+            UNITY_DECLARE_TEX2D(texture0);
+			UNITY_DECLARE_TEX2D_NOSAMPLER(texture1);
+			UNITY_DECLARE_TEX2D_NOSAMPLER(texture2);
 
             float4 sampleFromView(int viewIndex, float2 uv) {
 				switch (viewIndex) {
 				case 0:
-					return UNITY_SAMPLE_TEX2D(_view_0, uv);
+					return UNITY_SAMPLE_TEX2D(texture0, uv);
 				case 1:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_1, _view_0, uv);
+					return UNITY_SAMPLE_TEX2D_SAMPLER(texture1, texture0, uv);
 				case 2:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_2, _view_0, uv);
-				case 3:										 
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_3, _view_0, uv);
-				case 4:										 
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_4, _view_0, uv);
-				case 5:									 
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_5, _view_0, uv);
-				case 6:										
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_6, _view_0, uv);
-				case 7:									
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_7, _view_0, uv);
-				case 8:										
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_8, _view_0, uv);
-				case 9:										
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_9, _view_0, uv);
-				case 10:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_10, _view_0, uv);
-				case 11:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_11, _view_0, uv);
-				case 12:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_12, _view_0, uv);
-				case 13:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_13, _view_0, uv);
-				case 14:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_14, _view_0, uv);
-				case 15:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_15, _view_0, uv);
-				case 16:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(_view_16, _view_0, uv);
+					return UNITY_SAMPLE_TEX2D_SAMPLER(texture1, texture0, uv);
 				}
 
 				return float4(0, 0, 0, 0);

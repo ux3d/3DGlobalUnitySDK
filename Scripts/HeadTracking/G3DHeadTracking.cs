@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+#if HDRP
 using UnityEngine.Rendering.HighDefinition;
+#endif
 
 public struct HeadPosition
 {
@@ -95,7 +97,7 @@ public class G3DHeadTracking
     [Range(-5f, 5f)]
     public float stereo_plane = 5f;
 
-    private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
+    private const int MAX_CAMERAS = 3; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public const string CAMERA_NAME_PREFIX = "g3dcam_";
 
     [Range(1.0f, 100.0f)]
@@ -140,7 +142,9 @@ public class G3DHeadTracking
     private GameObject cameraParent = null;
 
     private Material material;
+#if HDRP
     private G3DHDRPCustomPass customPass;
+#endif
     private int[] id_View = new int[MAX_CAMERAS];
     private ShaderHandles shaderHandles;
     private G3DShaderParameters shaderParameters;
@@ -173,8 +177,9 @@ public class G3DHeadTracking
             cameras[i].gameObject.SetActive(false);
         }
 
+        // initialize shader textures
         for (int i = 0; i < MAX_CAMERAS; i++)
-            id_View[i] = Shader.PropertyToID("_view_" + i);
+            id_View[i] = Shader.PropertyToID("texture" + i);
 
         shaderHandles = new ShaderHandles()
         {

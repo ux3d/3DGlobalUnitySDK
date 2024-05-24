@@ -1,3 +1,4 @@
+#if HDRP
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -21,3 +22,4 @@ class G3DHDRPCustomPass : FullScreenCustomPass
 
     protected override void Cleanup() { }
 }
+#endif
