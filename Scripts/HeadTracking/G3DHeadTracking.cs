@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.HighDefinition;
 
 public struct HeadPosition
 {
@@ -138,7 +139,8 @@ public class G3DHeadTracking
     private List<Camera> cameras = null;
     private GameObject cameraParent = null;
 
-    private static Material material;
+    private Material material;
+    private G3DHDRPCustomPass customPass;
     private int[] id_View = new int[MAX_CAMERAS];
     private ShaderHandles shaderHandles;
     private G3DShaderParameters shaderParameters;
@@ -146,6 +148,7 @@ public class G3DHeadTracking
     private Vector2Int cachedWindowPosition;
     private Vector2Int cachedWindowSize;
     private int cachedCameraCount;
+
     #endregion
 
     // TODO Handle viewport resizing/ moving
@@ -220,6 +223,18 @@ public class G3DHeadTracking
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
         cachedCameraCount = cameraCount;
+#if HDRP || URP
+        // init fullscreen postprocessing for hd render pipeline
+        var customPassVolume = gameObject.AddComponent<CustomPassVolume>();
+        customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
+        customPassVolume.isGlobal = true;
+        // Make the volume invisible in the inspector
+        // customPassVolume.hideFlags = HideFlags.HideInInspector | HideFlags.DontSave;
+        customPassVolume.hideFlags = HideFlags.DontSave;
+        customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
+        customPass.fullscreenPassMaterial = material;
+        customPass.materialPassName = "G3D Pass 0";
+#endif
     }
 
     void OnApplicationQuit()
@@ -281,7 +296,11 @@ public class G3DHeadTracking
 
     private void reinitializeShader()
     {
+#if HDRP || URP
+        material = new Material(Shader.Find("G3D/HeadTrackingHDRP"));
+#else
         material = new Material(Shader.Find("G3D/HeadTracking"));
+#endif
     }
     #endregion
 
@@ -550,17 +569,15 @@ public class G3DHeadTracking
     {
         // This is where the material and shader are applied to the camera image.
         //legacy support (no URP or HDRP)
+#if HDRP || URP
+#else
         if (material == null)
             Graphics.Blit(source, destination);
         else
             Graphics.Blit(source, destination, material);
+#endif
     }
     #endregion
-
-    public static Material GetMaterial()
-    {
-        return material;
-    }
 
     /// <summary>
     /// always use this method to get the current head position.
