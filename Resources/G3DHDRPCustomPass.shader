@@ -1,12 +1,36 @@
 Shader "G3D/HeadTrackingHDRP"
 {
     HLSLINCLUDE
-    #pragma vertex Vert
-
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch
 
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
+    #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+
+    struct VertAttributes
+    {
+        uint vertexID : SV_VertexID;
+        UNITY_VERTEX_INPUT_INSTANCE_ID
+    };
+
+    struct VertVaryings
+    {
+        float4 positionCS : SV_POSITION;
+        float2 uv   : TEXCOORD0;
+        UNITY_VERTEX_OUTPUT_STEREO
+    };
+
+    VertVaryings Vert(VertAttributes input)
+    {
+        VertVaryings output;
+        UNITY_SETUP_INSTANCE_ID(input);
+        UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+        output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
+        output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
+
+        return output;
+
+    }
 
 
     int  viewcount;      // Anzahl nativer Views
@@ -40,47 +64,26 @@ Shader "G3D/HeadTrackingHDRP"
     int viewportHeight;
 
     Texture2D texture0;
-    SamplerState sampler_texture0;
     Texture2D texture1;
-    Texture2D texture2;
-    Texture2D texture3;
-    Texture2D texture4;
-    Texture2D texture5;
-    Texture2D texture6;
-    Texture2D texture7;
-    Texture2D texture8;
-    Texture2D texture9;
-    Texture2D texture10;
-    Texture2D texture11;
-    Texture2D texture12;
-    Texture2D texture13;
-    Texture2D texture14;
-    Texture2D texture15;
 
     float4 sampleFromView(int viewIndex, float2 uv) {
         switch (viewIndex) {
         case 0:
-            return texture0.Sample(sampler_texture0, uv);
+            return texture0.Sample(s_linear_clamp_sampler, uv);
         case 1:
-            return texture1.Sample(sampler_texture0, uv);
-        case 2:
-            return texture2.Sample(sampler_texture0, uv);
+            return texture1.Sample(s_linear_clamp_sampler, uv);
         }
 
         return float4(0, 0, 0, 0);
     }
 
-    float4 FullScreenPass(Varyings varyings) : SV_Target
+    float4 FullScreenPass(VertVaryings varyings, float4 _screenPos : SV_Position) : SV_Target
     {
-        UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(varyings);
-        float depth = LoadCameraDepth(varyings.positionCS.xy);
-        PositionInputs posInput = GetPositionInput(varyings.positionCS.xy, _ScreenSize.zw, depth, UNITY_MATRIX_I_VP, UNITY_MATRIX_V);
-
         // Start der Berechnung von dynamische Daten
-        int  xScreenCoords = int(posInput.positionSS.x) + v_pos_x;     // transform x position from viewport to screen coordinates
+        int  xScreenCoords = _screenPos.x + v_pos_x;     // transform x position from viewport to screen coordinates
         // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
         // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
-        int  yScreenCoords = int(viewportHeight - posInput.positionSS.y) + v_pos_y;     // transform y position from viewport to screen coordinates
+        int  yScreenCoords = viewportHeight - _screenPos.y + v_pos_y;     // transform y position from viewport to screen coordinates
         if (isleft == 0) {
             yScreenCoords = s_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
         }
@@ -117,8 +120,8 @@ Shader "G3D/HeadTrackingHDRP"
         // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
-        float4 colRight = sampleFromView(0, posInput.positionNDC);             // Pixeldaten rechtes Bild
-        float4 colLeft = sampleFromView(1, posInput.positionNDC);              // Pixeldaten linkes Bild
+        float4 colRight = sampleFromView(0, varyings.uv);             // Pixeldaten rechtes Bild
+        float4 colLeft = sampleFromView(1, varyings.uv);              // Pixeldaten linkes Bild
         float cor=0.0, cog=0.0, cob=0.0;
 
         
@@ -151,12 +154,16 @@ Shader "G3D/HeadTrackingHDRP"
         // Teststreifen Rot Schwarz volle Kanäle ohne Blackmatrix !
         if (yScreenCoords > (s_height - 200) && stest == 1) {
             color = float4(0.0, 0.0, 0.0, 1.0);
-            if (xwert.r<=hviews2) color = float4(1.0, 0.0, 0.0, 1.0);     // rechtes Auge sieht einen roten Streifen
-            if (xwert.g>hviews2) color = float4(0.0, 1.0, 0.0, 1.0);
+            if (xwert.r <= hviews2) {
+                color = float4(1.0, 0.0, 0.0, 1.0);     // rechtes Auge sieht einen roten Streifen
+            }
+            if (xwert.g > hviews2) {
+                color = float4(0.0, 1.0, 0.0, 1.0);
+            }
         }  // linkes Auge sieht einen gruenen Streifen
 
-        return color;
-        // return float4(posInput.positionNDC.x, posInput.positionNDC.y, 0.1, 1.0);
+        // return color;
+        return texture0.Sample(s_linear_clamp_sampler, varyings.uv);
     }
     ENDHLSL
 
@@ -165,14 +172,15 @@ Shader "G3D/HeadTrackingHDRP"
         Tags{ "RenderPipeline" = "HDRenderPipeline" }
         Pass
         {
-            Name "G3D Pass 0"
+            Name "G3DFullScreen3D"
 
             ZWrite Off
             ZTest Always
-            Blend SrcAlpha OneMinusSrcAlpha
+            Blend Off
             Cull Off
 
             HLSLPROGRAM
+                #pragma vertex Vert
                 #pragma fragment FullScreenPass
             ENDHLSL
         }

@@ -11,9 +11,6 @@ Shader "G3D/HeadTrackingURP"
 
             HLSLPROGRAM
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            // The Blit.hlsl file provides the vertex shader (Vert),
-            // input structure (Attributes) and output strucutre (Varyings)
-            #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 
             #pragma vertex vert
             #pragma fragment frag

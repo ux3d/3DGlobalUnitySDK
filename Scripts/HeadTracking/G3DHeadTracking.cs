@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 #if HDRP
 using UnityEngine.Rendering.HighDefinition;
 #endif
@@ -124,6 +125,7 @@ public class G3DHeadTracking
     public KeyCode shiftViewRightKey = KeyCode.RightArrow;
 
     public bool showTestFrame = false;
+    public bool showTestStripes = false;
     #endregion
 
     #region Private variables
@@ -222,7 +224,6 @@ public class G3DHeadTracking
         initLibrary();
         updateScreenViewportProperties();
         reinitializeShader();
-        updateCameras();
 
         lock (shaderLock)
         {
@@ -230,13 +231,7 @@ public class G3DHeadTracking
         }
         libInterface.startHeadTracking();
 
-        cachedWindowPosition = new Vector2Int(
-            Screen.mainWindowPosition.x,
-            Screen.mainWindowPosition.y
-        );
-        cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
-        cachedCameraCount = cameraCount;
-#if HDRP || URP
+#if HDRP
         // init fullscreen postprocessing for hd render pipeline
         var customPassVolume = gameObject.AddComponent<CustomPassVolume>();
         customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
@@ -593,12 +588,16 @@ public class G3DHeadTracking
                 (int)(Screen.height * resolution / 100),
                 0
             );
-
-            material.SetTexture(id_View[i], tex);
             Texture tex = renderTextures[i];
             cameras[i].targetTexture = renderTextures[i];
             material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
         }
+
+#if HDRP
+        customPass.cameraCount = cameraCount;
+        customPass.cameras = cameras.ToArray();
+        customPass.mainCamera = mainCamera;
+#endif
     }
 
     private void handleKeyPresses()
