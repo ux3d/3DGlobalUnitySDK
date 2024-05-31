@@ -393,7 +393,7 @@ public class G3DHeadTracking
         libInterface.setViewportOffset(0, 0);
 
         // this parameter is used in the shader to invert the y axis
-        material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.width);
+        material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
     }
 
     private void updateShaderParameters()
@@ -719,6 +719,14 @@ public class G3DHeadTracking
             else
             {
                 this.shaderParameters.showTestFrame = 0;
+            }
+            if (showTestStripes)
+            {
+                this.shaderParameters.showTestStripe = 1;
+            }
+            else
+            {
+                this.shaderParameters.showTestStripe = 0;
             }
         }
     }

@@ -76,7 +76,7 @@ Shader "G3D/HeadTracking"
 				return float4(0, 0, 0, 0);
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            float4 frag (v2f i) : SV_Target
             {
                 // Start der Berechnung von dynamische Daten
                 int  xScreenCoords = int(i.screenPos.x) + v_pos_x;     // transform x position from viewport to screen coordinates
@@ -152,7 +152,7 @@ Shader "G3D/HeadTracking"
                 }
 
                 // Teststreifen Rot Schwarz volle Kanäle ohne Blackmatrix !
-                if (yScreenCoords > (s_height - 200) && stest == 1) {
+                if (stest == 1) {
                     color = float4(0.0, 0.0, 0.0, 1.0);
                     if (xwert.r<=hviews2) color = float4(1.0, 0.0, 0.0, 1.0);     // rechtes Auge sieht einen roten Streifen
                     if (xwert.g>hviews2) color = float4(0.0, 1.0, 0.0, 1.0);
