@@ -62,7 +62,7 @@ struct ShaderHandles
 }
 
 [RequireComponent(typeof(Camera))]
-public class G3DHeadTracking
+public class G3DCamera
     : MonoBehaviour,
         ITNewHeadPositionCallback,
         ITNewShaderParametersCallback,
