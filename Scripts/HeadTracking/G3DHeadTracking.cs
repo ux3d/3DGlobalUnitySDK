@@ -5,6 +5,10 @@ using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
 #endif
 
+#if URP
+using UnityEngine.Rendering.Universal;
+#endif
+
 public struct HeadPosition
 {
     public bool headDetected;
@@ -145,6 +149,10 @@ public class G3DHeadTracking
 #if HDRP
     private G3DHDRPCustomPass customPass;
 #endif
+#if URP
+    private G3DUrpScriptableRenderPass customPass;
+#endif
+
     private int[] id_View = new int[MAX_CAMERAS];
     private ShaderHandles shaderHandles;
     private G3DShaderParameters shaderParameters;
@@ -240,6 +248,20 @@ public class G3DHeadTracking
         customPass.fullscreenPassMaterial = material;
         customPass.materialPassName = "G3D Pass 0";
 #endif
+
+#if URP
+        customPass = new G3DUrpScriptableRenderPass(material);
+#endif
+
+        updateCameras();
+
+        // This has to be done after the cameras are updated
+        cachedWindowPosition = new Vector2Int(
+            Screen.mainWindowPosition.x,
+            Screen.mainWindowPosition.y
+        );
+        cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
+        cachedCameraCount = cameraCount;
     }
 
     void OnApplicationQuit()
@@ -301,12 +323,33 @@ public class G3DHeadTracking
 
     private void reinitializeShader()
     {
-#if HDRP || URP
+#if HDRP
         material = new Material(Shader.Find("G3D/HeadTrackingHDRP"));
+#elif URP
+        material = new Material(Shader.Find("G3D/HeadTrackingURP"));
 #else
         material = new Material(Shader.Find("G3D/HeadTracking"));
 #endif
     }
+
+#if URP
+    private void OnEnable()
+    {
+        RenderPipelineManager.beginCameraRendering += OnBeginCamera;
+    }
+
+    private void OnDisable()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
+    }
+
+    private void OnBeginCamera(ScriptableRenderContext context, Camera cam)
+    {
+        // Use the EnqueuePass method to inject a custom render pass
+        cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
+    }
+#endif
+
     #endregion
 
     #region Updates
@@ -501,7 +544,7 @@ public class G3DHeadTracking
                 float Near = ((FC + 1) / (FC - 1) - 1) / 2 * FD; // near of current projection matrix
                 float DataWidth = 2 * Near / tempMatrix[0, 0]; // width
                 ViewOffset =
-                    (float)StereoViewIPDOffset * DataWidth * (float)(stereo_depth - (stereo_plane));
+                    (float)StereoViewIPDOffset * DataWidth * (float)(stereo_depth - stereo_plane);
             }
 
             // apply new projection matrix
@@ -540,17 +583,21 @@ public class G3DHeadTracking
         for (int i = 0; i < MAX_CAMERAS; i++)
             cameras[i].targetTexture?.Release();
 
+        RenderTexture[] renderTextures = new RenderTexture[cameraCount];
+
         //set only those we need
         for (int i = 0; i < cameraCount; i++)
         {
-            Texture tex;
-            tex = cameras[i].targetTexture = new RenderTexture(
+            renderTextures[i] = new RenderTexture(
                 (int)(Screen.width * resolution / 100),
                 (int)(Screen.height * resolution / 100),
                 0
             );
 
             material.SetTexture(id_View[i], tex);
+            Texture tex = renderTextures[i];
+            cameras[i].targetTexture = renderTextures[i];
+            material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
         }
     }
 

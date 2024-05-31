@@ -1,20 +1,48 @@
-Shader "G3D/HeadTracking"
+Shader "G3D/HeadTrackingURP"
 {
-    Properties
+        SubShader
     {
-    }
-    SubShader
-    {
-        // No culling or depth
-        Cull Off ZWrite Off ZTest Always
-
+        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"}
+        LOD 100
+        ZWrite Off Cull Off
         Pass
         {
-            CGPROGRAM
-            #pragma vertex vert
+            Name "ColorBlitPass"
+
+            HLSLPROGRAM
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            // The Blit.hlsl file provides the vertex shader (Vert),
+            // input structure (Attributes) and output strucutre (Varyings)
+            #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
+
+            #pragma vertex Vert
             #pragma fragment frag
 
-            #include "UnityCG.cginc"
+            struct VertAttributes
+            {
+                uint vertexID : SV_VertexID;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct VertVaryings
+            {
+                float4 positionCS : SV_POSITION;
+                float2 uv   : TEXCOORD0;
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            VertVaryings Vert(VertAttributes input)
+            {
+                VertVaryings output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+                output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
+                output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
+
+                return output;
+
+            }
+
 
             int  viewcount;      // Anzahl nativer Views
             int  zwinkel;        // Winkelzähler
@@ -27,14 +55,14 @@ Shader "G3D/HeadTracking"
             int  mstart;         // Viewshift permanent Offset
             int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
             int  hqview;         // hqViewCount
-            int  hviews1;          // hqview - 1
-            int  hviews2;       // hqview / 2
+            int  hviews1;
+            int  hviews2;
 
-            int  bls;            // black left start (start and end points of left and right "eye" window)
-            int  ble;         // black left end 
-            int  brs;          // black right start
-            int  bre;      // black right end 
-              
+            int  bls;
+            int  ble;
+            int  brs;
+            int  bre;
+
             int  bborder;        // blackBorder schwarz verblendung zwischen den views?
             int  bspace;         // blackSpace
             int  s_width;        // screen width
@@ -46,43 +74,31 @@ Shader "G3D/HeadTracking"
 
             // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
             // to do this we need the actual viewport height
-            int viewportHeight; 
+            int viewportHeight;
 
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                float4 screenPos : SV_POSITION;
-            };
-
-            v2f vert(float4 vertex : POSITION, float2 uv : TEXCOORD0)
-            {
-                v2f o;
-                o.uv = uv;
-                o.screenPos = UnityObjectToClipPos(vertex);
-                return o;
-            }
-
-            UNITY_DECLARE_TEX2D(texture0);
-			UNITY_DECLARE_TEX2D_NOSAMPLER(texture1);
+            Texture2D texture0;
+            SamplerState samplertexture0;
+            Texture2D texture1;
+            SamplerState samplertexture1;
 
             float4 sampleFromView(int viewIndex, float2 uv) {
-				switch (viewIndex) {
-				case 0:
-					return UNITY_SAMPLE_TEX2D(texture0, uv);
-				case 1:
-					return UNITY_SAMPLE_TEX2D_SAMPLER(texture1, texture0, uv);
-				}
+                switch (viewIndex) {
+                case 0:
+                    return texture0.Sample(samplertexture0, uv);
+                case 1:
+                    return texture1.Sample(samplertexture1, uv);
+                }
 
-				return float4(0, 0, 0, 0);
+                return float4(0, 0, 0, 0);
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            float4 frag(VertVaryings varyings) : SV_Target
             {
                 // Start der Berechnung von dynamische Daten
-                int  xScreenCoords = int(i.screenPos.x) + v_pos_x;     // transform x position from viewport to screen coordinates
+                int  xScreenCoords = int(varyings.positionCS.x) + v_pos_x;     // transform x position from viewport to screen coordinates
                 // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
                 // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
-                int  yScreenCoords = int(viewportHeight - i.screenPos.y) + v_pos_y;     // transform y position from viewport to screen coordinates
+                int  yScreenCoords = int(viewportHeight - varyings.positionCS.y) + v_pos_y;     // transform y position from viewport to screen coordinates
                 if (isleft == 0) {
                     yScreenCoords = s_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
                 }
@@ -94,7 +110,6 @@ Shader "G3D/HeadTracking"
                 // int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), viewcount);                              // #### viewcount->lt03
 
                 // Start HQ-Renderberechnung inklusive Z-Korrektur
-
                 int  hqwert = ((yScreenCoords % nwinkel) * zwinkel) % nwinkel;
                 // int  hqwert = modg3d((modg3d(yScreenCoords, nwinkel) * zwinkel), nwinkel);
                 if (isleft == 1)
@@ -120,8 +135,8 @@ Shader "G3D/HeadTracking"
                 // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
                 // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
-                float4 colRight = sampleFromView(0, i.uv);             // Pixeldaten rechtes Bild
-                float4 colLeft = sampleFromView(1, i.uv);              // Pixeldaten linkes Bild
+                float4 colRight = sampleFromView(0, varyings.uv);             // Pixeldaten rechtes Bild
+                float4 colLeft = sampleFromView(1, varyings.uv);              // Pixeldaten linkes Bild
                 float cor=0.0, cog=0.0, cob=0.0;
 
                 
@@ -154,14 +169,17 @@ Shader "G3D/HeadTracking"
                 // Teststreifen Rot Schwarz volle Kanäle ohne Blackmatrix !
                 if (yScreenCoords > (s_height - 200) && stest == 1) {
                     color = float4(0.0, 0.0, 0.0, 1.0);
-                    if (xwert.r<=hviews2) color = float4(1.0, 0.0, 0.0, 1.0);     // rechtes Auge sieht einen roten Streifen
-                    if (xwert.g>hviews2) color = float4(0.0, 1.0, 0.0, 1.0);
+                    if (xwert.r <= hviews2) {
+                        color = float4(1.0, 0.0, 0.0, 1.0);     // rechtes Auge sieht einen roten Streifen
+                    }
+                    if (xwert.g > hviews2) {
+                        color = float4(0.0, 1.0, 0.0, 1.0);
+                    }
                 }  // linkes Auge sieht einen gruenen Streifen
 
-                // Bildausgabe
                 return color;
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }
