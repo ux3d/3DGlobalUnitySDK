@@ -222,8 +222,8 @@ public class G3DCamera
         };
 
         initLibrary();
-        updateScreenViewportProperties();
         reinitializeShader();
+        updateScreenViewportProperties();
 
         lock (shaderLock)
         {
@@ -318,13 +318,7 @@ public class G3DCamera
 
     private void reinitializeShader()
     {
-#if HDRP
-        material = new Material(Shader.Find("G3D/HeadTrackingHDRP"));
-#elif URP
-        material = new Material(Shader.Find("G3D/HeadTrackingURP"));
-#else
-        material = new Material(Shader.Find("G3D/HeadTracking"));
-#endif
+        material = new Material(Shader.Find("G3D/Autostereo"));
     }
 
 #if URP
