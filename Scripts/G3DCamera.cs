@@ -97,7 +97,7 @@ public class G3DCamera
     public float eyeSeparation = 0.065f;
 
     [Range(0f, 1f)]
-    public float stereo_depth = 0.0f;
+    public float stereo_depth = 0.3f;
 
     [Range(-5f, 5f)]
     public float stereo_plane = 5f;
@@ -649,16 +649,16 @@ public class G3DCamera
         double worldPosZ
     )
     {
-        lock (headPosLock)
-        {
-            headPosition.headDetected = headDetected;
-            headPosition.imagePosIsValid = imagePosIsValid;
-            headPosition.imagePosX = imagePosX / scaleCorrectionFactor;
-            headPosition.imagePosY = imagePosY / scaleCorrectionFactor;
-            headPosition.worldPosX = worldPosX / scaleCorrectionFactor;
-            headPosition.worldPosY = worldPosY / scaleCorrectionFactor;
-            headPosition.worldPosZ = worldPosZ / scaleCorrectionFactor;
-        }
+        // lock (headPosLock)
+        // {
+        //     headPosition.headDetected = headDetected;
+        //     headPosition.imagePosIsValid = imagePosIsValid;
+        //     headPosition.imagePosX = imagePosX / scaleCorrectionFactor;
+        //     headPosition.imagePosY = imagePosY / scaleCorrectionFactor;
+        //     headPosition.worldPosX = worldPosX / scaleCorrectionFactor;
+        //     headPosition.worldPosY = worldPosY / scaleCorrectionFactor;
+        //     headPosition.worldPosZ = worldPosZ / scaleCorrectionFactor;
+        // }
     }
 
     void ITNewErrorMessageCallback.NewErrorMessageCallback(
