@@ -80,7 +80,6 @@ public struct HeadTrackingStatus
     public bool isTrackingActive;
 }
 
-// TODO turn this into a singleton
 public sealed class LibInterface
 {
     public bool logToConsole = true;

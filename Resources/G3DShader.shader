@@ -1,38 +1,5 @@
 Shader "G3D/Autostereo"
 {
-    // Properties
-    // {
-    //     viewcount ("Amount native views", Integer) = 1
-    //     zwinkel ("Angle numerator", Integer) = 0
-    //     nwinkel ("Angle denominator", Integer) = 0
-    //     isleft ("Left (0) or right (1) tilted lenticular", Integer) = 0
-    //     test ("Show test frame", Integer) = 0
-    //     stest ("Show test stripes", Integer) = 0
-    //     testgap ("Width of gap within test image", Integer) = 0
-    //     track ("Tracking shift", Integer) = 0
-    //     mstart ("Permanent offset of viewshift", Integer) = 1
-    //     blur ("Blurs image. higher values result in more blur (usefull between 0-1000)", Integer) = 0
-    //     hqview ("Number of individual views monitir supports", Integer) = 1
-    //     hviews1 ("Helper value: hqview - 1", Integer) = 1
-    //     hviews2 ("Helper value: hqview / 2", Integer) = 1
-
-    //     bls ("black left start (start and end points of left and right 'eye' window)", Integer) = 0
-    //     ble ("black left end (start and end points of left and right 'eye' window)", Integer) = 1
-    //     brs ("black right start", Integer) = 0
-    //     bre ("black right end", Integer) = 1
-
-    //     bborder ("Black border between views", Integer) = 1
-    //     bspace ("black space", Integer) = 1
-    //     s_width ("Screen width (entire monitor)", Integer) = 1
-    //     s_height ("Screen height (entire monitor)", Integer) = 1
-    //     v_pos_x ("Horizontal viewport position (offset from upper left corner)", Integer) = 1
-    //     v_pos_y ("Vertical viewport position (offset from upper left corner)", Integer) = 1
-    //     tvx ("Z correction value", Integer) = 1
-    //     zkom ("Z compensation value", Integer) = 1
-
-    //     viewportHeight ("Viewport height (only height of actual viewport)", Integer) = 1
-    // }
-
     HLSLINCLUDE
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch

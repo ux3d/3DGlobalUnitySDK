@@ -68,7 +68,7 @@ public class G3DCamera
         ITNewShaderParametersCallback,
         ITNewErrorMessageCallback
 {
-    #region Callibration
+    #region Calibration
     [Header("Calibration and configuration files")]
     [Tooltip(
         "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
@@ -432,7 +432,7 @@ public class G3DCamera
         }
     }
 
-    [ContextMenu("Toggle head tracking status")]
+    [ContextMenu("Toggle head tracking")]
     public void toggleHeadTrackingStatus()
     {
         Debug.Log("Toggling head tracking status");
