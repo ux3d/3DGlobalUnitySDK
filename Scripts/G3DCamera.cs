@@ -241,7 +241,7 @@ public class G3DCamera
         customPassVolume.hideFlags = HideFlags.DontSave;
         customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
         customPass.fullscreenPassMaterial = material;
-        customPass.materialPassName = "G3D Pass 0";
+        customPass.materialPassName = "G3DFullScreen3D";
 #endif
 
 #if URP
