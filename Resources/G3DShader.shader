@@ -238,9 +238,6 @@ Shader "G3D/Autostereo"
                     return output;
 
                 }
-
-
-
             ENDHLSL
         }
     }

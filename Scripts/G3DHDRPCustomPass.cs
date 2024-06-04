@@ -1,6 +1,5 @@
 #if HDRP
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
@@ -23,34 +22,19 @@ class G3DHDRPCustomPass : FullScreenCustomPass
             return;
         }
 
-        // for (int i = 0; i < cameraCount; i++)
-        // {
-        //     Camera camera = cameras[i];
-        //     CoreUtils.SetRenderTarget(ctx.cmd, camera.targetTexture, ClearFlag.All);
-        //     using (new CustomPassUtils.DisableSinglePassRendering(ctx))
-        //     {
-        //         using (new CustomPassUtils.OverrideCameraRendering(ctx, camera))
-        //         {
-        //             CustomPassUtils.DrawRenderers(ctx, ~0, RenderQueueType.AllOpaque);
-        //             // CustomPassUtils.RenderFromCamera(
-        //             //     ctx: ctx,
-        //             //     view: cameras[i],
-        //             //     targetRenderTexture: camera.targetTexture,
-        //             //     ClearFlag.All,
-        //             //     mainCamera.cullingMask
-        //             // );
-        //         }
-        //     }
-        // }
+        // skip all cameras created by the G3D Camera script
+        if (ctx.hdCamera.camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))
+        {
+            return;
+        }
 
         CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
-        CustomPassUtils.DrawRenderers(ctx, ~0, RenderQueueType.All);
-        // CoreUtils.DrawFullScreen(
-        //     ctx.cmd,
-        //     fullscreenPassMaterial,
-        //     ctx.propertyBlock,
-        //     shaderPassId: 0
-        // );
+        CoreUtils.DrawFullScreen(
+            ctx.cmd,
+            fullscreenPassMaterial,
+            ctx.propertyBlock,
+            shaderPassId: 0
+        );
     }
 
     protected override void Cleanup() { }

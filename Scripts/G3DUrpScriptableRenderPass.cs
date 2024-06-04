@@ -28,7 +28,7 @@ internal class G3DUrpScriptableRenderPass : ScriptableRenderPass
             return;
 
         // skip all cameras created by the G3D Camera script
-        if (cameraData.camera.name.StartsWith("g3dcam_"))
+        if (cameraData.camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))
         {
             return;
         }

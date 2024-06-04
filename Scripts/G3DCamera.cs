@@ -103,7 +103,7 @@ public class G3DCamera
     public float stereo_plane = 5f;
 
     private const int MAX_CAMERAS = 2; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
-    public const string CAMERA_NAME_PREFIX = "g3dcam_";
+    public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
     [Range(1.0f, 100.0f)]
     public float resolution = 100.0f;
