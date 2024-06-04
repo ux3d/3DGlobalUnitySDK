@@ -87,7 +87,7 @@ public class G3DCamera
     [Tooltip(
         "The amount of used cameras. The maximum amount of cameras is 16. Two corresponds to a stereo setup."
     )]
-    [Range(1, 16)]
+    [Range(1, 2)]
     private int cameraCount = 2;
 
     [Tooltip(
@@ -102,7 +102,7 @@ public class G3DCamera
     [Range(-5f, 5f)]
     public float stereo_plane = 5f;
 
-    private const int MAX_CAMERAS = 3; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
+    private const int MAX_CAMERAS = 2; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public const string CAMERA_NAME_PREFIX = "g3dcam_";
 
     [Range(1.0f, 100.0f)]
