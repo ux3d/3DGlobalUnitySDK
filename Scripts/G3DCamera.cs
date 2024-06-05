@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor.EditorTools;
 using UnityEngine;
 using UnityEngine.Rendering;
+#if UNITY_EDITOR
+using UnityEditor.EditorTools;
+#endif
+
 #if HDRP
 using UnityEngine.Rendering.HighDefinition;
 #endif
@@ -94,14 +97,11 @@ public class G3DCamera
     [Tooltip(
         "The distance between the two eyes in meters. This value is used to calculate the stereo effect."
     )]
-    [Range(0.00001f, 1.0f)]
+    [Range(0.00001f, 0.3f)]
     public float eyeSeparation = 0.065f;
 
     [Range(0f, 1f)]
     public float stereo_depth = 0.3f;
-
-    [Range(-5f, 5f)]
-    public float stereo_plane = 5f;
 
     private const int MAX_CAMERAS = 2; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
@@ -129,7 +129,7 @@ public class G3DCamera
     public bool showTestStripes = false;
 
     [Tooltip(
-        "If set to true, the gizmos for the stereo plane (yellow), stereo depth (green) and eye separation (blue) will be shown."
+        "If set to true, the gizmos for the stereo depth (green) and eye separation (blue) will be shown."
     )]
     public bool showGizmos = true;
 
@@ -548,8 +548,7 @@ public class G3DCamera
             {
                 float Near = ((FC + 1) / (FC - 1) - 1) / 2 * FD; // near of current projection matrix
                 float DataWidth = 2 * Near / tempMatrix[0, 0]; // width
-                ViewOffset =
-                    (float)StereoViewIPDOffset * DataWidth * (float)(stereo_depth - stereo_plane);
+                ViewOffset = (float)StereoViewIPDOffset * DataWidth * stereo_depth;
             }
 
             // apply new projection matrix
@@ -748,29 +747,24 @@ public class G3DCamera
     #endregion
 
     #region Debugging
+#if UNITY_EDITOR
     void OnDrawGizmos()
     {
         if (showGizmos)
         {
-            // If set to true, the gizmos for the stereo plane (yellow), stereo depth (green) and eye separation (blue) will be shown.
-
-            // draw stereo plane
-            Gizmos.color = new Color(1, 1, 0, 0.75F);
-            Vector3 position = transform.position + transform.forward * stereo_plane;
-            Gizmos.DrawSphere(position, gizmoSize);
-
             // draw stereo depth
             Gizmos.color = new Color(0, 1, 0, 0.75F);
-            position = transform.position + transform.forward * stereo_depth;
-            Gizmos.DrawSphere(position, 0.5f * gizmoSize);
+            Vector3 position = transform.position + transform.forward * stereo_depth;
+            Gizmos.DrawSphere(position, gizmoSize);
 
             // draw eye separation
             Gizmos.color = new Color(0, 0, 1, 0.75F);
             position = transform.position + transform.right * eyeSeparation / 2;
             Gizmos.DrawSphere(position, 0.3f * gizmoSize);
             position = transform.position - transform.right * eyeSeparation / 2;
-            Gizmos.DrawSphere(position, 0.3f * gizmoSize);
+            Gizmos.DrawSphere(position, 0.5f * gizmoSize);
         }
     }
+#endif
     #endregion
 }
