@@ -121,6 +121,7 @@ public class G3DCamera
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
     public KeyCode toggleHeadTrackingKey = KeyCode.Space;
+    public KeyCode toggleAutostereo = KeyCode.A;
     public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
     public KeyCode shiftViewRightKey = KeyCode.RightArrow;
 
@@ -608,6 +609,10 @@ public class G3DCamera
         if (Input.GetKeyDown(shiftViewRightKey))
         {
             libInterface.shiftViewToRight();
+        }
+        if (Input.GetKeyDown(toggleAutostereo))
+        {
+            renderAutostereo = !renderAutostereo;
         }
     }
 
