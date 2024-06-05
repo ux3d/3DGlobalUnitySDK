@@ -7,6 +7,8 @@ internal class G3DUrpScriptableRenderPass : ScriptableRenderPass
 {
     Material m_Material;
 
+    public bool renderAutostereo = true;
+
     public G3DUrpScriptableRenderPass(Material material)
     {
         m_Material = material;
@@ -20,9 +22,25 @@ internal class G3DUrpScriptableRenderPass : ScriptableRenderPass
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
+        if (renderAutostereo == false)
+        {
+            return;
+        }
+
         var cameraData = renderingData.cameraData;
         if (cameraData.camera.cameraType != CameraType.Game)
             return;
+        // only render for game cameras and cameras with the G3D camera component
+        if (
+            cameraData.camera.cameraType != CameraType.Game
+            || (
+                cameraData.camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera) == false
+                || g3dCamera.enabled == false
+            )
+        )
+        {
+            return;
+        }
 
         if (m_Material == null)
             return;

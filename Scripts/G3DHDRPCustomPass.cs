@@ -3,22 +3,29 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-class G3DHDRPCustomPass : FullScreenCustomPass
+internal class G3DHDRPCustomPass : FullScreenCustomPass
 {
-    public int cameraCount;
-    public Camera mainCamera;
-    public Camera[] cameras;
-    public SortingCriteria sortingCriteria = SortingCriteria.SortingLayer;
+    public bool renderAutostereo = true;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
     {
-        if (cameras.Length == 0)
+        if (renderAutostereo == false)
         {
-            Debug.LogError(
-                "G3D head tracking library: Shader render texture handles are not set up correctly."
-            );
+            return;
+        }
+
+        // only render for game cameras and cameras with the G3D camera component
+        if (
+            ctx.hdCamera.camera.cameraType != CameraType.Game
+            || (
+                ctx.hdCamera.camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera)
+                    == false
+                || g3dCamera.enabled == false
+            )
+        )
+        {
             return;
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor.EditorTools;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if HDRP
@@ -126,6 +127,17 @@ public class G3DCamera
 
     public bool showTestFrame = false;
     public bool showTestStripes = false;
+
+    [Tooltip(
+        "If set to true, the gizmos for the stereo plane (yellow), stereo depth (green) and eye separation (blue) will be shown."
+    )]
+    public bool showGizmos = true;
+
+    [Range(0.1f, 1.0f)]
+    public float gizmoSize = 0.2f;
+
+    public bool renderAutostereo = true;
+
     #endregion
 
     #region Private variables
@@ -365,6 +377,10 @@ public class G3DCamera
         {
             updateScreenViewportProperties();
         }
+
+#if HDRP || URP
+        customPass.renderAutostereo = renderAutostereo;
+#endif
     }
 
     private void updateScreenViewportProperties()
@@ -586,12 +602,6 @@ public class G3DCamera
             cameras[i].targetTexture = renderTextures[i];
             material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
         }
-
-#if HDRP
-        customPass.cameraCount = cameraCount;
-        customPass.cameras = cameras.ToArray();
-        customPass.mainCamera = mainCamera;
-#endif
     }
 
     private void handleKeyPresses()
@@ -616,7 +626,7 @@ public class G3DCamera
         //legacy support (no URP or HDRP)
 #if HDRP || URP
 #else
-        if (material == null)
+        if (material == null || renderAutostereo == false)
             Graphics.Blit(source, destination);
         else
             Graphics.Blit(source, destination, material);
@@ -734,6 +744,33 @@ public class G3DCamera
         }
 
         return messageText;
+    }
+    #endregion
+
+    #region Debugging
+    void OnDrawGizmos()
+    {
+        if (showGizmos)
+        {
+            // If set to true, the gizmos for the stereo plane (yellow), stereo depth (green) and eye separation (blue) will be shown.
+
+            // draw stereo plane
+            Gizmos.color = new Color(1, 1, 0, 0.75F);
+            Vector3 position = transform.position + transform.forward * stereo_plane;
+            Gizmos.DrawSphere(position, gizmoSize);
+
+            // draw stereo depth
+            Gizmos.color = new Color(0, 1, 0, 0.75F);
+            position = transform.position + transform.forward * stereo_depth;
+            Gizmos.DrawSphere(position, 0.5f * gizmoSize);
+
+            // draw eye separation
+            Gizmos.color = new Color(0, 0, 1, 0.75F);
+            position = transform.position + transform.right * eyeSeparation / 2;
+            Gizmos.DrawSphere(position, 0.3f * gizmoSize);
+            position = transform.position - transform.right * eyeSeparation / 2;
+            Gizmos.DrawSphere(position, 0.3f * gizmoSize);
+        }
     }
     #endregion
 }
