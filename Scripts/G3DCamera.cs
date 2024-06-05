@@ -114,7 +114,6 @@ public class G3DCamera
     [Header("Device settings")]
     public bool useHimaxD2XXDevices = true;
     public bool usePmdFlexxDevices = true;
-    public int scaleCorrectionFactor = -1000;
     #endregion
 
     #region Debugging
@@ -155,7 +154,6 @@ public class G3DCamera
     private static object shaderLock = new object();
 
     private Camera mainCamera;
-    private Vector3 cameraStartPosition;
     private List<Camera> cameras = null;
     private GameObject cameraParent = null;
 
@@ -184,12 +182,12 @@ public class G3DCamera
     {
         mainCamera = GetComponent<Camera>();
 
-        cameraStartPosition = transform.position;
-
         //initialize cameras
 
         cameraParent = new GameObject("g3dcams");
         cameraParent.transform.parent = transform;
+        cameraParent.transform.localPosition = new Vector3(0, 0, 0);
+        cameraParent.transform.localRotation = Quaternion.identity;
 
         cameras = new List<Camera>();
         for (int i = 0; i < MAX_CAMERAS; i++)
@@ -197,6 +195,7 @@ public class G3DCamera
             cameras.Add(new GameObject(CAMERA_NAME_PREFIX + i).AddComponent<Camera>());
             cameras[i].transform.SetParent(cameraParent.transform, true);
             cameras[i].gameObject.SetActive(false);
+            cameras[i].transform.localRotation = Quaternion.identity;
         }
 
         // initialize shader textures
@@ -356,18 +355,6 @@ public class G3DCamera
     #region Updates
     void Update()
     {
-        HeadPosition headPosition = getHeadPosition();
-        if (headPosition.headDetected)
-        {
-            Vector3 headPositionWorld = new Vector3(
-                (float)headPosition.worldPosX,
-                (float)headPosition.worldPosY,
-                (float)headPosition.worldPosZ
-            );
-
-            transform.position = cameraStartPosition + headPositionWorld;
-        }
-
         updateCameras();
         updateShaderParameters();
 
@@ -496,11 +483,21 @@ public class G3DCamera
     // TODO call this every time the head position changed callback fires
     void updateCameras()
     {
-        //put camera host gameobject in easy-to-handle situation and save its position/rotation for resetting after "parenting" the child cameras
-        Vector3 savedCameraPosition = transform.position;
-        Quaternion savedCameraRotation = transform.rotation;
-        cameraParent.transform.position = new Vector3(0, 0, 0);
-        cameraParent.transform.rotation = Quaternion.Euler(0.0f, 0.0f, 0.0f);
+        HeadPosition headPosition = getHeadPosition();
+        if (headPosition.headDetected)
+        {
+            Vector3 headPositionWorld = new Vector3(
+                (float)headPosition.worldPosX,
+                (float)headPosition.worldPosY,
+                (float)headPosition.worldPosZ
+            );
+
+            cameraParent.transform.localPosition = new Vector3(0, 0, 0) + headPositionWorld;
+        }
+        else
+        {
+            cameraParent.transform.localPosition = new Vector3(0, 0, 0);
+        }
 
         //calculate camera positions and matrices
         for (int i = 0; i < cameraCount; i++)
@@ -517,8 +514,8 @@ public class G3DCamera
             camera.farClipPlane = mainCamera.farClipPlane;
             camera.nearClipPlane = mainCamera.nearClipPlane;
             camera.projectionMatrix = mainCamera.projectionMatrix;
-            camera.transform.position = cameraParent.transform.position;
-            camera.transform.rotation = cameraParent.transform.rotation;
+            camera.transform.localPosition = cameraParent.transform.localPosition;
+            camera.transform.localRotation = cameraParent.transform.localRotation;
 
             // eye distance
             float EyeDistance = eyeSeparation;
@@ -558,10 +555,6 @@ public class G3DCamera
 
             camera.gameObject.SetActive(true);
         }
-
-        //reset parent position/rotation
-        cameraParent.transform.position = savedCameraPosition;
-        cameraParent.transform.rotation = savedCameraRotation;
 
         //disable all the other cameras, we are not using them with this cameracount
         for (int i = cameraCount; i < MAX_CAMERAS; i++)
@@ -662,11 +655,12 @@ public class G3DCamera
         // {
         //     headPosition.headDetected = headDetected;
         //     headPosition.imagePosIsValid = imagePosIsValid;
-        //     headPosition.imagePosX = imagePosX / scaleCorrectionFactor;
-        //     headPosition.imagePosY = imagePosY / scaleCorrectionFactor;
-        //     headPosition.worldPosX = worldPosX / scaleCorrectionFactor;
-        //     headPosition.worldPosY = worldPosY / scaleCorrectionFactor;
-        //     headPosition.worldPosZ = worldPosZ / scaleCorrectionFactor;
+        //     // devide by 1000 to get meters
+        //     headPosition.imagePosX = imagePosX / 1000;
+        //     headPosition.imagePosY = imagePosY / 1000;
+        //     headPosition.worldPosX = worldPosX / 1000;
+        //     headPosition.worldPosY = worldPosY / 1000;
+        //     headPosition.worldPosZ = worldPosZ / 1000;
         // }
     }
 
