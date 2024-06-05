@@ -100,7 +100,7 @@ public class G3DCamera
     [Range(0.00001f, 0.3f)]
     public float eyeSeparation = 0.065f;
 
-    [Range(0f, 1f)]
+    [Range(0.001f, 1f)]
     public float stereo_depth = 0.3f;
 
     private const int MAX_CAMERAS = 2; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
@@ -598,15 +598,15 @@ public class G3DCamera
 
     private void handleKeyPresses()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(toggleHeadTrackingKey))
         {
             toggleHeadTrackingStatus();
         }
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        if (Input.GetKeyDown(shiftViewLeftKey))
         {
             libInterface.shiftViewToLeft();
         }
-        if (Input.GetKeyDown(KeyCode.RightArrow))
+        if (Input.GetKeyDown(shiftViewRightKey))
         {
             libInterface.shiftViewToRight();
         }
