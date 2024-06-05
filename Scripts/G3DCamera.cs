@@ -248,8 +248,7 @@ public class G3DCamera
         customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
         customPassVolume.isGlobal = true;
         // Make the volume invisible in the inspector
-        // customPassVolume.hideFlags = HideFlags.HideInInspector | HideFlags.DontSave;
-        customPassVolume.hideFlags = HideFlags.DontSave;
+        customPassVolume.hideFlags = HideFlags.HideInInspector | HideFlags.DontSave;
         customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
         customPass.fullscreenPassMaterial = material;
         customPass.materialPassName = "G3DFullScreen3D";
