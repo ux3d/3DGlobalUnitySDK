@@ -97,11 +97,13 @@ public class G3DCamera
     [Tooltip(
         "The distance between the two eyes in meters. This value is used to calculate the stereo effect."
     )]
-    [Range(0.00001f, 0.3f)]
+    [Range(0.00001f, 2.0f)]
     public float eyeSeparation = 0.065f;
 
-    [Range(0.001f, 1f)]
-    public float stereo_depth = 0.3f;
+    public bool useFocusDistance = false;
+
+    [Min(0.0000001f)]
+    public float focusDistance = 2.3f;
 
     private const int MAX_CAMERAS = 2; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
@@ -128,8 +130,10 @@ public class G3DCamera
     public bool showTestFrame = false;
     public bool showTestStripes = false;
 
+    public bool enableHeadTracking = false;
+
     [Tooltip(
-        "If set to true, the gizmos for the stereo depth (green) and eye separation (blue) will be shown."
+        "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
     )]
     public bool showGizmos = true;
 
@@ -484,7 +488,7 @@ public class G3DCamera
     void updateCameras()
     {
         HeadPosition headPosition = getHeadPosition();
-        if (headPosition.headDetected)
+        if (headPosition.headDetected && enableHeadTracking)
         {
             Vector3 headPositionWorld = new Vector3(
                 (float)headPosition.worldPosX,
@@ -517,41 +521,20 @@ public class G3DCamera
             camera.transform.localPosition = cameraParent.transform.localPosition;
             camera.transform.localRotation = cameraParent.transform.localRotation;
 
-            // eye distance
-            float EyeDistance = eyeSeparation;
+            float cameraOffset = currentView * (eyeSeparation / 2);
 
-            // monitor width in pixel
-            int monitorWidth;
-            lock (shaderLock)
+            float shearFactor = -cameraOffset / focusDistance;
+
+            if (useFocusDistance)
             {
-                monitorWidth = shaderParameters.screenWidth;
+                // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
+                Matrix4x4 shearMatrix = Matrix4x4.identity;
+                shearMatrix[0, 2] = shearFactor;
+                // apply new projection matrix
+                camera.projectionMatrix = camera.projectionMatrix * shearMatrix;
             }
 
-            // calculate eye distance in pixel
-            float StereoViewIPDOffset = currentView * (EyeDistance / 2); // offset for left/right
-
-            // calculate offset for projection matrix
-            float ProjOffset = StereoViewIPDOffset * stereo_depth; // real offset (pixel offset * factor / view size (fullscreen here))
-
-            // calculate adjusted projection matrix
-            Matrix4x4 tempMatrix = camera.projectionMatrix; // original matrix
-            tempMatrix[0, 2] = tempMatrix[0, 2] + ProjOffset; // apply offset
-
-            // calculate offset for view matrix
-            float ViewOffset = 0.0f;
-            float FC = tempMatrix[2, 2];
-            float FD = tempMatrix[2, 3];
-            if ((Math.Abs(tempMatrix[0, 0]) > 1E-3) && (Math.Abs(FC - 1) > 1E-4)) // projection matrix is valid and calculation possible
-            {
-                float Near = ((FC + 1) / (FC - 1) - 1) / 2 * FD; // near of current projection matrix
-                float DataWidth = 2 * Near / tempMatrix[0, 0]; // width
-                ViewOffset = (float)StereoViewIPDOffset * DataWidth * stereo_depth;
-            }
-
-            // apply new projection matrix
-            camera.projectionMatrix = tempMatrix;
-
-            camera.transform.localPosition = new Vector3(ViewOffset, 0, 0);
+            camera.transform.localPosition = new Vector3(cameraOffset, 0, 0);
 
             camera.gameObject.SetActive(true);
         }
@@ -614,6 +597,22 @@ public class G3DCamera
         {
             renderAutostereo = !renderAutostereo;
         }
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            showTestFrame = !showTestFrame;
+        }
+        if (Input.GetKeyDown(KeyCode.H))
+        {
+            enableHeadTracking = !enableHeadTracking;
+        }
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+            eyeSeparation -= 0.01f;
+        }
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            eyeSeparation += 0.01f;
+        }
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -655,17 +654,17 @@ public class G3DCamera
         double worldPosZ
     )
     {
-        // lock (headPosLock)
-        // {
-        //     headPosition.headDetected = headDetected;
-        //     headPosition.imagePosIsValid = imagePosIsValid;
-        //     // devide by 1000 to get meters
-        //     headPosition.imagePosX = imagePosX / 1000;
-        //     headPosition.imagePosY = imagePosY / 1000;
-        //     headPosition.worldPosX = worldPosX / 1000;
-        //     headPosition.worldPosY = worldPosY / 1000;
-        //     headPosition.worldPosZ = worldPosZ / 1000;
-        // }
+        lock (headPosLock)
+        {
+            headPosition.headDetected = headDetected;
+            headPosition.imagePosIsValid = imagePosIsValid;
+            // devide by 1000 to get meters
+            headPosition.imagePosX = imagePosX / 1000;
+            headPosition.imagePosY = imagePosY / 1000;
+            headPosition.worldPosX = -worldPosX / 1000;
+            headPosition.worldPosY = worldPosY / 1000;
+            headPosition.worldPosZ = -worldPosZ / 1000;
+        }
     }
 
     void ITNewErrorMessageCallback.NewErrorMessageCallback(
@@ -750,17 +749,20 @@ public class G3DCamera
     {
         if (showGizmos)
         {
-            // draw stereo depth
-            Gizmos.color = new Color(0, 1, 0, 0.75F);
-            Vector3 position = transform.position + transform.forward * stereo_depth;
-            Gizmos.DrawSphere(position, gizmoSize);
-
             // draw eye separation
             Gizmos.color = new Color(0, 0, 1, 0.75F);
-            position = transform.position + transform.right * eyeSeparation / 2;
+            Vector3 position = transform.position + transform.right * eyeSeparation / 2;
             Gizmos.DrawSphere(position, 0.3f * gizmoSize);
             position = transform.position - transform.right * eyeSeparation / 2;
             Gizmos.DrawSphere(position, 0.5f * gizmoSize);
+
+            if (useFocusDistance)
+            {
+                // draw focus distance
+                Gizmos.color = new Color(0, 1, 0, 0.75F);
+                position = transform.position + transform.forward * focusDistance;
+                Gizmos.DrawSphere(position, 0.5f * gizmoSize);
+            }
         }
     }
 #endif
