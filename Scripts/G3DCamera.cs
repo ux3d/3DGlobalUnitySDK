@@ -217,7 +217,7 @@ public class G3DCamera
             angleRatioNumerator = Shader.PropertyToID("zwinkel"),
             angleRatioDenominator = Shader.PropertyToID("nwinkel"),
             leftLensOrientation = Shader.PropertyToID("isleft"),
-            // BGRPixelLayout = Shader.PropertyToID("windowPosition"),
+            BGRPixelLayout = Shader.PropertyToID("isBGR"),
             mstart = Shader.PropertyToID("mstart"),
             showTestFrame = Shader.PropertyToID("test"),
             showTestStripe = Shader.PropertyToID("stest"),
@@ -436,6 +436,7 @@ public class G3DCamera
             material?.SetInt(shaderHandles.bre, shaderParameters.bre);
             material?.SetInt(shaderHandles.zCorrectionValue, shaderParameters.zCorrectionValue);
             material?.SetInt(shaderHandles.zCompensationValue, shaderParameters.zCompensationValue);
+            material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
         }
     }
 

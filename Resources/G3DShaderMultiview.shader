@@ -4,7 +4,7 @@ Shader "G3D/Autostereo"
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch
 
-    int  viewcount;      // Anzahl nativer Views
+    int  hqViewCount;      // Anzahl nativer Views
     int  zwinkel;        // Winkelzähler
     int  nwinkel;        // Winkelnenner
     int  isleft;         // links(1) oder rechts(0) geneigtes Lentikular
@@ -14,7 +14,7 @@ Shader "G3D/Autostereo"
     int  track;          // Trackingshift
     int  mstart;         // Viewshift permanent Offset
     int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
-    int  hqview;         // hqViewCount
+    int  hqview;         // hqhqViewCount
     int  hviews1;          // hqview - 1
     int  hviews2;       // hqview / 2
 
@@ -34,7 +34,7 @@ Shader "G3D/Autostereo"
 
     // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
     // to do this we need the actual viewport height
-    int viewportHeight;
+    int viewportHeight; 
 
     // unused parameter -> only here for so that this shader overlaps with the multiview shader
     int isBGR; // 0 = RGB, 1 = BGR
@@ -50,6 +50,34 @@ Shader "G3D/Autostereo"
     SamplerState samplertexture0;
     Texture2D texture1;
     SamplerState samplertexture1;
+    Texture2D texture2;
+    SamplerState samplertexture2;
+    Texture2D texture3;
+    SamplerState samplertexture3;
+    Texture2D texture4;
+    SamplerState samplertexture4;
+    Texture2D texture5;
+    SamplerState samplertexture5;
+    Texture2D texture6;
+    SamplerState samplertexture6;
+    Texture2D texture7;
+    SamplerState samplertexture7;
+    Texture2D texture8;
+    SamplerState samplertexture8;
+    Texture2D texture9;
+    SamplerState samplertexture9;
+    Texture2D texture10;
+    SamplerState samplertexture10;
+    Texture2D texture11;
+    SamplerState samplertexture11;
+    Texture2D texture12;
+    SamplerState samplertexture12;
+    Texture2D texture13;
+    SamplerState samplertexture13;
+    Texture2D texture14;
+    SamplerState samplertexture14;
+    Texture2D texture15;
+    SamplerState samplertexture15;
 
     float4 sampleFromView(int viewIndex, float2 uv) {
         switch (viewIndex) {
@@ -57,9 +85,41 @@ Shader "G3D/Autostereo"
             return texture0.Sample(samplertexture0, uv);
         case 1:
             return texture1.Sample(samplertexture1, uv);
+        case 2:
+            return texture2.Sample(samplertexture2, uv);
+        case 3:
+            return texture3.Sample(samplertexture3, uv);
+        case 4:
+            return texture4.Sample(samplertexture4, uv);
+        case 5:
+            return texture5.Sample(samplertexture5, uv);
+        case 6:
+            return texture6.Sample(samplertexture6, uv);
+        case 7:
+            return texture7.Sample(samplertexture7, uv);
+        case 8:
+            return texture8.Sample(samplertexture8, uv);
+        case 9: 
+            return texture9.Sample(samplertexture9, uv);
+        case 10:
+            return texture10.Sample(samplertexture10, uv);
+        case 11:
+            return texture11.Sample(samplertexture11, uv);
+        case 12:
+            return texture12.Sample(samplertexture12, uv);
+        case 13:
+            return texture13.Sample(samplertexture13, uv);
+        case 14:
+            return texture14.Sample(samplertexture14, uv);
+        case 15:
+            return texture15.Sample(samplertexture15, uv);
         }
 
         return float4(0, 0, 0, 0);
+    }
+
+    int3 mod_i(int3 v, int m) {
+        return v - (v / m) * m;
     }
 
     float4 frag (v2f i) : SV_Target
@@ -69,85 +129,68 @@ Shader "G3D/Autostereo"
         // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
         // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
         int  yScreenCoords = int(i.screenPos.y) + v_pos_y;     // transform y position from viewport to screen coordinates
+
         if (isleft == 0) {
             yScreenCoords = s_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
         }
-        int  yw = int(yScreenCoords * zwinkel) / nwinkel;        // Winkelberechnung für die Renderberechnung
 
-        //Start native Renderberechnung
-        int  sr = (xScreenCoords * 3) + yw;
-        int3 xwert = int3(sr + 0, sr + 1, sr + 2) % viewcount;                              // #### viewcount->lt03
-        // int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), viewcount);                              // #### viewcount->lt03
+        int hqViewCount = hqViewCount * nwinkel;
+        /*
+        1) startIndex
+            each horizontal line starts with a different view index:
+                (y * uAngleCounter) % max_views
+                e.g.: uAngleCounter = 4 and max_views = 35: 34,3,7,11,15,19,23,27,31,0,4,...
+            depending on the screen, this view index will increase or decrease in its modulo loop, therefore:
+                uDirection (either -1 or 1)
+            handling negative modulo mod(a,b) means we need to add b IF the result is negative, but we dont want that IF, therefore:
+                + y * hqViewCount
+            each step on the horizontal line in x increases the startIndex by wn (on a subpixel level), therefore:
+                startIndex + xScreenCoords * 3 * unwinkel
+        */
+        int startIndex = yScreenCoords * angleCounter * (direction * -1) + yScreenCoords * hqViewCount + xScreenCoords * 3 * nwinkel;
 
-        // Start HQ-Renderberechnung inklusive Z-Korrektur
+        /*
+        2) viewIndex
+            in a shader we operate on a pixel level tho, so we need to add wn:
+                + float3(0, unwinkel, 2*unwinkel)
+            offsets from the UI or headtracking can factor into this as well:
+                view_offset + view_offset_headtracking
+            of course, this value will be out of range for our views, so we need a modulo operation that can only behave as expected
+                glsl_mod(float3, float) = f - floor(f / m) * m;
+        */
+        ivec3 viewIndices = ivec3(startIndex, startIndex, startIndex);
+        viewIndices += ivec3(0, nwinkel, nwinkel + nwinkel);
+        viewIndices += viewOffset;
+        viewIndices += viewOffsetHeadtracking;
+        viewIndices = mod_i(viewIndices, hqViewCount);
 
-        int  hqwert = ((yScreenCoords % nwinkel) * zwinkel) % nwinkel;
-        // int  hqwert = modg3d((modg3d(yScreenCoords, nwinkel) * zwinkel), nwinkel);
-        if (isleft == 1)
-        {
-            hqwert = (nwinkel - 1) - hqwert;
-        }
-        if (hqwert < 0)
-        {
-            hqwert = hqwert * -1;
-        }
-        int zwert = 0;
-        if (tvx != 0) {
-            zwert = (sr / tvx) - zkom;
-        }
-
-        int tr2d = 0;
-        if (track < 0) {
-            tr2d = track;
-        }
-
-        int3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
-        xwert = hviews1 - (mtmp % hqview);
-        // xwert = hviews1 - modiv3g3d(mtmp, hqview);
-
-        // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
-        float4 colRight = sampleFromView(0, i.uv);             // Pixeldaten rechtes Bild
-        float4 colLeft = sampleFromView(1, i.uv);              // Pixeldaten linkes Bild
-        float cor=0.0, cog=0.0, cob=0.0;
-
-        
-        if ( (xwert.r >= bls) && (xwert.r <= ble) )  cor = colRight.r ;
-        if ( (xwert.g >= bls) && (xwert.g <= ble) )  cog = colRight.g ;
-        if ( (xwert.b >= bls) && (xwert.b <= ble) )  cob = colRight.b ;
-        if ( (xwert.r >= brs) && (xwert.r <= bre) )  cor = colLeft.r ;
-        if ( (xwert.g >= brs) && (xwert.g <= bre) )  cog = colLeft.g ;
-        if ( (xwert.b >= brs) && (xwert.b <= bre) )  cob = colLeft.b ;
-        
-        float4 color = float4(cor, cog, cob, 1.0); // gerenderte Pixeldaten
-        if (0 == tvx) {
-            color = colRight;
-        }
-        
-        if (tr2d == -1) {
-            color = colRight;
-        }
-        if (tr2d == -2) {
-            color = colLeft;
-        }
-
-        // Testbilderzeugung Rot Schwarz
-        if (test==1)  {  // Testbild ein nativer View-Rot(rechtes Auge) zu View-Grün(linkes Auge) die Views befinden sich direkt am Kanalübergang!
-            color = float4(0.0, 0.0, 0.0, 1.0);
-            if ((xwert.r > (hviews2 - testgap)) && (xwert.r <= hviews2)) color.r = 1.0 ;
-            if ((xwert.g > hviews2)             && (xwert.g < (hviews2 + testgap)) ) color.g = 1.0 ;
-        }
-
-        // Teststreifen Rot Schwarz volle Kanäle ohne Blackmatrix !
-        if (stest == 1) {
-            color = float4(0.0, 0.0, 0.0, 1.0);
-            if (xwert.r <= hviews2) {
-                color = float4(1.0, 0.0, 0.0, 1.0);     // rechtes Auge sieht einen roten Streifen
+        //use indices to sample correct subpixels
+        pixel = vec4(0.0, 0.0, 0.0, 1.0);
+        int viewIndex = 0;
+        for (int channel = 0; channel < 3; channel++) {
+            if(bgr != 0) {
+                viewIndex = viewIndices[2 - channel];
+            } else {
+                viewIndex = viewIndices[channel];
             }
-            if (xwert.g > hviews2) {
-                color = float4(0.0, 1.0, 0.0, 1.0);
+
+            if (testmode != 0) {
+                if (viewIndex == 0) {
+                    pixel[channel] = 1.0;
+                }
+                continue;
             }
-        }  // linkes Auge sieht einen gruenen Streifen
+            
+            int textureIndex = int(textureLod(indexmap, vec2(viewIndex, 0), 0).r); //texture index according to the configured index map
+            if (textureIndex == 250) {
+                continue; //black, which is what we started with
+            }
+
+            pixel[channel] = texture(tex, vec3(uv, textureIndex))[channel];
+        }
+
         
+        float4 color = float4(1.0, 0.0, 0.0, 1.0); // gerenderte Pixeldaten
         return color;
     }
     ENDHLSL
