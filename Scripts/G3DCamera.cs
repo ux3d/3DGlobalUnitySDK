@@ -94,6 +94,8 @@ public class G3DCamera
     [Range(1, 16)]
     public int cameraCount = 2;
 
+    public bool useMultiview = false;
+
     [Tooltip(
         "The distance between the two eyes in meters. This value is used to calculate the stereo effect."
     )]
@@ -333,7 +335,14 @@ public class G3DCamera
 
     private void reinitializeShader()
     {
-        material = new Material(Shader.Find("G3D/Autostereo"));
+        if (useMultiview)
+        {
+            material = new Material(Shader.Find("G3D/AutostereoMultiview"));
+        }
+        else
+        {
+            material = new Material(Shader.Find("G3D/Autostereo"));
+        }
     }
 
 #if URP
