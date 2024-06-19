@@ -1,4 +1,4 @@
-Shader "G3D/Autostereo"
+Shader "G3D/AutostereoMultiview"
 {
     HLSLINCLUDE
     #pragma target 4.5
@@ -134,63 +134,92 @@ Shader "G3D/Autostereo"
             yScreenCoords = s_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
         }
 
-        int hqViewCount = hqViewCount * nwinkel;
+        int calculatedViewCount = hqViewCount * nwinkel;
         /*
         1) startIndex
             each horizontal line starts with a different view index:
-                (y * uAngleCounter) % max_views
-                e.g.: uAngleCounter = 4 and max_views = 35: 34,3,7,11,15,19,23,27,31,0,4,...
+                (y * uzwinkel) % max_views
+                e.g.: uzwinkel = 4 and max_views = 35: 34,3,7,11,15,19,23,27,31,0,4,...
             depending on the screen, this view index will increase or decrease in its modulo loop, therefore:
                 uDirection (either -1 or 1)
             handling negative modulo mod(a,b) means we need to add b IF the result is negative, but we dont want that IF, therefore:
-                + y * hqViewCount
+                + y * calculatedViewCount
             each step on the horizontal line in x increases the startIndex by wn (on a subpixel level), therefore:
                 startIndex + xScreenCoords * 3 * unwinkel
         */
-        int startIndex = yScreenCoords * angleCounter * (direction * -1) + yScreenCoords * hqViewCount + xScreenCoords * 3 * nwinkel;
+        // shift direction from 0 or 1 to -1 or 1
+        int direction = (isleft + 1) * 2 - 3;
+        int startIndex = yScreenCoords * zwinkel * (direction * -1) +
+            yScreenCoords * calculatedViewCount + xScreenCoords * 3 * nwinkel;
 
         /*
         2) viewIndex
-            in a shader we operate on a pixel level tho, so we need to add wn:
+            in a shader we operate on a color level tho, so we need to add wn:
                 + float3(0, unwinkel, 2*unwinkel)
             offsets from the UI or headtracking can factor into this as well:
                 view_offset + view_offset_headtracking
             of course, this value will be out of range for our views, so we need a modulo operation that can only behave as expected
                 glsl_mod(float3, float) = f - floor(f / m) * m;
         */
-        ivec3 viewIndices = ivec3(startIndex, startIndex, startIndex);
-        viewIndices += ivec3(0, nwinkel, nwinkel + nwinkel);
-        viewIndices += viewOffset;
-        viewIndices += viewOffsetHeadtracking;
+        int3 viewIndices = int3(startIndex, startIndex, startIndex);
+        viewIndices += int3(0, nwinkel, nwinkel + nwinkel);
+        // viewIndices += viewOffset;
+        // This parameter always seems to be 0, so we can ignore this line
+        // viewIndices += viewOffsetHeadtracking;
         viewIndices = mod_i(viewIndices, hqViewCount);
 
         //use indices to sample correct subpixels
-        pixel = vec4(0.0, 0.0, 0.0, 1.0);
+        float4 color = float4(0.0, 0.0, 0.0, 1.0);
         int viewIndex = 0;
-        for (int channel = 0; channel < 3; channel++) {
-            if(bgr != 0) {
-                viewIndex = viewIndices[2 - channel];
-            } else {
-                viewIndex = viewIndices[channel];
-            }
+        // for (int channel = 0; channel < 3; channel++) {
+        //     if(isBGR != 0) {
+        //         viewIndex = viewIndices[2 - channel];
+        //     } else {
+        //         viewIndex = viewIndices[channel];
+        //     }
 
-            if (testmode != 0) {
-                if (viewIndex == 0) {
-                    pixel[channel] = 1.0;
-                }
-                continue;
-            }
+        //     if (test != 0) {
+        //         if (viewIndex == 0) {
+        //             color[channel] = 1.0;
+        //         }
+        //         continue;
+        //     }
             
-            int textureIndex = int(textureLod(indexmap, vec2(viewIndex, 0), 0).r); //texture index according to the configured index map
-            if (textureIndex == 250) {
-                continue; //black, which is what we started with
-            }
+        //     color[channel] = sampleFromView(viewIndex, i.uv)[channel];
+        // }
 
-            pixel[channel] = texture(tex, vec3(uv, textureIndex))[channel];
+        // handle r channel
+        if(isBGR != 0) {
+            viewIndex = viewIndices[2];
+        } else {
+            viewIndex = viewIndices[0];
         }
 
+        if (test != 0) {
+            if (viewIndex == 0) {
+                color[0] = 1.0;
+            }
+        } else {
+            color.x = sampleFromView(viewIndex, i.uv).x;
+        }
         
-        float4 color = float4(1.0, 0.0, 0.0, 1.0); // gerenderte Pixeldaten
+
+        // handle g channel
+        if(isBGR != 0) {
+            viewIndex = viewIndices[1];
+        } else {
+            viewIndex = viewIndices[1];
+        }
+
+        if (test != 0) {
+            if (viewIndex == 0) {
+                color[1] = 1.0;
+            }
+        } else {
+            color.y = sampleFromView(viewIndex, i.uv).y;
+        }
+        
+        
         return color;
     }
     ENDHLSL

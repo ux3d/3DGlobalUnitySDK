@@ -91,8 +91,8 @@ public class G3DCamera
     [Tooltip(
         "The amount of used cameras. The maximum amount of cameras is 16. Two corresponds to a stereo setup."
     )]
-    [Range(1, 2)]
-    private int cameraCount = 2;
+    [Range(1, 16)]
+    public int cameraCount = 2;
 
     [Tooltip(
         "The distance between the two eyes in meters. This value is used to calculate the stereo effect."
@@ -105,7 +105,7 @@ public class G3DCamera
     [Min(0.0000001f)]
     public float focusDistance = 2.3f;
 
-    private const int MAX_CAMERAS = 2; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
+    private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
     [Range(1.0f, 100.0f)]
@@ -748,22 +748,34 @@ public class G3DCamera
 #if UNITY_EDITOR
     void OnDrawGizmos()
     {
-        if (showGizmos)
+        if (!showGizmos)
         {
-            // draw eye separation
-            Gizmos.color = new Color(0, 0, 1, 0.75F);
-            Vector3 position = transform.position + transform.right * eyeSeparation / 2;
-            Gizmos.DrawSphere(position, 0.3f * gizmoSize);
-            position = transform.position - transform.right * eyeSeparation / 2;
-            Gizmos.DrawSphere(position, 0.5f * gizmoSize);
+            return;
+        }
 
-            if (useFocusDistance)
+        Vector3 position;
+        // draw eye separation
+        Gizmos.color = new Color(0, 0, 1, 0.75F);
+        for (int i = 0; i < cameraCount; i++)
+        {
+            int currentView = -cameraCount / 2 + i;
+            if (cameraCount % 2 == 0 && currentView >= 0)
             {
-                // draw focus distance
-                Gizmos.color = new Color(0, 1, 0, 0.75F);
-                position = transform.position + transform.forward * focusDistance;
-                Gizmos.DrawSphere(position, 0.5f * gizmoSize);
+                currentView += 1;
             }
+
+
+            float cameraOffset = currentView * (eyeSeparation / 2);
+            position = transform.position + transform.right * cameraOffset;
+            Gizmos.DrawSphere(position, 0.3f * gizmoSize);
+        }
+
+        if (useFocusDistance)
+        {
+            // draw focus distance
+            Gizmos.color = new Color(0, 1, 0, 0.75F);
+            position = transform.position + transform.forward * focusDistance;
+            Gizmos.DrawSphere(position, 0.5f * gizmoSize);
         }
     }
 #endif
