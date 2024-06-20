@@ -4,7 +4,7 @@ Shader "G3D/AutostereoMultiview"
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch
 
-    int  hqViewCount;      // Anzahl nativer Views
+    int  nativeViewCount;      // Anzahl nativer Views
     int  zwinkel;        // Winkelzähler
     int  nwinkel;        // Winkelnenner
     int  isleft;         // links(1) oder rechts(0) geneigtes Lentikular
@@ -134,7 +134,7 @@ Shader "G3D/AutostereoMultiview"
             yScreenCoords = s_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
         }
 
-        int calculatedViewCount = hqViewCount * nwinkel;
+        int calculatedViewCount = nativeViewCount * nwinkel;
         /*
         1) startIndex
             each horizontal line starts with a different view index:
@@ -166,7 +166,7 @@ Shader "G3D/AutostereoMultiview"
         // viewIndices += viewOffset;
         // This parameter always seems to be 0, so we can ignore this line
         // viewIndices += viewOffsetHeadtracking;
-        viewIndices = mod_i(viewIndices, hqViewCount);
+        viewIndices = mod_i(viewIndices, calculatedViewCount);
 
         //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);

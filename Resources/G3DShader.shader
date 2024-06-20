@@ -4,7 +4,7 @@ Shader "G3D/Autostereo"
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch
 
-    int  viewcount;      // Anzahl nativer Views
+    int  nativeViewCount;      // Anzahl nativer Views
     int  zwinkel;        // Winkelzähler
     int  nwinkel;        // Winkelnenner
     int  isleft;         // links(1) oder rechts(0) geneigtes Lentikular
@@ -76,8 +76,8 @@ Shader "G3D/Autostereo"
 
         //Start native Renderberechnung
         int  sr = (xScreenCoords * 3) + yw;
-        int3 xwert = int3(sr + 0, sr + 1, sr + 2) % viewcount;                              // #### viewcount->lt03
-        // int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), viewcount);                              // #### viewcount->lt03
+        int3 xwert = int3(sr + 0, sr + 1, sr + 2) % nativeViewCount;                              // #### nativeViewCount->lt03
+        // int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), nativeViewCount);                              // #### nativeViewCount->lt03
 
         // Start HQ-Renderberechnung inklusive Z-Korrektur
 

@@ -215,7 +215,7 @@ public class G3DCamera
             bottomViewportPosition = Shader.PropertyToID("v_pos_y"),
             screenWidth = Shader.PropertyToID("s_width"),
             screenHeight = Shader.PropertyToID("s_height"),
-            nativeViewCount = Shader.PropertyToID("viewcount"),
+            nativeViewCount = Shader.PropertyToID("nativeViewCount"),
             angleRatioNumerator = Shader.PropertyToID("zwinkel"),
             angleRatioDenominator = Shader.PropertyToID("nwinkel"),
             leftLensOrientation = Shader.PropertyToID("isleft"),
