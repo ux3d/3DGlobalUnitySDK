@@ -132,7 +132,7 @@ public class G3DCamera
     public bool showTestFrame = false;
     public bool showTestStripes = false;
 
-    public bool enableHeadTracking = false;
+    public bool enableDioramaEffect = false;
 
     [Tooltip(
         "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
@@ -179,6 +179,8 @@ public class G3DCamera
     private Vector2Int cachedWindowPosition;
     private Vector2Int cachedWindowSize;
     private int cachedCameraCount;
+
+    private Vector3 startFrustumCenter;
 
     #endregion
 
@@ -264,6 +266,8 @@ public class G3DCamera
 #if URP
         customPass = new G3DUrpScriptableRenderPass(material);
 #endif
+        startFrustumCenter =
+            mainCamera.transform.position + mainCamera.transform.forward * focusDistance;
 
         updateCameras();
 
@@ -498,7 +502,7 @@ public class G3DCamera
     void updateCameras()
     {
         HeadPosition headPosition = getHeadPosition();
-        if (headPosition.headDetected && enableHeadTracking)
+        if (headPosition.headDetected && enableDioramaEffect)
         {
             Vector3 headPositionWorld = new Vector3(
                 (float)headPosition.worldPosX,
@@ -507,6 +511,7 @@ public class G3DCamera
             );
 
             cameraParent.transform.localPosition = new Vector3(0, 0, 0) + headPositionWorld;
+            cameraParent.transform.LookAt(startFrustumCenter);
         }
         else
         {
@@ -613,7 +618,7 @@ public class G3DCamera
         }
         if (Input.GetKeyDown(KeyCode.H))
         {
-            enableHeadTracking = !enableHeadTracking;
+            enableDioramaEffect = !enableDioramaEffect;
         }
         if (Input.GetKeyDown(KeyCode.K))
         {
@@ -666,14 +671,16 @@ public class G3DCamera
     {
         lock (headPosLock)
         {
+            int factor = 1000;
+
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
             // devide by 1000 to get meters
-            headPosition.imagePosX = imagePosX / 1000;
-            headPosition.imagePosY = imagePosY / 1000;
-            headPosition.worldPosX = -worldPosX / 1000;
-            headPosition.worldPosY = worldPosY / 1000;
-            headPosition.worldPosZ = -worldPosZ / 1000;
+            headPosition.imagePosX = imagePosX / factor;
+            headPosition.imagePosY = imagePosY / factor;
+            headPosition.worldPosX = -worldPosX / factor;
+            headPosition.worldPosY = worldPosY / factor;
+            headPosition.worldPosZ = -worldPosZ / factor;
         }
     }
 
@@ -772,7 +779,6 @@ public class G3DCamera
             {
                 currentView += 1;
             }
-
 
             float cameraOffset = currentView * (eyeSeparation / 2);
             position = transform.position + transform.right * cameraOffset;
