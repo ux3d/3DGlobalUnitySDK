@@ -106,28 +106,28 @@ Shader "G3D/Autostereo"
         // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
-        float4 colRight = sampleFromView(0, i.uv);             // Pixeldaten rechtes Bild
-        float4 colLeft = sampleFromView(1, i.uv);              // Pixeldaten linkes Bild
+        float4 colorLeft = sampleFromView(0, i.uv);             // Pixeldaten rechtes Bild
+        float4 colorRight = sampleFromView(1, i.uv);              // Pixeldaten linkes Bild
         float cor=0.0, cog=0.0, cob=0.0;
 
         
-        if ( (xwert.r >= bls) && (xwert.r <= ble) )  cor = colRight.r ;
-        if ( (xwert.g >= bls) && (xwert.g <= ble) )  cog = colRight.g ;
-        if ( (xwert.b >= bls) && (xwert.b <= ble) )  cob = colRight.b ;
-        if ( (xwert.r >= brs) && (xwert.r <= bre) )  cor = colLeft.r ;
-        if ( (xwert.g >= brs) && (xwert.g <= bre) )  cog = colLeft.g ;
-        if ( (xwert.b >= brs) && (xwert.b <= bre) )  cob = colLeft.b ;
+        if ( (xwert.r >= bls) && (xwert.r <= ble) )  cor = colorLeft.r ;
+        if ( (xwert.g >= bls) && (xwert.g <= ble) )  cog = colorLeft.g ;
+        if ( (xwert.b >= bls) && (xwert.b <= ble) )  cob = colorLeft.b ;
+        if ( (xwert.r >= brs) && (xwert.r <= bre) )  cor = colorRight.r ;
+        if ( (xwert.g >= brs) && (xwert.g <= bre) )  cog = colorRight.g ;
+        if ( (xwert.b >= brs) && (xwert.b <= bre) )  cob = colorRight.b ;
         
         float4 color = float4(cor, cog, cob, 1.0); // gerenderte Pixeldaten
         if (0 == tvx) {
-            color = colRight;
+            color = colorLeft;
         }
         
         if (tr2d == -1) {
-            color = colRight;
+            color = colorLeft;
         }
         if (tr2d == -2) {
-            color = colLeft;
+            color = colorRight;
         }
 
         // Testbilderzeugung Rot Schwarz

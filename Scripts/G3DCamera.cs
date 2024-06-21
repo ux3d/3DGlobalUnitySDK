@@ -112,6 +112,8 @@ public class G3DCamera
 
     [Range(1.0f, 100.0f)]
     public float resolution = 100.0f;
+
+    public float headMovementScaleFactor = 1000.0f;
     #endregion
 
     #region Device settings
@@ -181,6 +183,12 @@ public class G3DCamera
     private int cachedCameraCount;
 
     private Vector3 startFrustumCenter;
+
+    // half of the width of field of view at start at focus distance
+    private float halfCameraWidthAtStart = 1.0f;
+
+    private bool firstHeadPositionInitialized = false;
+    private Vector3 firstHeadPosition;
 
     #endregion
 
@@ -268,6 +276,9 @@ public class G3DCamera
 #endif
         startFrustumCenter =
             mainCamera.transform.position + mainCamera.transform.forward * focusDistance;
+
+        halfCameraWidthAtStart =
+            Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;
 
         updateCameras();
 
@@ -504,14 +515,22 @@ public class G3DCamera
         HeadPosition headPosition = getHeadPosition();
         if (headPosition.headDetected && enableDioramaEffect)
         {
-            Vector3 headPositionWorld = new Vector3(
-                (float)headPosition.worldPosX,
-                (float)headPosition.worldPosY,
-                (float)headPosition.worldPosZ
-            );
+            if (firstHeadPositionInitialized)
+            {
+                Vector3 headPositionWorld = new Vector3(
+                    (float)headPosition.worldPosX,
+                    (float)headPosition.worldPosY,
+                    (float)headPosition.worldPosZ
+                );
 
-            cameraParent.transform.localPosition = new Vector3(0, 0, 0) + headPositionWorld;
-            cameraParent.transform.LookAt(startFrustumCenter);
+                Vector3 headPosOffset = headPositionWorld - firstHeadPosition;
+
+                cameraParent.transform.localPosition = headPosOffset;
+                cameraParent.transform.LookAt(startFrustumCenter);
+            }
+
+            mainCamera.fieldOfView =
+                2 * Mathf.Atan(halfCameraWidthAtStart / focusDistance) * Mathf.Rad2Deg;
         }
         else
         {
@@ -659,6 +678,16 @@ public class G3DCamera
     }
 
     #region callback handling
+    private bool isVector3NotNull(double x, double y, double z)
+    {
+        if (x == 0 && y == 0 && z == 0)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     void ITNewHeadPositionCallback.NewHeadPositionCallback(
         bool headDetected,
         bool imagePosIsValid,
@@ -671,16 +700,24 @@ public class G3DCamera
     {
         lock (headPosLock)
         {
-            int factor = 1000;
-
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
             // devide by 1000 to get meters
-            headPosition.imagePosX = imagePosX / factor;
-            headPosition.imagePosY = imagePosY / factor;
-            headPosition.worldPosX = -worldPosX / factor;
-            headPosition.worldPosY = worldPosY / factor;
-            headPosition.worldPosZ = -worldPosZ / factor;
+            headPosition.imagePosX = imagePosX / (int)headMovementScaleFactor;
+            headPosition.imagePosY = imagePosY / (int)headMovementScaleFactor;
+            headPosition.worldPosX = -worldPosX / headMovementScaleFactor;
+            headPosition.worldPosY = worldPosY / headMovementScaleFactor;
+            headPosition.worldPosZ = -worldPosZ / headMovementScaleFactor;
+
+            if (!firstHeadPositionInitialized && isVector3NotNull(worldPosX, worldPosY, worldPosZ))
+            {
+                firstHeadPosition = new Vector3(
+                    (float)headPosition.worldPosX,
+                    (float)headPosition.worldPosY,
+                    (float)headPosition.worldPosZ
+                );
+                firstHeadPositionInitialized = true;
+            }
         }
     }
 
