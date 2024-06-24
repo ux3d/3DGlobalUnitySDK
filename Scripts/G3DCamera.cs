@@ -524,7 +524,8 @@ public class G3DCamera
     void updateCameras()
     {
         HeadPosition headPosition = getHeadPosition();
-        float cameraOffset = 0.0f;
+        float horizontalOffset = 0.0f;
+        float verticalOffset = 0.0f;
         if (headPosition.headDetected && enableDioramaEffect)
         {
             if (firstHeadPositionInitialized)
@@ -535,12 +536,11 @@ public class G3DCamera
                     (float)headPosition.worldPosZ
                 );
 
-                Vector3 headPosOffset = headPositionWorld - firstHeadPosition;
-
-                cameraParent.transform.localPosition = headPosOffset;
+                cameraParent.transform.localPosition = headPositionWorld;
                 // cameraParent.transform.LookAt(startFrustumCenter);
 
-                cameraOffset = headPosOffset.x;
+                horizontalOffset = headPositionWorld.x;
+                verticalOffset = headPositionWorld.y;
             }
 
             mainCamera.fieldOfView =
@@ -571,13 +571,15 @@ public class G3DCamera
 
             float localCameraOffset = currentView * (eyeSeparation / 2);
 
-            float shearFactor = -(localCameraOffset + cameraOffset) / focusDistance;
+            float shearFactor = -(localCameraOffset + horizontalOffset) / focusDistance;
+            float vertObl = -verticalOffset / focusDistance;
 
             if (useFocusDistance)
             {
                 // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
                 Matrix4x4 shearMatrix = Matrix4x4.identity;
                 shearMatrix[0, 2] = shearFactor;
+                shearMatrix[1, 2] = vertObl;
                 // apply new projection matrix
                 camera.projectionMatrix = camera.projectionMatrix * shearMatrix;
             }
