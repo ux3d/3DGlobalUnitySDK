@@ -84,6 +84,11 @@ public class G3DCamera
     )]
     public string configPath = "";
     public string configFileName = "";
+
+    [Tooltip(
+        "If set to true, the library will look for the calibration and config files in a \"config\" named subdirectory of the directory where the executable is located."
+    )]
+    public bool useExecDirectory = false;
     #endregion
 
     #region 3D Effect settings
@@ -298,6 +303,12 @@ public class G3DCamera
 
     private void initLibrary()
     {
+        if (useExecDirectory)
+        {
+            configPath = Application.dataPath + "/config";
+            calibrationPath = Application.dataPath + "/config";
+        }
+
         libInterface = LibInterface.Instance;
         libInterface.init(
             calibrationPath,
@@ -513,6 +524,7 @@ public class G3DCamera
     void updateCameras()
     {
         HeadPosition headPosition = getHeadPosition();
+        float cameraOffset = 0.0f;
         if (headPosition.headDetected && enableDioramaEffect)
         {
             if (firstHeadPositionInitialized)
@@ -526,7 +538,9 @@ public class G3DCamera
                 Vector3 headPosOffset = headPositionWorld - firstHeadPosition;
 
                 cameraParent.transform.localPosition = headPosOffset;
-                cameraParent.transform.LookAt(startFrustumCenter);
+                // cameraParent.transform.LookAt(startFrustumCenter);
+
+                cameraOffset = headPosOffset.x;
             }
 
             mainCamera.fieldOfView =
@@ -555,9 +569,9 @@ public class G3DCamera
             camera.transform.localPosition = cameraParent.transform.localPosition;
             camera.transform.localRotation = cameraParent.transform.localRotation;
 
-            float cameraOffset = currentView * (eyeSeparation / 2);
+            float localCameraOffset = currentView * (eyeSeparation / 2);
 
-            float shearFactor = -cameraOffset / focusDistance;
+            float shearFactor = -(localCameraOffset + cameraOffset) / focusDistance;
 
             if (useFocusDistance)
             {
@@ -568,7 +582,7 @@ public class G3DCamera
                 camera.projectionMatrix = camera.projectionMatrix * shearMatrix;
             }
 
-            camera.transform.localPosition = new Vector3(cameraOffset, 0, 0);
+            camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
 
             camera.gameObject.SetActive(true);
         }
@@ -642,6 +656,8 @@ public class G3DCamera
         if (Input.GetKeyDown(KeyCode.K))
         {
             eyeSeparation -= 0.01f;
+            if (eyeSeparation < 0.0f)
+                eyeSeparation = 0.0f;
         }
         if (Input.GetKeyDown(KeyCode.L))
         {
