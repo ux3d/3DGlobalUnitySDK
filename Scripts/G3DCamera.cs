@@ -163,6 +163,7 @@ public class G3DCamera
     /// NEVER use headPosition directly.
     /// </summary>
     private HeadPosition headPosition;
+    private HeadPosition smoothedHeadPosition;
 
     private static object headPosLock = new object();
     private static object shaderLock = new object();
@@ -189,6 +190,8 @@ public class G3DCamera
 
     // half of the width of field of view at start at focus distance
     private float halfCameraWidthAtStart = 1.0f;
+
+    private CircularBuffer<Vector3> headPositions = new CircularBuffer<Vector3>(3);
 
     #endregion
 
@@ -317,6 +320,16 @@ public class G3DCamera
 
         // set initial values
         headPosition = new HeadPosition
+        {
+            headDetected = false,
+            imagePosIsValid = false,
+            imagePosX = 0,
+            imagePosY = 0,
+            worldPosX = 0.0,
+            worldPosY = 0.0,
+            worldPosZ = 0.0
+        };
+        smoothedHeadPosition = new HeadPosition
         {
             headDetected = false,
             imagePosIsValid = false,
@@ -513,10 +526,12 @@ public class G3DCamera
         return false;
     }
 
+    public bool test = false;
+
     // TODO call this every time the head position changed callback fires
     void updateCameras()
     {
-        HeadPosition headPosition = getHeadPosition();
+        HeadPosition headPosition = getSmoothedHeadPosition();
         float horizontalOffset = 0.0f;
         float verticalOffset = 0.0f;
         if (headPosition.headDetected && enableDioramaEffect)
@@ -684,17 +699,21 @@ public class G3DCamera
         }
     }
 
-    #region callback handling
-    private bool isVector3NotNull(double x, double y, double z)
+    /// <summary>
+    /// always use this method to get the smoothed head position.
+    /// NEVER access headPosition directly, as it is updated in a different thread.
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public HeadPosition getSmoothedHeadPosition()
     {
-        if (x == 0 && y == 0 && z == 0)
+        lock (headPosLock)
         {
-            return false;
+            return smoothedHeadPosition;
         }
-
-        return true;
     }
 
+    #region callback handling
     void ITNewHeadPositionCallback.NewHeadPositionCallback(
         bool headDetected,
         bool imagePosIsValid,
@@ -709,12 +728,39 @@ public class G3DCamera
         {
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
-            // devide by 1000 to get meters
+
+            Vector3 headPos = new Vector3(
+                (float)-worldPosX / headMovementScaleFactor,
+                (float)worldPosY / headMovementScaleFactor,
+                (float)-worldPosZ / headMovementScaleFactor
+            );
+
+            headPositions.PushFront(headPos);
+
             headPosition.imagePosX = imagePosX / (int)headMovementScaleFactor;
             headPosition.imagePosY = imagePosY / (int)headMovementScaleFactor;
-            headPosition.worldPosX = -worldPosX / headMovementScaleFactor;
-            headPosition.worldPosY = worldPosY / headMovementScaleFactor;
-            headPosition.worldPosZ = -worldPosZ / headMovementScaleFactor;
+            headPosition.worldPosX = headPos.x;
+            headPosition.worldPosY = headPos.y;
+            headPosition.worldPosZ = headPos.z;
+
+            if (headDetected)
+            {
+                Vector3 smoothedHeadPosVec = new Vector3(0, 0, 0);
+                int divisor = 0;
+                int factor = 3;
+                for (int i = 0; i < headPositions.Size; i++)
+                {
+                    smoothedHeadPosVec += headPositions[i] * factor;
+                    divisor += factor;
+                    factor--;
+                }
+                smoothedHeadPosVec /= divisor;
+                smoothedHeadPosition.worldPosX = smoothedHeadPosVec.x;
+                smoothedHeadPosition.worldPosY = smoothedHeadPosVec.y;
+                smoothedHeadPosition.worldPosZ = smoothedHeadPosVec.z;
+            }
+            smoothedHeadPosition.headDetected = headDetected;
+            smoothedHeadPosition.imagePosIsValid = imagePosIsValid;
         }
     }
 
