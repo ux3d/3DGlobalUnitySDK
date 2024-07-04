@@ -193,6 +193,8 @@ public class G3DCamera
 
     private CircularBuffer<Vector3> headPositions = new CircularBuffer<Vector3>(3);
 
+    private Vector3 focusPlaneCenterAtStart = new Vector3();
+
     #endregion
 
     // TODO Handle viewport resizing/ moving
@@ -290,6 +292,8 @@ public class G3DCamera
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
         cachedCameraCount = cameraCount;
+
+        focusPlaneCenterAtStart = mainCamera.transform.position + mainCamera.transform.forward * focusDistance;
     }
 
     void OnApplicationQuit()
@@ -547,13 +551,17 @@ public class G3DCamera
             horizontalOffset = headPositionWorld.x;
             verticalOffset = headPositionWorld.y;
 
-            mainCamera.fieldOfView =
-                2 * Mathf.Atan(halfCameraWidthAtStart / focusDistance) * Mathf.Rad2Deg;
         }
         else
         {
             cameraParent.transform.localPosition = new Vector3(0, 0, 0);
         }
+
+        float currentFocusDistance = Vector3.Distance(focusPlaneCenterAtStart, cameraParent.transform.position);
+
+        mainCamera.fieldOfView =
+            2 * Mathf.Atan(halfCameraWidthAtStart / currentFocusDistance) * Mathf.Rad2Deg;
+        
 
         //calculate camera positions and matrices
         for (int i = 0; i < cameraCount; i++)
@@ -575,11 +583,12 @@ public class G3DCamera
 
             float localCameraOffset = currentView * (eyeSeparation / 2);
 
-            float shearFactor = -(localCameraOffset + horizontalOffset) / focusDistance;
-            float vertObl = -verticalOffset / focusDistance;
 
             if (useFocusDistance)
             {
+                float shearFactor = -(localCameraOffset + horizontalOffset) / currentFocusDistance;
+                float vertObl = -verticalOffset / currentFocusDistance;
+
                 // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
                 Matrix4x4 shearMatrix = Matrix4x4.identity;
                 shearMatrix[0, 2] = shearFactor;
