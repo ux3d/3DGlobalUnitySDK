@@ -166,7 +166,6 @@ Shader "G3D/AutostereoMultiview"
         int3 viewIndices = int3(startIndex, startIndex, startIndex);
         viewIndices += int3(0, nwinkel, nwinkel + nwinkel);
         viewIndices += viewOffset;
-        // viewIndices += 30;
         // This parameter always seems to be 0, so we can ignore this line
         // viewIndices += viewOffsetHeadtracking;
         viewIndices = mod_i(viewIndices, calculatedViewCount);
