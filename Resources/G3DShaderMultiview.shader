@@ -34,7 +34,9 @@ Shader "G3D/AutostereoMultiview"
 
     // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
     // to do this we need the actual viewport height
-    int viewportHeight; 
+    int viewportHeight;
+    
+    int viewOffset = 0;
 
     // unused parameter -> only here for so that this shader overlaps with the multiview shader
     int isBGR; // 0 = RGB, 1 = BGR
@@ -163,7 +165,8 @@ Shader "G3D/AutostereoMultiview"
         */
         int3 viewIndices = int3(startIndex, startIndex, startIndex);
         viewIndices += int3(0, nwinkel, nwinkel + nwinkel);
-        // viewIndices += viewOffset;
+        viewIndices += viewOffset;
+        // viewIndices += 30;
         // This parameter always seems to be 0, so we can ignore this line
         // viewIndices += viewOffsetHeadtracking;
         viewIndices = mod_i(viewIndices, calculatedViewCount);
@@ -184,6 +187,7 @@ Shader "G3D/AutostereoMultiview"
         //         }
         //         continue;
         //     }
+
             
         //     color[channel] = sampleFromView(viewIndex, i.uv)[channel];
         // }
@@ -210,13 +214,28 @@ Shader "G3D/AutostereoMultiview"
         } else {
             viewIndex = viewIndices[1];
         }
-
+        
         if (test != 0) {
             if (viewIndex == 0) {
                 color[1] = 1.0;
             }
         } else {
             color.y = sampleFromView(viewIndex, i.uv).y;
+        }
+        
+        // handle b channel
+        if(isBGR != 0) {
+            viewIndex = viewIndices[0];
+        } else {
+            viewIndex = viewIndices[2];
+        }
+
+        if (test != 0) {
+            if (viewIndex == 0) {
+                color[2] = 1.0;
+            }
+        } else {
+            color.z = sampleFromView(viewIndex, i.uv).z;
         }
         
         

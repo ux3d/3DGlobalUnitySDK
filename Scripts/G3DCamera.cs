@@ -440,6 +440,9 @@ public class G3DCamera
         material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
     }
 
+    [Range(0, 100)]
+    public int viewOffset = 0;
+
     private void updateShaderParameters()
     {
         lock (shaderLock)
@@ -486,6 +489,9 @@ public class G3DCamera
             material?.SetInt(shaderHandles.zCompensationValue, shaderParameters.zCompensationValue);
             material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
         }
+
+        material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+
     }
 
     [ContextMenu("Toggle head tracking")]
@@ -645,8 +651,11 @@ public class G3DCamera
                 (int)(Screen.width * resolution / 100),
                 (int)(Screen.height * resolution / 100),
                 0
-            );
-            Texture tex = renderTextures[i];
+            )
+            {
+                format = RenderTextureFormat.ARGB32,
+                depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm
+            };
             cameras[i].targetTexture = renderTextures[i];
             material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
         }
