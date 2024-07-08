@@ -141,6 +141,9 @@ public class G3DCamera
 
     public bool enableDioramaEffect = false;
 
+    [Tooltip("Experimental smoothing smoothes the head tracking position over three tracking frames.")]
+    public bool useExperimentalTrackingSmoothing = false;
+
     [Tooltip(
         "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
     )]
@@ -533,7 +536,16 @@ public class G3DCamera
     // TODO call this every time the head position changed callback fires
     void updateCameras()
     {
-        HeadPosition headPosition = getSmoothedHeadPosition();
+        HeadPosition headPosition;
+        if (useExperimentalTrackingSmoothing)
+        {
+            headPosition = getSmoothedHeadPosition();
+        }
+        else
+        {
+            headPosition = getHeadPosition();
+        }
+
         float horizontalOffset = 0.0f;
         float verticalOffset = 0.0f;
         if (headPosition.headDetected && enableDioramaEffect)
@@ -559,7 +571,7 @@ public class G3DCamera
 
         mainCamera.fieldOfView =
             2 * Mathf.Atan(halfCameraWidthAtStart / currentFocusDistance) * Mathf.Rad2Deg;
-        
+
 
         //calculate camera positions and matrices
         for (int i = 0; i < cameraCount; i++)
@@ -750,24 +762,29 @@ public class G3DCamera
             headPosition.worldPosY = headPos.y;
             headPosition.worldPosZ = headPos.z;
 
-            if (headDetected)
+            if (useExperimentalTrackingSmoothing)
             {
-                Vector3 smoothedHeadPosVec = new Vector3(0, 0, 0);
-                int divisor = 0;
-                int factor = 3;
-                for (int i = 0; i < headPositions.Size; i++)
+
+                if (headDetected)
                 {
-                    smoothedHeadPosVec += headPositions[i] * factor;
-                    divisor += factor;
-                    factor--;
+                    Vector3 smoothedHeadPosVec = new Vector3(0, 0, 0);
+                    int divisor = 0;
+                    int factor = 3;
+                    for (int i = 0; i < headPositions.Size; i++)
+                    {
+                        smoothedHeadPosVec += headPositions[i] * factor;
+                        divisor += factor;
+                        factor--;
+                    }
+                    smoothedHeadPosVec /= divisor;
+                    smoothedHeadPosition.worldPosX = smoothedHeadPosVec.x;
+                    smoothedHeadPosition.worldPosY = smoothedHeadPosVec.y;
+                    smoothedHeadPosition.worldPosZ = smoothedHeadPosVec.z;
                 }
-                smoothedHeadPosVec /= divisor;
-                smoothedHeadPosition.worldPosX = smoothedHeadPosVec.x;
-                smoothedHeadPosition.worldPosY = smoothedHeadPosVec.y;
-                smoothedHeadPosition.worldPosZ = smoothedHeadPosVec.z;
+                smoothedHeadPosition.headDetected = headDetected;
+                smoothedHeadPosition.imagePosIsValid = imagePosIsValid;
             }
-            smoothedHeadPosition.headDetected = headDetected;
-            smoothedHeadPosition.imagePosIsValid = imagePosIsValid;
+
         }
     }
 
