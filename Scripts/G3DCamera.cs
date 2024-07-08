@@ -530,8 +530,6 @@ public class G3DCamera
         return false;
     }
 
-    public bool test = false;
-
     // TODO call this every time the head position changed callback fires
     void updateCameras()
     {
