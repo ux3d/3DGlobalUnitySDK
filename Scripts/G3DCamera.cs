@@ -492,7 +492,7 @@ public class G3DCamera
             material?.SetInt(shaderHandles.zCompensationValue, shaderParameters.zCompensationValue);
             material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
 
-            material?.SetInt(Shader.PropertyToID("cameraCount"), cameraCount);
+            material?.SetInt(Shader.PropertyToID("cameraCount"), cameraCount - 1);
         }
     }
 

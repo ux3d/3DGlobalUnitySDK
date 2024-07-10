@@ -184,6 +184,8 @@ Shader "G3D/AutostereoMultiview"
             }
 
             float mappedIndex = map(viewIndex, 0, calculatedViewCount, 0, cameraCount);
+            // invert mapping to account for inverted camera mapping in unity when compared to original system.
+            mappedIndex = cameraCount - mappedIndex;
             float4 tmpColor = sampleFromView(mappedIndex, i.uv);
 
             if(channel == 0) {
