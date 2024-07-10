@@ -122,7 +122,9 @@ public class G3DCamera
 
     public float headMovementScaleFactor = 1000.0f;
 
-    [Tooltip("Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!")]
+    [Tooltip(
+        "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
+    )]
     public Vector3Int headPositionFilter = new Vector3Int(0, 0, 0);
     #endregion
 
@@ -297,7 +299,8 @@ public class G3DCamera
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
         cachedCameraCount = cameraCount;
 
-        focusPlaneCenterAtStart = mainCamera.transform.position + mainCamera.transform.forward * focusDistance;
+        focusPlaneCenterAtStart =
+            mainCamera.transform.position + mainCamera.transform.forward * focusDistance;
     }
 
     void OnApplicationQuit()
@@ -351,7 +354,11 @@ public class G3DCamera
 
         if (usePositionFiltering())
         {
-            libInterface.initializePositionFilter(headPositionFilter.x, headPositionFilter.y, headPositionFilter.z);
+            libInterface.initializePositionFilter(
+                headPositionFilter.x,
+                headPositionFilter.y,
+                headPositionFilter.z
+            );
         }
     }
 
@@ -580,7 +587,6 @@ public class G3DCamera
         mainCamera.fieldOfView =
             2 * Mathf.Atan(halfCameraWidthAtStart / currentFocusDistance) * Mathf.Rad2Deg;
 
-
         //calculate camera positions and matrices
         for (int i = 0; i < cameraCount; i++)
         {
@@ -591,6 +597,9 @@ public class G3DCamera
                 currentView += 1;
             }
 
+            // invert to keep the same order as in the shader
+            currentView = -currentView;
+
             //copy any changes to the main camera
             camera.fieldOfView = mainCamera.fieldOfView;
             camera.farClipPlane = mainCamera.farClipPlane;
@@ -600,7 +609,6 @@ public class G3DCamera
             camera.transform.localRotation = cameraParent.transform.localRotation;
 
             float localCameraOffset = currentView * (eyeSeparation / 2);
-
 
             if (useFocusDistance)
             {
@@ -778,7 +786,14 @@ public class G3DCamera
                 double filteredPositionX;
                 double filteredPositionY;
                 double filteredPositionZ;
-                libInterface.applyPositionFilter(worldPosX, worldPosY, worldPosZ, out filteredPositionX, out filteredPositionY, out filteredPositionZ);
+                libInterface.applyPositionFilter(
+                    worldPosX,
+                    worldPosY,
+                    worldPosZ,
+                    out filteredPositionX,
+                    out filteredPositionY,
+                    out filteredPositionZ
+                );
 
                 filteredHeadPosition.worldPosX = -filteredPositionX / headMovementScaleFactor;
                 filteredHeadPosition.worldPosY = filteredPositionY / headMovementScaleFactor;
@@ -787,7 +802,6 @@ public class G3DCamera
                 filteredHeadPosition.headDetected = headDetected;
                 filteredHeadPosition.imagePosIsValid = imagePosIsValid;
             }
-
         }
     }
 
