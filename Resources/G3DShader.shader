@@ -36,6 +36,9 @@ Shader "G3D/Autostereo"
     // to do this we need the actual viewport height
     int viewportHeight;
 
+    // amount of render targets (only used in multiview shader (not used in this one))
+    int cameraCount;
+
     // unused parameter -> only here for so that this shader overlaps with the multiview shader
     int isBGR; // 0 = RGB, 1 = BGR
 

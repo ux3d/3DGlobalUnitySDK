@@ -35,9 +35,10 @@ Shader "G3D/AutostereoMultiview"
     // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
     // to do this we need the actual viewport height
     int viewportHeight;
-    
-    int viewOffset = 0;
 
+    // amount of render targets
+    int cameraCount;
+    
     // unused parameter -> only here for so that this shader overlaps with the multiview shader
     int isBGR; // 0 = RGB, 1 = BGR
 
@@ -120,22 +121,15 @@ Shader "G3D/AutostereoMultiview"
         return float4(0, 0, 0, 0);
     }
 
-    int3 mod_i(int3 v, int m) {
-        return v - (v / m) * m;
+    float map(float s, float from1, float from2, float to1, float to2)
+    {
+        return to1 + (s-from1)*(to2-to1)/(from2-from1);
     }
 
     float4 frag (v2f i) : SV_Target
     {
-        // Start der Berechnung von dynamische Daten
-        int  xScreenCoords = int(i.screenPos.x) + v_pos_x;     // transform x position from viewport to screen coordinates
-        // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
-        // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
-        int  yScreenCoords = int(i.screenPos.y) + v_pos_y;     // transform y position from viewport to screen coordinates
-
-        if (isleft == 0) {
-            yScreenCoords = s_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
-        }
-
+        float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
+        float2 computedScreenPos = float2(i.screenPos.x, yPos) + float2(v_pos_x, v_pos_y);
         int calculatedViewCount = nativeViewCount * nwinkel;
         /*
         1) startIndex
@@ -150,9 +144,11 @@ Shader "G3D/AutostereoMultiview"
                 startIndex + xScreenCoords * 3 * unwinkel
         */
         // shift direction from 0 or 1 to -1 or 1
+        // int direction = (isleft + 1) * 2 - 3;
+        // * 3 bacause we have three color chanels
         int direction = (isleft + 1) * 2 - 3;
-        int startIndex = yScreenCoords * zwinkel * (direction * -1) +
-            yScreenCoords * calculatedViewCount + xScreenCoords * 3 * nwinkel;
+        int startIndex = computedScreenPos.y * zwinkel * (direction * -1) +
+            computedScreenPos.y * calculatedViewCount + computedScreenPos.x * 3 * nwinkel;
 
         /*
         2) viewIndex
@@ -165,78 +161,39 @@ Shader "G3D/AutostereoMultiview"
         */
         int3 viewIndices = int3(startIndex, startIndex, startIndex);
         viewIndices += int3(0, nwinkel, nwinkel + nwinkel);
-        viewIndices += viewOffset;
+        viewIndices += mstart;
         // This parameter always seems to be 0, so we can ignore this line
-        // viewIndices += viewOffsetHeadtracking;
-        viewIndices = mod_i(viewIndices, calculatedViewCount);
+        viewIndices += track;
+        viewIndices = viewIndices % calculatedViewCount;
 
         //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
         int viewIndex = 0;
-        // for (int channel = 0; channel < 3; channel++) {
-        //     if(isBGR != 0) {
-        //         viewIndex = viewIndices[2 - channel];
-        //     } else {
-        //         viewIndex = viewIndices[channel];
-        //     }
-
-        //     if (test != 0) {
-        //         if (viewIndex == 0) {
-        //             color[channel] = 1.0;
-        //         }
-        //         continue;
-        //     }
-
-            
-        //     color[channel] = sampleFromView(viewIndex, i.uv)[channel];
-        // }
-
-        // handle r channel
-        if(isBGR != 0) {
-            viewIndex = viewIndices[2];
-        } else {
-            viewIndex = viewIndices[0];
-        }
-
-        if (test != 0) {
-            if (viewIndex == 0) {
-                color[0] = 1.0;
+        for (int channel = 0; channel < 3; channel++) {
+            if(isBGR != 0) {
+                viewIndex = viewIndices[2 - channel];
+            } else {
+                viewIndex = viewIndices[channel];
             }
-        } else {
-            color.x = sampleFromView(viewIndex, i.uv).x;
-        }
-        
 
-        // handle g channel
-        if(isBGR != 0) {
-            viewIndex = viewIndices[1];
-        } else {
-            viewIndex = viewIndices[1];
-        }
-        
-        if (test != 0) {
-            if (viewIndex == 0) {
-                color[1] = 1.0;
+            if (test != 0) {
+                if (viewIndex == 0) {
+                    color[channel] = 1.0;
+                }
+                continue;
             }
-        } else {
-            color.y = sampleFromView(viewIndex, i.uv).y;
-        }
-        
-        // handle b channel
-        if(isBGR != 0) {
-            viewIndex = viewIndices[0];
-        } else {
-            viewIndex = viewIndices[2];
-        }
 
-        if (test != 0) {
-            if (viewIndex == 0) {
-                color[2] = 1.0;
+            float mappedIndex = map(viewIndex, 0, calculatedViewCount, 0, cameraCount);
+            float4 tmpColor = sampleFromView(mappedIndex, i.uv);
+
+            if(channel == 0) {
+                color.x = tmpColor.x;
+            } else if(channel == 1) {
+                color.y = tmpColor.y;
+            } else if(channel == 2) {
+                color.z = tmpColor.z;
             }
-        } else {
-            color.z = sampleFromView(viewIndex, i.uv).z;
         }
-        
         
         return color;
     }
