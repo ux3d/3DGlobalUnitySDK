@@ -99,6 +99,8 @@ public class G3DCamera
     [Range(1, 16)]
     public int cameraCount = 2;
 
+    public bool enableDioramaEffect = false;
+
     public bool useMultiview = false;
 
     [Tooltip(
@@ -119,6 +121,9 @@ public class G3DCamera
     public float resolution = 100.0f;
 
     public float headMovementScaleFactor = 1000.0f;
+
+    [Tooltip("Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!")]
+    public Vector3Int headPositionFilter = new Vector3Int(0, 0, 0);
     #endregion
 
     #region Device settings
@@ -138,11 +143,6 @@ public class G3DCamera
 
     public bool showTestFrame = false;
     public bool showTestStripes = false;
-
-    public bool enableDioramaEffect = false;
-
-    [Tooltip("Experimental smoothing smoothes the head tracking position over three tracking frames.")]
-    public bool useExperimentalTrackingSmoothing = false;
 
     [Tooltip(
         "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
@@ -166,7 +166,7 @@ public class G3DCamera
     /// NEVER use headPosition directly.
     /// </summary>
     private HeadPosition headPosition;
-    private HeadPosition smoothedHeadPosition;
+    private HeadPosition filteredHeadPosition;
 
     private static object headPosLock = new object();
     private static object shaderLock = new object();
@@ -265,6 +265,7 @@ public class G3DCamera
         {
             shaderParameters = libInterface.getCurrentShaderParameters();
         }
+        updateShaderParameters();
         libInterface.startHeadTracking();
 
 #if HDRP
@@ -336,7 +337,7 @@ public class G3DCamera
             worldPosY = 0.0,
             worldPosZ = 0.0
         };
-        smoothedHeadPosition = new HeadPosition
+        filteredHeadPosition = new HeadPosition
         {
             headDetected = false,
             imagePosIsValid = false,
@@ -347,6 +348,11 @@ public class G3DCamera
             worldPosZ = 0.0
         };
         shaderParameters = libInterface.getCurrentShaderParameters();
+
+        if (usePositionFiltering())
+        {
+            libInterface.initializePositionFilter(headPositionFilter.x, headPositionFilter.y, headPositionFilter.z);
+        }
     }
 
     private void deinitLibrary()
@@ -440,9 +446,6 @@ public class G3DCamera
         material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
     }
 
-    [Range(0, 100)]
-    public int viewOffset = 0;
-
     private void updateShaderParameters()
     {
         lock (shaderLock)
@@ -489,9 +492,6 @@ public class G3DCamera
             material?.SetInt(shaderHandles.zCompensationValue, shaderParameters.zCompensationValue);
             material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
         }
-
-        material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
-
     }
 
     [ContextMenu("Toggle head tracking")]
@@ -543,9 +543,9 @@ public class G3DCamera
     void updateCameras()
     {
         HeadPosition headPosition;
-        if (useExperimentalTrackingSmoothing)
+        if (usePositionFiltering())
         {
-            headPosition = getSmoothedHeadPosition();
+            headPosition = getFilteredHeadPosition();
         }
         else
         {
@@ -733,11 +733,11 @@ public class G3DCamera
     ///
     /// </summary>
     /// <returns></returns>
-    public HeadPosition getSmoothedHeadPosition()
+    public HeadPosition getFilteredHeadPosition()
     {
         lock (headPosLock)
         {
-            return smoothedHeadPosition;
+            return filteredHeadPosition;
         }
     }
 
@@ -771,27 +771,19 @@ public class G3DCamera
             headPosition.worldPosY = headPos.y;
             headPosition.worldPosZ = headPos.z;
 
-            if (useExperimentalTrackingSmoothing)
+            if (usePositionFiltering())
             {
+                double filteredPositionX;
+                double filteredPositionY;
+                double filteredPositionZ;
+                libInterface.applyPositionFilter(worldPosX, worldPosY, worldPosZ, out filteredPositionX, out filteredPositionY, out filteredPositionZ);
 
-                if (headDetected)
-                {
-                    Vector3 smoothedHeadPosVec = new Vector3(0, 0, 0);
-                    int divisor = 0;
-                    int factor = 3;
-                    for (int i = 0; i < headPositions.Size; i++)
-                    {
-                        smoothedHeadPosVec += headPositions[i] * factor;
-                        divisor += factor;
-                        factor--;
-                    }
-                    smoothedHeadPosVec /= divisor;
-                    smoothedHeadPosition.worldPosX = smoothedHeadPosVec.x;
-                    smoothedHeadPosition.worldPosY = smoothedHeadPosVec.y;
-                    smoothedHeadPosition.worldPosZ = smoothedHeadPosVec.z;
-                }
-                smoothedHeadPosition.headDetected = headDetected;
-                smoothedHeadPosition.imagePosIsValid = imagePosIsValid;
+                filteredHeadPosition.worldPosX = -filteredPositionX / headMovementScaleFactor;
+                filteredHeadPosition.worldPosY = filteredPositionY / headMovementScaleFactor;
+                filteredHeadPosition.worldPosZ = -filteredPositionZ / headMovementScaleFactor;
+
+                filteredHeadPosition.headDetected = headDetected;
+                filteredHeadPosition.imagePosIsValid = imagePosIsValid;
             }
 
         }
@@ -908,4 +900,13 @@ public class G3DCamera
     }
 #endif
     #endregion
+
+    /// <summary>
+    /// Returns false if all values of the position filter are set to zero.
+    /// </summary>
+    /// <returns></returns>
+    private bool usePositionFiltering()
+    {
+        return headPositionFilter.x != 0 || headPositionFilter.y != 0 || headPositionFilter.z != 0;
+    }
 }

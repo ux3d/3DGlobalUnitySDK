@@ -1617,6 +1617,85 @@ public sealed class LibInterface
             );
         }
     }
+
+    // ------------------------------------------------
+
+    // extern G3D_UNIVERSAL_HEADTRACKING_LIBRARY_EXPORT int initializePositionFilter(const int lenX, const int lenY, const int lenZ);
+    public void initializePositionFilter(int lenX, int lenY, int lenZ)
+    {
+        int result = LibInterfaceCpp.initializePositionFilter(lenX, lenY, lenZ);
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: initializePositionFilter success. Filter set to (" + lenX + "," + lenY + "," + lenZ + "," + ")");
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException("G3D library initializePositionFilter: position filter already initialized.");
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library initializePositionFilter: not initialized.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library initializePositionFilter: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library initializePositionFilter: an unknown error occurred when shifting the view to the right."
+            );
+        }
+    }
+
+    // extern G3D_UNIVERSAL_HEADTRACKING_LIBRARY_EXPORT int applyPositionFilter(const double posX, const double posY, const double posZ,
+    //     double* filteredX, double* filteredY, double* filteredZ);
+    public void applyPositionFilter(double posX, double posY, double posZ, out double filteredX, out double filteredY, out double filteredZ)
+    {
+        int result = LibInterfaceCpp.applyPositionFilter(
+            posX, posY, posZ, out filteredX, out filteredY, out filteredZ
+        );
+        if (logToConsole)
+        {
+            Debug.Log(
+                "G3D library: applyPositionFilter success. Filtered position: ()"
+                    + filteredX
+                    + ", "
+                    + filteredY
+                    + ", "
+                    + filteredZ
+                    + "); Unfiltered Position: ("
+                    + posX
+                    + ", "
+                    + posY
+                    + ", "
+                    + posZ
+                    + ")"
+            );
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException("G3D library applyPositionFilter: library already initialized error.");
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library applyPositionFilter: position filter not initialized.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library applyPositionFilter: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library applyPositionFilter: an unknown error occurred when getting the head tracking device resolution."
+            );
+        }
+    }
 }
 
 /// <summary>
@@ -1905,4 +1984,23 @@ internal static class LibInterfaceCpp
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int shiftViewToRight();
+
+
+    // ------------------------------------------------
+
+    [DllImport(
+        "G3D_UniversalHeadTrackingLibrary.dll",
+        EntryPoint = "?initializePositionFilter@G3D_UHTL@@YAHHHH@Z",
+        CallingConvention = CallingConvention.Cdecl
+    )]
+    public static extern int initializePositionFilter(int lenX, int lenY, int lenZ);
+
+    [DllImport(
+        "G3D_UniversalHeadTrackingLibrary.dll",
+        EntryPoint = "?applyPositionFilter@G3D_UHTL@@YAHNNNPEAN00@Z",
+        CallingConvention = CallingConvention.Cdecl
+    )]
+    public static extern int applyPositionFilter(double posX, double posY, double posZ,
+        out double filteredX, out double filteredY, out double filteredZ);
+
 }
