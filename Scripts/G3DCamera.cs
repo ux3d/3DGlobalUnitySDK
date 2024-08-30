@@ -208,6 +208,8 @@ public class G3DCamera
     void Start()
     {
         mainCamera = GetComponent<Camera>();
+        mainCamera.cullingMask = 0; //disable rendering of the main camera
+        mainCamera.clearFlags = CameraClearFlags.Color;
 
         //initialize cameras
 
@@ -575,14 +577,16 @@ public class G3DCamera
 
             horizontalOffset = headPositionWorld.x;
             verticalOffset = headPositionWorld.y;
-
         }
         else
         {
             cameraParent.transform.localPosition = new Vector3(0, 0, 0);
         }
 
-        float currentFocusDistance = Vector3.Distance(focusPlaneCenterAtStart, cameraParent.transform.position);
+        float currentFocusDistance = Vector3.Distance(
+            focusPlaneCenterAtStart,
+            cameraParent.transform.position
+        );
 
         mainCamera.fieldOfView =
             2 * Mathf.Atan(halfCameraWidthAtStart / currentFocusDistance) * Mathf.Rad2Deg;
