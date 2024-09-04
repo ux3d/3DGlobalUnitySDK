@@ -114,6 +114,15 @@ public class G3DCamera
     [Min(0.0000001f)]
     public float focusDistance = 2.3f;
 
+    [Tooltip(
+        "Enable head tracking camera z distance correction"
+    )]
+    public bool isHeadDisplayDistanceCorrectionEnabled = true;
+    [Tooltip(
+        "Estimated distance of head to display (in meter). This can be used to keep the z position of the camera in the scene in line with where the camera ends up after head tracking is applied."
+    )]
+    public float estimatedHeadDisplayDistance = 0.8f;
+
     private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
@@ -579,6 +588,14 @@ public class G3DCamera
                 (float)headPosition.worldPosY,
                 (float)headPosition.worldPosZ
             );
+
+            if (isHeadDisplayDistanceCorrectionEnabled)
+            {
+                headPositionWorld.z = headPositionWorld.z +
+                    // first the distance to millimeter then apply scaling.
+                    // the distances we get from the head tracking library are in millimeter.
+                    (estimatedHeadDisplayDistance * 1000 / headMovementScaleFactor);
+            }
 
             cameraParent.transform.localPosition = headPositionWorld;
 
