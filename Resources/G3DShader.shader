@@ -109,8 +109,8 @@ Shader "G3D/Autostereo"
         // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
-        float4 colorRight = sampleFromView(0, i.uv);             // Pixeldaten rechtes Bild
-        float4 colorLeft = sampleFromView(1, i.uv);              // Pixeldaten linkes Bild
+        float4 colorLeft = sampleFromView(0, i.uv);              // Pixeldaten linkes Bild
+        float4 colorRight = sampleFromView(1, i.uv);             // Pixeldaten rechtes Bild
         float cor=0.0, cog=0.0, cob=0.0;
 
         
