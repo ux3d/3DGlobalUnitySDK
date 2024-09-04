@@ -126,6 +126,13 @@ public class G3DCamera
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
     public Vector3Int headPositionFilter = new Vector3Int(0, 0, 0);
+    [Tooltip(
+        "Keeps the last known head position if tracking is lost, if set to true. Otherwise head position will be set to zero if tracking is lost."
+    )]
+    public bool useLastHeadPosition = true;
+    private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
+    private float lastHorizontalOffset = 0.0f;
+    private float lastVerticalOffset = 0.0f;
     #endregion
 
     #region Device settings
@@ -577,10 +584,25 @@ public class G3DCamera
 
             horizontalOffset = headPositionWorld.x;
             verticalOffset = headPositionWorld.y;
+
+            // store last known position data for tracking loss case
+            lastHeadPosition = headPositionWorld;
+            lastHorizontalOffset = horizontalOffset;
+            lastVerticalOffset = verticalOffset;
         }
         else
         {
-            cameraParent.transform.localPosition = new Vector3(0, 0, 0);
+            if (useLastHeadPosition)
+            {
+                cameraParent.transform.localPosition = lastHeadPosition;
+                horizontalOffset = lastHorizontalOffset;
+                verticalOffset = lastVerticalOffset;
+
+            }
+            else
+            {
+                cameraParent.transform.localPosition = new Vector3(0, 0, 0);
+            }
         }
 
         float currentFocusDistance = Vector3.Distance(
@@ -790,18 +812,22 @@ public class G3DCamera
                 double filteredPositionX;
                 double filteredPositionY;
                 double filteredPositionZ;
-                libInterface.applyPositionFilter(
-                    worldPosX,
-                    worldPosY,
-                    worldPosZ,
-                    out filteredPositionX,
-                    out filteredPositionY,
-                    out filteredPositionZ
-                );
 
-                filteredHeadPosition.worldPosX = -filteredPositionX / headMovementScaleFactor;
-                filteredHeadPosition.worldPosY = filteredPositionY / headMovementScaleFactor;
-                filteredHeadPosition.worldPosZ = -filteredPositionZ / headMovementScaleFactor;
+                if (headDetected)
+                {
+                    libInterface.applyPositionFilter(
+                        worldPosX,
+                        worldPosY,
+                        worldPosZ,
+                        out filteredPositionX,
+                        out filteredPositionY,
+                        out filteredPositionZ
+                    );
+
+                    filteredHeadPosition.worldPosX = -filteredPositionX / headMovementScaleFactor;
+                    filteredHeadPosition.worldPosY = filteredPositionY / headMovementScaleFactor;
+                    filteredHeadPosition.worldPosZ = -filteredPositionZ / headMovementScaleFactor;
+                }
 
                 filteredHeadPosition.headDetected = headDetected;
                 filteredHeadPosition.imagePosIsValid = imagePosIsValid;
