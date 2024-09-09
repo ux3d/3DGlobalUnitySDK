@@ -114,15 +114,6 @@ public class G3DCamera
     [Min(0.0000001f)]
     public float focusDistance = 2.3f;
 
-    [Tooltip(
-        "Enable head tracking camera z distance correction"
-    )]
-    public bool isHeadDisplayDistanceCorrectionEnabled = true;
-    [Tooltip(
-        "Estimated distance of head to display (in meter). This can be used to keep the z position of the camera in the scene in line with where the camera ends up after head tracking is applied."
-    )]
-    public float estimatedHeadDisplayDistance = 0.8f;
-
     private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
@@ -135,6 +126,7 @@ public class G3DCamera
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
     public Vector3Int headPositionFilter = new Vector3Int(0, 0, 0);
+
     [Tooltip(
         "Keeps the last known head position if tracking is lost, if set to true. Otherwise head position will be set to zero if tracking is lost."
     )]
@@ -167,7 +159,7 @@ public class G3DCamera
     )]
     public bool showGizmos = true;
 
-    [Range(0.1f, 1.0f)]
+    [Range(0.01f, 1.0f)]
     public float gizmoSize = 0.2f;
 
     public bool renderAutostereo = true;
@@ -191,6 +183,7 @@ public class G3DCamera
 
     private Camera mainCamera;
     private List<Camera> cameras = null;
+    private GameObject focusPlaneObject = null;
     private GameObject cameraParent = null;
 
     private Material material;
@@ -227,11 +220,20 @@ public class G3DCamera
         mainCamera.cullingMask = 0; //disable rendering of the main camera
         mainCamera.clearFlags = CameraClearFlags.Color;
 
+        // create a focus plane object at foxus distance from camera.
+        // then parent the camera parent to that object
+        // this way we can place the camera parent relative to the focus plane
+
+        focusPlaneObject = new GameObject("focus plane center");
+        focusPlaneObject.transform.parent = transform;
+        focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
+        focusPlaneObject.transform.localRotation = Quaternion.identity;
+
         //initialize cameras
 
         cameraParent = new GameObject("g3dcams");
-        cameraParent.transform.parent = transform;
-        cameraParent.transform.localPosition = new Vector3(0, 0, 0);
+        cameraParent.transform.parent = focusPlaneObject.transform;
+        cameraParent.transform.localPosition = new Vector3(0, 0, -focusDistance);
         cameraParent.transform.localRotation = Quaternion.identity;
 
         cameras = new List<Camera>();
@@ -348,6 +350,7 @@ public class G3DCamera
         );
 
         // set initial values
+        // intialize head position at focus distance from focus plane
         headPosition = new HeadPosition
         {
             headDetected = false,
@@ -356,8 +359,9 @@ public class G3DCamera
             imagePosY = 0,
             worldPosX = 0.0,
             worldPosY = 0.0,
-            worldPosZ = 0.0
+            worldPosZ = -focusDistance
         };
+        lastHeadPosition = new Vector3(0, 0, -focusDistance);
         filteredHeadPosition = new HeadPosition
         {
             headDetected = false,
@@ -366,7 +370,7 @@ public class G3DCamera
             imagePosY = 0,
             worldPosX = 0.0,
             worldPosY = 0.0,
-            worldPosZ = 0.0
+            worldPosZ = -focusDistance
         };
         shaderParameters = libInterface.getCurrentShaderParameters();
 
@@ -589,14 +593,6 @@ public class G3DCamera
                 (float)headPosition.worldPosZ
             );
 
-            if (isHeadDisplayDistanceCorrectionEnabled)
-            {
-                headPositionWorld.z = headPositionWorld.z +
-                    // first the distance to millimeter then apply scaling.
-                    // the distances we get from the head tracking library are in millimeter.
-                    (estimatedHeadDisplayDistance * 1000 / headMovementScaleFactor);
-            }
-
             cameraParent.transform.localPosition = headPositionWorld;
 
             horizontalOffset = headPositionWorld.x;
@@ -614,11 +610,10 @@ public class G3DCamera
                 cameraParent.transform.localPosition = lastHeadPosition;
                 horizontalOffset = lastHorizontalOffset;
                 verticalOffset = lastVerticalOffset;
-
             }
             else
             {
-                cameraParent.transform.localPosition = new Vector3(0, 0, 0);
+                cameraParent.transform.localPosition = new Vector3(0, 0, -focusDistance);
             }
         }
 
@@ -810,16 +805,18 @@ public class G3DCamera
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
 
+            int millimeterToMeter = 1000;
+
             Vector3 headPos = new Vector3(
-                (float)-worldPosX / headMovementScaleFactor,
-                (float)worldPosY / headMovementScaleFactor,
-                (float)-worldPosZ / headMovementScaleFactor
+                (float)-worldPosX / millimeterToMeter,
+                (float)worldPosY / millimeterToMeter,
+                (float)-worldPosZ / millimeterToMeter
             );
 
             headPositions.PushFront(headPos);
 
-            headPosition.imagePosX = imagePosX / (int)headMovementScaleFactor;
-            headPosition.imagePosY = imagePosY / (int)headMovementScaleFactor;
+            headPosition.imagePosX = imagePosX / (int)millimeterToMeter;
+            headPosition.imagePosY = imagePosY / (int)millimeterToMeter;
             headPosition.worldPosX = headPos.x;
             headPosition.worldPosY = headPos.y;
             headPosition.worldPosZ = headPos.z;
@@ -841,9 +838,9 @@ public class G3DCamera
                         out filteredPositionZ
                     );
 
-                    filteredHeadPosition.worldPosX = -filteredPositionX / headMovementScaleFactor;
-                    filteredHeadPosition.worldPosY = filteredPositionY / headMovementScaleFactor;
-                    filteredHeadPosition.worldPosZ = -filteredPositionZ / headMovementScaleFactor;
+                    filteredHeadPosition.worldPosX = -filteredPositionX / millimeterToMeter;
+                    filteredHeadPosition.worldPosY = filteredPositionY / millimeterToMeter;
+                    filteredHeadPosition.worldPosZ = -filteredPositionZ / millimeterToMeter;
                 }
 
                 filteredHeadPosition.headDetected = headDetected;
