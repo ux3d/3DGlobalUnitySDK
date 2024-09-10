@@ -435,9 +435,12 @@ public class G3DCamera
         // Use the EnqueuePass method to inject a custom render pass
         cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
 
-        for (int i = 0; i < MAX_CAMERAS; i++)
-        {
-            cameras[i].GetUniversalAdditionalCameraData().renderPostProcessing  = true;
+        if(mainCamera.GetUniversalAdditionalCameraData().renderPostProcessing) {
+            for (int i = 0; i < MAX_CAMERAS; i++)
+            {
+                cameras[i].GetUniversalAdditionalCameraData().renderPostProcessing  = true;
+
+            }
         }
     }
 #endif
