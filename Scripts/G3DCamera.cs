@@ -617,10 +617,7 @@ public class G3DCamera
             }
         }
 
-        float currentFocusDistance = Vector3.Distance(
-            focusPlaneCenterAtStart,
-            cameraParent.transform.position
-        );
+        float currentFocusDistance = -cameraParent.transform.localPosition.z;
 
         mainCamera.fieldOfView =
             2 * Mathf.Atan(halfCameraWidthAtStart / currentFocusDistance) * Mathf.Rad2Deg;
@@ -650,12 +647,13 @@ public class G3DCamera
 
             if (useFocusDistance)
             {
-                float shearFactor = -(localCameraOffset + horizontalOffset) / currentFocusDistance;
+                // horizontal obliqueness 
+                float horizontalObl = -(localCameraOffset + horizontalOffset) / currentFocusDistance;
                 float vertObl = -verticalOffset / currentFocusDistance;
 
                 // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
                 Matrix4x4 shearMatrix = Matrix4x4.identity;
-                shearMatrix[0, 2] = shearFactor;
+                shearMatrix[0, 2] = horizontalObl;
                 shearMatrix[1, 2] = vertObl;
                 // apply new projection matrix
                 camera.projectionMatrix = camera.projectionMatrix * shearMatrix;
