@@ -146,11 +146,6 @@ public class G3DCamera
     [Header("Debugging")]
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
-    public KeyCode toggleHeadTrackingKey = KeyCode.Space;
-    public KeyCode toggleAutostereo = KeyCode.A;
-    public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
-    public KeyCode shiftViewRightKey = KeyCode.RightArrow;
-
     public bool showTestFrame = false;
     public bool showTestStripes = false;
 
@@ -164,6 +159,21 @@ public class G3DCamera
 
     public bool renderAutostereo = true;
 
+    #endregion
+
+    #region Debugging
+    [Header("Keys")]
+    [Tooltip("If set to true, the library will react to certain keyboard keys.")]
+    public bool enableKeys = true;
+    public KeyCode toggleHeadTrackingKey = KeyCode.Space;
+    public KeyCode toggleAutostereo = KeyCode.A;
+    public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
+    public KeyCode shiftViewRightKey = KeyCode.RightArrow;
+    [Tooltip("Shows a red/green test frame.")]
+    public KeyCode toggleTestFrameKey = KeyCode.D;
+    public KeyCode toggleDioramaEffectKey = KeyCode.H;
+    public KeyCode decreaseEyeSeparationKey = KeyCode.K;
+    public KeyCode increaseEyeSeparationKey = KeyCode.L;
     #endregion
 
     #region Private variables
@@ -453,7 +463,10 @@ public class G3DCamera
         updateCameras();
         updateShaderParameters();
 
-        handleKeyPresses();
+        if (enableKeys)
+        {
+            handleKeyPresses();
+        }
 
         if (windowResized() || windowMoved())
         {
@@ -733,23 +746,23 @@ public class G3DCamera
         {
             renderAutostereo = !renderAutostereo;
         }
-        if (Input.GetKeyDown(KeyCode.D))
+        if (Input.GetKeyDown(toggleTestFrameKey))
         {
             showTestFrame = !showTestFrame;
         }
-        if (Input.GetKeyDown(KeyCode.H))
+        if (Input.GetKeyDown(toggleDioramaEffectKey))
         {
             enableDioramaEffect = !enableDioramaEffect;
         }
-        if (Input.GetKeyDown(KeyCode.K))
+        if (Input.GetKeyDown(decreaseEyeSeparationKey))
         {
-            eyeSeparation -= 0.01f;
+            eyeSeparation -= 0.005f;
             if (eyeSeparation < 0.0f)
                 eyeSeparation = 0.0f;
         }
-        if (Input.GetKeyDown(KeyCode.L))
+        if (Input.GetKeyDown(increaseEyeSeparationKey))
         {
-            eyeSeparation += 0.01f;
+            eyeSeparation += 0.005f;
         }
     }
 
