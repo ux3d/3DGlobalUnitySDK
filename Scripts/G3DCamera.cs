@@ -929,15 +929,6 @@ public class G3DCamera
                 (float)-worldPosZ / millimeterToMeter
             );
 
-            if (headDetected && useMaxHeadDistance)
-            {
-                float distance = headPos.magnitude;
-                if (distance > maxHeadDistance)
-                {
-                    return;
-                }
-            }
-
             headPositions.PushFront(headPos);
 
             headPosition.imagePosX = imagePosX / (int)millimeterToMeter;
