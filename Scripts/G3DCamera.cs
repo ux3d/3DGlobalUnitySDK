@@ -108,6 +108,7 @@ public class G3DCamera
     )]
     [Range(0.00001f, 2.0f)]
     public float eyeSeparation = 0.065f;
+    private float actualEyeSeparation = 0.065f;
 
     public bool useFocusDistance = false;
 
@@ -231,8 +232,6 @@ public class G3DCamera
     // start with true to prevent bugs
     private bool headDetectionPrevFrame = true;
     private float headLostTimer = 0.0f;
-    private bool headLost = false;
-
     private bool isInTransition = false;
     private float lastHeadDistance = 0;
     private float transitionTime = 0.0f;
@@ -347,6 +346,8 @@ public class G3DCamera
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
         cachedCameraCount = cameraCount;
+
+        actualEyeSeparation = eyeSeparation;
     }
 
     void OnApplicationQuit()
@@ -621,6 +622,7 @@ public class G3DCamera
         }
 
         Vector3 targetPosition;
+        float targetEyeSeparation;
         // head detected
         if (headPosition.headDetected && enableDioramaEffect)
         {
@@ -637,6 +639,9 @@ public class G3DCamera
             }
 
             targetPosition = headPositionWorld;
+            targetEyeSeparation = eyeSeparation;
+
+            // handle case where head is outside of the max distance
             if (headPositionWorld.magnitude > maxHeadDistance)
             {
                 bool headOutsideForTooLong = Time.time - headLostTimer > headLostTimeoutInSec;
@@ -646,16 +651,19 @@ public class G3DCamera
                     headLostTimer = Time.time;
                 }
                 targetPosition = lastHeadPosition;
+                targetEyeSeparation = actualEyeSeparation;
 
                 // start transition if head outside for to long
                 if (headOutsideForTooLong)
                 {
                     isInTransition = true;
                     targetPosition = new Vector3(0, 0, -focusDistance);
+                    targetEyeSeparation = 0.0f;
                     headWasToFarToLong = true;
                 }
             }
 
+            // handle case where head was outside of the max distance and is now back inside
             if (headWasToFarToLong)
             {
                 if (headPositionWorld.magnitude < maxHeadDistance)
@@ -672,16 +680,14 @@ public class G3DCamera
             }
 
             lastHeadDistance = headPositionWorld.magnitude;
-            headLost = false;
         }
         else
         {
-            headLost = true;
-
             // always set head to last known position (it gests set to interpolation of head lost to long)
             targetPosition = lastHeadPosition;
+            targetEyeSeparation = actualEyeSeparation;
 
-            bool headLostForTooLong = headLost && Time.time - headLostTimer > headLostTimeoutInSec;
+            bool headLostForTooLong = Time.time - headLostTimer > headLostTimeoutInSec;
             // reset transition time the first time the detection is lost
             if (headDetectionPrevFrame == true)
             {
@@ -693,12 +699,13 @@ public class G3DCamera
             {
                 isInTransition = true;
                 targetPosition = new Vector3(0, 0, -focusDistance);
+                targetEyeSeparation = 0.0f;
             }
         }
 
         if (isInTransition)
         {
-            Debug.Log("Transitioning");
+            // interpolate values
             float transitionPercentage = transitionTime / transitionDuration;
             transitionTime += Time.deltaTime;
             Vector3 interpolatedPosition = Vector3.Lerp(
@@ -706,12 +713,19 @@ public class G3DCamera
                 targetPosition,
                 transitionPercentage
             );
+            float interpolatedEyeSeparation = Mathf.Lerp(
+                actualEyeSeparation,
+                targetEyeSeparation,
+                transitionPercentage
+            );
 
+            // apply values
             float distance = Vector3.Distance(interpolatedPosition, targetPosition);
             // only use interpolated position if we are not close enough to the target position
             if (distance > 0.0001f)
             {
                 targetPosition = interpolatedPosition;
+                targetEyeSeparation = interpolatedEyeSeparation;
             }
             else
             {
@@ -757,7 +771,7 @@ public class G3DCamera
             camera.transform.localPosition = cameraParent.transform.localPosition;
             camera.transform.localRotation = cameraParent.transform.localRotation;
 
-            float localCameraOffset = currentView * (eyeSeparation / 2);
+            float localCameraOffset = currentView * (targetEyeSeparation / 2);
 
             if (useFocusDistance)
             {
