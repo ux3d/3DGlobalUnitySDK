@@ -112,7 +112,23 @@ public class G3DCamera
     public bool useFocusDistance = false;
 
     [Min(0.0000001f)]
-    public float focusDistance = 2.3f;
+    public float focusDistance = 0.7f;
+
+    [Tooltip(
+        "If set to true, the head position will only be updated if the head is closer than the maxHeadDistance."
+    )]
+    public bool useMaxHeadDistance = true;
+
+    [Tooltip(
+        "The maximum distance between the head and the focus plane (i.e. display). If the head is further away, the head position will not be updated."
+    )]
+    public float maxHeadDistance = 0.85f;
+
+    [Tooltip("Time it takes till the reset animation starts in seconds.")]
+    public float headLostTimeoutInSec = 3.0f;
+
+    [Tooltip("Reset animation duratuion in seconds.")]
+    public float transitionDuration = 1.5f;
 
     private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
@@ -127,13 +143,7 @@ public class G3DCamera
     )]
     public Vector3Int headPositionFilter = new Vector3Int(0, 0, 0);
 
-    [Tooltip(
-        "Keeps the last known head position if tracking is lost, if set to true. Otherwise head position will be set to zero if tracking is lost."
-    )]
-    public bool useLastHeadPosition = true;
     private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
-    private float lastHorizontalOffset = 0.0f;
-    private float lastVerticalOffset = 0.0f;
     #endregion
 
     #region Device settings
@@ -161,7 +171,7 @@ public class G3DCamera
 
     #endregion
 
-    #region Debugging
+    #region Keys
     [Header("Keys")]
     [Tooltip("If set to true, the library will react to certain keyboard keys.")]
     public bool enableKeys = true;
@@ -169,6 +179,7 @@ public class G3DCamera
     public KeyCode toggleAutostereo = KeyCode.A;
     public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
     public KeyCode shiftViewRightKey = KeyCode.RightArrow;
+
     [Tooltip("Shows a red/green test frame.")]
     public KeyCode toggleTestFrameKey = KeyCode.D;
     public KeyCode toggleDioramaEffectKey = KeyCode.H;
@@ -217,7 +228,15 @@ public class G3DCamera
 
     private CircularBuffer<Vector3> headPositions = new CircularBuffer<Vector3>(3);
 
-    private Vector3 focusPlaneCenterAtStart = new Vector3();
+    // start with true to prevent bugs
+    private bool headDetectionPrevFrame = true;
+    private float headLostTimer = 0.0f;
+    private bool headLost = false;
+
+    private bool isInTransition = false;
+    private float lastHeadDistance = 0;
+    private float transitionTime = 0.0f;
+    private bool headWasToFarToLong = false;
 
     #endregion
 
@@ -328,9 +347,6 @@ public class G3DCamera
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
         cachedCameraCount = cameraCount;
-
-        focusPlaneCenterAtStart =
-            mainCamera.transform.position + mainCamera.transform.forward * focusDistance;
     }
 
     void OnApplicationQuit()
@@ -445,11 +461,11 @@ public class G3DCamera
         // Use the EnqueuePass method to inject a custom render pass
         cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
 
-        if(mainCamera.GetUniversalAdditionalCameraData().renderPostProcessing) {
+        if (mainCamera.GetUniversalAdditionalCameraData().renderPostProcessing)
+        {
             for (int i = 0; i < MAX_CAMERAS; i++)
             {
-                cameras[i].GetUniversalAdditionalCameraData().renderPostProcessing  = true;
-
+                cameras[i].GetUniversalAdditionalCameraData().renderPostProcessing = true;
             }
         }
     }
@@ -604,8 +620,8 @@ public class G3DCamera
             headPosition = getHeadPosition();
         }
 
-        float horizontalOffset = 0.0f;
-        float verticalOffset = 0.0f;
+        Vector3 targetPosition;
+        // head detected
         if (headPosition.headDetected && enableDioramaEffect)
         {
             Vector3 headPositionWorld = new Vector3(
@@ -614,29 +630,106 @@ public class G3DCamera
                 (float)headPosition.worldPosZ
             );
 
-            cameraParent.transform.localPosition = headPositionWorld;
+            if (headDetectionPrevFrame == false)
+            {
+                transitionTime = 0.0f;
+                isInTransition = true;
+            }
 
-            horizontalOffset = headPositionWorld.x;
-            verticalOffset = headPositionWorld.y;
+            targetPosition = headPositionWorld;
+            if (headPositionWorld.magnitude > maxHeadDistance)
+            {
+                bool headOutsideForTooLong = Time.time - headLostTimer > headLostTimeoutInSec;
+                if (lastHeadDistance <= maxHeadDistance)
+                {
+                    transitionTime = 0.0f;
+                    headLostTimer = Time.time;
+                }
+                targetPosition = lastHeadPosition;
 
-            // store last known position data for tracking loss case
-            lastHeadPosition = headPositionWorld;
-            lastHorizontalOffset = horizontalOffset;
-            lastVerticalOffset = verticalOffset;
+                // start transition if head outside for to long
+                if (headOutsideForTooLong)
+                {
+                    isInTransition = true;
+                    targetPosition = new Vector3(0, 0, -focusDistance);
+                    headWasToFarToLong = true;
+                }
+            }
+
+            if (headWasToFarToLong)
+            {
+                if (headPositionWorld.magnitude < maxHeadDistance)
+                {
+                    headWasToFarToLong = false;
+                    // transition back to head position if head reaquired after it was to long outside
+                    if (lastHeadDistance > maxHeadDistance)
+                    {
+                        transitionTime = 0.0f;
+                        headLostTimer = Time.time;
+                        isInTransition = true;
+                    }
+                }
+            }
+
+            lastHeadDistance = headPositionWorld.magnitude;
+            headLost = false;
         }
         else
         {
-            if (useLastHeadPosition)
+            headLost = true;
+
+            // always set head to last known position (it gests set to interpolation of head lost to long)
+            targetPosition = lastHeadPosition;
+
+            bool headLostForTooLong = headLost && Time.time - headLostTimer > headLostTimeoutInSec;
+            // reset transition time the first time the detection is lost
+            if (headDetectionPrevFrame == true)
             {
-                cameraParent.transform.localPosition = lastHeadPosition;
-                horizontalOffset = lastHorizontalOffset;
-                verticalOffset = lastVerticalOffset;
+                transitionTime = 0.0f;
+                headLostTimer = Time.time;
+            }
+            // start transition
+            if (headLostForTooLong)
+            {
+                isInTransition = true;
+                targetPosition = new Vector3(0, 0, -focusDistance);
+            }
+        }
+
+        if (isInTransition)
+        {
+            Debug.Log("Transitioning");
+            float transitionPercentage = transitionTime / transitionDuration;
+            transitionTime += Time.deltaTime;
+            Vector3 interpolatedPosition = Vector3.Lerp(
+                cameraParent.transform.localPosition,
+                targetPosition,
+                transitionPercentage
+            );
+
+            float distance = Vector3.Distance(interpolatedPosition, targetPosition);
+            // only use interpolated position if we are not close enough to the target position
+            if (distance > 0.0001f)
+            {
+                targetPosition = interpolatedPosition;
             }
             else
             {
-                cameraParent.transform.localPosition = new Vector3(0, 0, -focusDistance);
+                isInTransition = false;
+            }
+
+            if (transitionTime > transitionDuration)
+            {
+                isInTransition = false;
             }
         }
+
+        cameraParent.transform.localPosition = targetPosition;
+        float horizontalOffset = targetPosition.x;
+        float verticalOffset = targetPosition.y;
+
+        // store last known position data for tracking loss case
+        lastHeadPosition = targetPosition;
 
         float currentFocusDistance = -cameraParent.transform.localPosition.z;
 
@@ -668,8 +761,9 @@ public class G3DCamera
 
             if (useFocusDistance)
             {
-                // horizontal obliqueness 
-                float horizontalObl = -(localCameraOffset + horizontalOffset) / currentFocusDistance;
+                // horizontal obliqueness
+                float horizontalObl =
+                    -(localCameraOffset + horizontalOffset) / currentFocusDistance;
                 float vertObl = -verticalOffset / currentFocusDistance;
 
                 // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
@@ -696,6 +790,9 @@ public class G3DCamera
             cachedCameraCount = cameraCount;
             updateShaderViews();
         }
+
+        // do this last
+        headDetectionPrevFrame = headPosition.headDetected;
     }
 
     public void updateShaderViews()
@@ -831,6 +928,15 @@ public class G3DCamera
                 (float)worldPosY / millimeterToMeter,
                 (float)-worldPosZ / millimeterToMeter
             );
+
+            if (headDetected && useMaxHeadDistance)
+            {
+                float distance = headPos.magnitude;
+                if (distance > maxHeadDistance)
+                {
+                    return;
+                }
+            }
 
             headPositions.PushFront(headPos);
 
