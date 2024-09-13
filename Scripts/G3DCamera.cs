@@ -108,17 +108,12 @@ public class G3DCamera
     )]
     [Range(0.00001f, 2.0f)]
     public float eyeSeparation = 0.065f;
-    private float actualEyeSeparation = 0.065f;
+    private float prevEyeSeparation = 0.065f;
 
     public bool useFocusDistance = false;
 
     [Min(0.0000001f)]
     public float focusDistance = 0.7f;
-
-    [Tooltip(
-        "If set to true, the head position will only be updated if the head is closer than the maxHeadDistance."
-    )]
-    public bool useMaxHeadDistance = true;
 
     [Tooltip(
         "The maximum distance between the head and the focus plane (i.e. display). If the head is further away, the head position will not be updated."
@@ -233,7 +228,6 @@ public class G3DCamera
     private bool headDetectionPrevFrame = true;
     private float headLostTimer = 0.0f;
     private bool isInTransition = false;
-    private float lastHeadDistance = 0;
     private float transitionTime = 0.0f;
     private bool headWasToFarToLong = false;
 
@@ -347,7 +341,7 @@ public class G3DCamera
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
         cachedCameraCount = cameraCount;
 
-        actualEyeSeparation = eyeSeparation;
+        prevEyeSeparation = eyeSeparation;
     }
 
     void OnApplicationQuit()
@@ -608,7 +602,17 @@ public class G3DCamera
         return false;
     }
 
-    // TODO call this every time the head position changed callback fires
+    private enum HeadTrackingState
+    {
+        TRACKING,
+        LOST,
+        TRANSITIONTOLOST,
+        TRANSITIONTOTRACKING,
+        LOSTGRACEPERIOD
+    }
+
+    private HeadTrackingState prevHeadTrackingState = HeadTrackingState.LOST;
+
     void updateCameras()
     {
         HeadPosition headPosition;
@@ -621,8 +625,19 @@ public class G3DCamera
             headPosition = getHeadPosition();
         }
 
-        Vector3 targetPosition;
-        float targetEyeSeparation;
+        Vector3 lostPostion = new Vector3(0, 0, -focusDistance);
+        Vector3 targetPosition = lostPostion;
+        HeadTrackingState headTrackingState = HeadTrackingState.LOST;
+        if (
+            prevHeadTrackingState == HeadTrackingState.LOSTGRACEPERIOD
+            || prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
+            || prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
+        )
+        {
+            headTrackingState = prevHeadTrackingState;
+        }
+
+        float targetEyeSeparation = 0.0f;
         // head detected
         if (headPosition.headDetected && enableDioramaEffect)
         {
@@ -632,95 +647,101 @@ public class G3DCamera
                 (float)headPosition.worldPosZ
             );
 
-            if (headDetectionPrevFrame == false)
+            // if head within max tracking distance
+            if (headPositionWorld.magnitude <= maxHeadDistance)
             {
-                transitionTime = 0.0f;
-                isInTransition = true;
+                headTrackingState = HeadTrackingState.TRACKING;
+                targetPosition = headPositionWorld;
+                targetEyeSeparation = eyeSeparation;
             }
-
-            targetPosition = headPositionWorld;
-            targetEyeSeparation = eyeSeparation;
-
-            // handle case where head is outside of the max distance
-            if (headPositionWorld.magnitude > maxHeadDistance)
-            {
-                bool headOutsideForTooLong = Time.time - headLostTimer > headLostTimeoutInSec;
-                if (lastHeadDistance <= maxHeadDistance)
-                {
-                    transitionTime = 0.0f;
-                    headLostTimer = Time.time;
-                }
-                targetPosition = lastHeadPosition;
-                targetEyeSeparation = actualEyeSeparation;
-
-                // start transition if head outside for to long
-                if (headOutsideForTooLong)
-                {
-                    isInTransition = true;
-                    targetPosition = new Vector3(0, 0, -focusDistance);
-                    targetEyeSeparation = 0.0f;
-                    headWasToFarToLong = true;
-                }
-            }
-
-            // handle case where head was outside of the max distance and is now back inside
-            if (headWasToFarToLong)
-            {
-                if (headPositionWorld.magnitude < maxHeadDistance)
-                {
-                    headWasToFarToLong = false;
-                    // transition back to head position if head reaquired after it was to long outside
-                    if (lastHeadDistance > maxHeadDistance)
-                    {
-                        transitionTime = 0.0f;
-                        headLostTimer = Time.time;
-                        isInTransition = true;
-                    }
-                }
-            }
-
-            lastHeadDistance = headPositionWorld.magnitude;
         }
-        else
+
+        // if reaquired and we were in lost state or transitioning to lost, start transition to tracking
+        if (
+            headTrackingState == HeadTrackingState.TRACKING
+            && (
+                prevHeadTrackingState == HeadTrackingState.LOST
+                || prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
+            )
+        )
         {
-            // always set head to last known position (it gests set to interpolation of head lost to long)
-            targetPosition = lastHeadPosition;
-            targetEyeSeparation = actualEyeSeparation;
+            headTrackingState = HeadTrackingState.TRANSITIONTOTRACKING;
+            transitionTime = 0.0f;
+        }
 
-            bool headLostForTooLong = Time.time - headLostTimer > headLostTimeoutInSec;
-            // reset transition time the first time the detection is lost
-            if (headDetectionPrevFrame == true)
+        if (
+            headTrackingState == HeadTrackingState.TRACKING
+            && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
+        )
+        {
+            headTrackingState = HeadTrackingState.TRANSITIONTOTRACKING;
+        }
+
+        // if lost, start grace period
+        if (
+            headTrackingState == HeadTrackingState.LOST
+            && prevHeadTrackingState == HeadTrackingState.TRACKING
+        )
+        {
+            headTrackingState = HeadTrackingState.LOSTGRACEPERIOD;
+            targetPosition = lastHeadPosition;
+        }
+
+        if (headTrackingState == HeadTrackingState.LOSTGRACEPERIOD)
+        {
+            // if we have waited for the timeout
+            if (Time.time - headLostTimer > headLostTimeoutInSec)
             {
-                transitionTime = 0.0f;
+                headTrackingState = HeadTrackingState.TRANSITIONTOLOST;
                 headLostTimer = Time.time;
+                transitionTime = 0.0f;
             }
-            // start transition
-            if (headLostForTooLong)
+            else
             {
-                isInTransition = true;
-                targetPosition = new Vector3(0, 0, -focusDistance);
-                targetEyeSeparation = 0.0f;
+                targetPosition = lastHeadPosition;
+                targetEyeSeparation = prevEyeSeparation;
             }
         }
 
-        if (isInTransition)
+        // if we are in a transition when the transition flips reset the transition time
+        if (
+            headTrackingState == HeadTrackingState.TRANSITIONTOLOST
+                && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
+            || headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
+                && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
+        )
+        {
+            transitionTime = 0.0f;
+        }
+
+        if (
+            headTrackingState == HeadTrackingState.TRANSITIONTOLOST
+            || headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
+        )
         {
             // interpolate values
             float transitionPercentage = transitionTime / transitionDuration;
             transitionTime += Time.deltaTime;
+
+            Vector3 transitionTargetPosition = lostPostion;
+            if (headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING)
+            {
+                transitionTargetPosition = targetPosition;
+            }
+
             Vector3 interpolatedPosition = Vector3.Lerp(
                 cameraParent.transform.localPosition,
-                targetPosition,
+                transitionTargetPosition,
                 transitionPercentage
             );
             float interpolatedEyeSeparation = Mathf.Lerp(
-                actualEyeSeparation,
+                prevEyeSeparation,
                 targetEyeSeparation,
                 transitionPercentage
             );
 
             // apply values
-            float distance = Vector3.Distance(interpolatedPosition, targetPosition);
+            float distance = Vector3.Distance(interpolatedPosition, transitionTargetPosition);
             // only use interpolated position if we are not close enough to the target position
             if (distance > 0.0001f)
             {
@@ -729,21 +750,37 @@ public class G3DCamera
             }
             else
             {
-                isInTransition = false;
-            }
-
-            if (transitionTime > transitionDuration)
-            {
-                isInTransition = false;
+                // if we have reached the target position, we are no longer in transition
+                if (headTrackingState == HeadTrackingState.TRANSITIONTOLOST)
+                {
+                    headTrackingState = HeadTrackingState.LOST;
+                }
+                else
+                {
+                    headTrackingState = HeadTrackingState.TRACKING;
+                }
             }
         }
 
+        // TODO set head separation to eye seperation if multiview enabled
+
         cameraParent.transform.localPosition = targetPosition;
+        prevHeadTrackingState = headTrackingState;
         float horizontalOffset = targetPosition.x;
         float verticalOffset = targetPosition.y;
 
         // store last known position data for tracking loss case
-        lastHeadPosition = targetPosition;
+        if (headTrackingState == HeadTrackingState.TRACKING)
+        {
+            lastHeadPosition = targetPosition;
+            prevEyeSeparation = targetEyeSeparation;
+        }
+
+        if (useMultiview)
+        {
+            targetEyeSeparation = eyeSeparation;
+            cameraParent.transform.localPosition = new Vector3(0, 0, -focusDistance);
+        }
 
         float currentFocusDistance = -cameraParent.transform.localPosition.z;
 
