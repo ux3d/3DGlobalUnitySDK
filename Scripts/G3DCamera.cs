@@ -762,8 +762,6 @@ public class G3DCamera
             }
         }
 
-        // TODO set head separation to eye seperation if multiview enabled
-
         cameraParent.transform.localPosition = targetPosition;
         prevHeadTrackingState = headTrackingState;
         float horizontalOffset = targetPosition.x;
