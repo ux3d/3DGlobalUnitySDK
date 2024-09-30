@@ -224,12 +224,8 @@ public class G3DCamera
 
     private CircularBuffer<Vector3> headPositions = new CircularBuffer<Vector3>(3);
 
-    // start with true to prevent bugs
-    private bool headDetectionPrevFrame = true;
     private float headLostTimer = 0.0f;
-    private bool isInTransition = false;
     private float transitionTime = 0.0f;
-    private bool headWasToFarToLong = false;
 
     #endregion
 
@@ -839,9 +835,6 @@ public class G3DCamera
             cachedCameraCount = cameraCount;
             updateShaderViews();
         }
-
-        // do this last
-        headDetectionPrevFrame = headPosition.headDetected;
     }
 
     public void updateShaderViews()
