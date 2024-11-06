@@ -29,3 +29,16 @@ This adds two blue spheres where the autostereo cameras will be placed and a gre
 The focus plane is the plane where the autostereo effect is null. Elements on this plane appear neither in front of nor behind the display.
 Additionally all camera movements caused by the head tracking are in relation to this plane (and not the main camera the script is attached to).
 
+
+### Tips
+You can decrease the resolution the individual cameras are rendered at to increase performance.
+This will decrease the quality of the autostereo effect but might be necessary on lower end hardware.
+Usually you can set it to something like 70 percent or even lower without noticing a big difference in quality.
+
+18 seems to be a good value for the head position filter (for each of the three values). Lower values produce snappier results but also more jitter.
+
+
+# Functionality
+The plugin renders the scene from newly created cameras (usually one for each eye; except when multiview is enabled) and combines the images into one final image.
+The camera the script is attached to is used as the main camera, displays the final image, but does not render anything itself.
+The new cameras are created as children of the main camera at runtime.
