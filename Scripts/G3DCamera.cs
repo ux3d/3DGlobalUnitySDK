@@ -634,141 +634,149 @@ public class G3DCamera
         }
 
         float targetEyeSeparation = 0.0f;
-        // head detected
-        if (headPosition.headDetected && enableDioramaEffect)
-        {
-            Vector3 headPositionWorld = new Vector3(
-                (float)headPosition.worldPosX,
-                (float)headPosition.worldPosY,
-                (float)headPosition.worldPosZ
-            );
 
-            // if head within max tracking distance
-            if (headPositionWorld.magnitude <= maxHeadDistance)
+        if (enableDioramaEffect && useMultiview == false)
+        {
+
+            // head detected
+            if (headPosition.headDetected && enableDioramaEffect)
             {
-                headTrackingState = HeadTrackingState.TRACKING;
-                targetPosition = headPositionWorld;
-                targetEyeSeparation = eyeSeparation;
+                Vector3 headPositionWorld = new Vector3(
+                    (float)headPosition.worldPosX,
+                    (float)headPosition.worldPosY,
+                    (float)headPosition.worldPosZ
+                );
+
+                // if head within max tracking distance
+                if (headPositionWorld.magnitude <= maxHeadDistance)
+                {
+                    headTrackingState = HeadTrackingState.TRACKING;
+                    targetPosition = headPositionWorld;
+                    targetEyeSeparation = eyeSeparation;
+                }
             }
-        }
 
-        // if reaquired and we were in lost state or transitioning to lost, start transition to tracking
-        if (
-            headTrackingState == HeadTrackingState.TRACKING
-            && (
-                prevHeadTrackingState == HeadTrackingState.LOST
-                || prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
+            // if reaquired and we were in lost state or transitioning to lost, start transition to tracking
+            if (
+                headTrackingState == HeadTrackingState.TRACKING
+                && (
+                    prevHeadTrackingState == HeadTrackingState.LOST
+                    || prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
+                )
             )
-        )
-        {
-            headTrackingState = HeadTrackingState.TRANSITIONTOTRACKING;
-            transitionTime = 0.0f;
-        }
-
-        if (
-            headTrackingState == HeadTrackingState.TRACKING
-            && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-        )
-        {
-            headTrackingState = HeadTrackingState.TRANSITIONTOTRACKING;
-        }
-
-        // if lost, start grace period
-        if (
-            headTrackingState == HeadTrackingState.LOST
-            && prevHeadTrackingState == HeadTrackingState.TRACKING
-        )
-        {
-            headTrackingState = HeadTrackingState.LOSTGRACEPERIOD;
-            targetPosition = lastHeadPosition;
-        }
-
-        if (headTrackingState == HeadTrackingState.LOSTGRACEPERIOD)
-        {
-            // if we have waited for the timeout
-            if (Time.time - headLostTimer > headLostTimeoutInSec)
             {
-                headTrackingState = HeadTrackingState.TRANSITIONTOLOST;
-                headLostTimer = Time.time;
+                headTrackingState = HeadTrackingState.TRANSITIONTOTRACKING;
                 transitionTime = 0.0f;
             }
-            else
-            {
-                targetPosition = lastHeadPosition;
-                targetEyeSeparation = prevEyeSeparation;
-            }
-        }
 
-        // if we are in a transition when the transition flips reset the transition time
-        if (
-            headTrackingState == HeadTrackingState.TRANSITIONTOLOST
+            if (
+                headTrackingState == HeadTrackingState.TRACKING
                 && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-            || headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-                && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
-        )
-        {
-            transitionTime = 0.0f;
-        }
-
-        if (
-            headTrackingState == HeadTrackingState.TRANSITIONTOLOST
-            || headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-        )
-        {
-            // interpolate values
-            float transitionPercentage = transitionTime / transitionDuration;
-            transitionTime += Time.deltaTime;
-
-            Vector3 transitionTargetPosition = lostPostion;
-            if (headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING)
+            )
             {
-                transitionTargetPosition = targetPosition;
+                headTrackingState = HeadTrackingState.TRANSITIONTOTRACKING;
             }
 
-            Vector3 interpolatedPosition = Vector3.Lerp(
-                cameraParent.transform.localPosition,
-                transitionTargetPosition,
-                transitionPercentage
-            );
-            float interpolatedEyeSeparation = Mathf.Lerp(
-                prevEyeSeparation,
-                targetEyeSeparation,
-                transitionPercentage
-            );
-
-            // apply values
-            float distance = Vector3.Distance(interpolatedPosition, transitionTargetPosition);
-            // only use interpolated position if we are not close enough to the target position
-            if (distance > 0.0001f)
+            // if lost, start grace period
+            if (
+                headTrackingState == HeadTrackingState.LOST
+                && prevHeadTrackingState == HeadTrackingState.TRACKING
+            )
             {
-                targetPosition = interpolatedPosition;
-                targetEyeSeparation = interpolatedEyeSeparation;
+                headTrackingState = HeadTrackingState.LOSTGRACEPERIOD;
+                targetPosition = lastHeadPosition;
             }
-            else
+
+            if (headTrackingState == HeadTrackingState.LOSTGRACEPERIOD)
             {
-                // if we have reached the target position, we are no longer in transition
-                if (headTrackingState == HeadTrackingState.TRANSITIONTOLOST)
+                // if we have waited for the timeout
+                if (Time.time - headLostTimer > headLostTimeoutInSec)
                 {
-                    headTrackingState = HeadTrackingState.LOST;
+                    headTrackingState = HeadTrackingState.TRANSITIONTOLOST;
+                    headLostTimer = Time.time;
+                    transitionTime = 0.0f;
                 }
                 else
                 {
-                    headTrackingState = HeadTrackingState.TRACKING;
+                    targetPosition = lastHeadPosition;
+                    targetEyeSeparation = prevEyeSeparation;
                 }
             }
+
+            // if we are in a transition when the transition flips reset the transition time
+            if (
+                headTrackingState == HeadTrackingState.TRANSITIONTOLOST
+                    && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
+                || headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
+                    && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
+            )
+            {
+                transitionTime = 0.0f;
+            }
+
+            if (
+                headTrackingState == HeadTrackingState.TRANSITIONTOLOST
+                || headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
+            )
+            {
+                // interpolate values
+                float transitionPercentage = transitionTime / transitionDuration;
+                transitionTime += Time.deltaTime;
+
+                Vector3 transitionTargetPosition = lostPostion;
+                if (headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING)
+                {
+                    transitionTargetPosition = targetPosition;
+                }
+
+                Vector3 interpolatedPosition = Vector3.Lerp(
+                    cameraParent.transform.localPosition,
+                    transitionTargetPosition,
+                    transitionPercentage
+                );
+                float interpolatedEyeSeparation = Mathf.Lerp(
+                    prevEyeSeparation,
+                    targetEyeSeparation,
+                    transitionPercentage
+                );
+
+                // apply values
+                float distance = Vector3.Distance(interpolatedPosition, transitionTargetPosition);
+                // only use interpolated position if we are not close enough to the target position
+                if (distance > 0.0001f)
+                {
+                    targetPosition = interpolatedPosition;
+                    targetEyeSeparation = interpolatedEyeSeparation;
+                }
+                else
+                {
+                    // if we have reached the target position, we are no longer in transition
+                    if (headTrackingState == HeadTrackingState.TRANSITIONTOLOST)
+                    {
+                        headTrackingState = HeadTrackingState.LOST;
+                    }
+                    else
+                    {
+                        headTrackingState = HeadTrackingState.TRACKING;
+                    }
+                }
+            }
+
+            // store last known position data for tracking loss case
+            if (headTrackingState == HeadTrackingState.TRACKING)
+            {
+                lastHeadPosition = targetPosition;
+                prevEyeSeparation = targetEyeSeparation;
+            }
+
+            prevHeadTrackingState = headTrackingState;
         }
 
+
         cameraParent.transform.localPosition = targetPosition;
-        prevHeadTrackingState = headTrackingState;
         float horizontalOffset = targetPosition.x;
         float verticalOffset = targetPosition.y;
 
-        // store last known position data for tracking loss case
-        if (headTrackingState == HeadTrackingState.TRACKING)
-        {
-            lastHeadPosition = targetPosition;
-            prevEyeSeparation = targetEyeSeparation;
-        }
 
         if (useMultiview)
         {
