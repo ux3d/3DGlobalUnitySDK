@@ -19,4 +19,13 @@ In general it renders two or more camera views per frame and combines them into 
 6. You are done with the installation. Next you have to match your scene to the autostereo display.
 
 ### Basic usage
-The plugin is written wo work with real life units. i.e. the eye separation is in meters and should correspond to the real life eye separation (roughly 6 centimeter). In addition the cameras field of view should match the real life field of view of the autostereo display. For a 24 inch display viewed at the otimal viewing distance of 70 centimeters this is roughly 13 degrees (when the display is in landscape orientation). 
+The plugin is written wo work with real life units. i.e. the eye separation is in meters and should correspond to the real life eye separation (roughly 6 centimeter).
+In addition the cameras field of view should match the real life field of view of the autostereo display.
+For a 24 inch display viewed at the optimal viewing distance of 70 centimeters this is roughly 13 degrees (when the display is in landscape orientation).
+
+You can enable helper gizmos in the editor to help you match your scene to the autostereo display.
+This adds two blue spheres where the autostereo cameras will be placed and a green sphere showing you where the focus plane is (if it is enabled).
+
+The focus plane is the plane where the autostereo effect is null. Elements on this plane appear neither in front of nor behind the display.
+Additionally all camera movements caused by the head tracking are in relation to this plane (and not the main camera the script is attached to).
+
