@@ -110,8 +110,7 @@ public class G3DCamera
     public float eyeSeparation = 0.065f;
     private float prevEyeSeparation = 0.065f;
 
-    public bool useFocusDistance = false;
-
+    [Tooltip("The distance between the camera and the focus plane in meters. Defaults is 70 cm.")]
     [Min(0.0000001f)]
     public float focusDistance = 0.7f;
 
@@ -129,10 +128,14 @@ public class G3DCamera
     private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
+    [Tooltip("Percentage of the main cameras resolution at which the stereo cameras are rendered.")]
     [Range(1.0f, 100.0f)]
     public float resolution = 100.0f;
 
-    public float headMovementScaleFactor = 1.0f;
+    [Tooltip(
+        "This value can be used to scale the real world values used to calibrate the extension. For example if your scene is 10 times larger than the real world, you can set this value to 10. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
+    )]
+    public float sceneScaleFactor = 1.0f;
 
     [Tooltip(
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
@@ -160,7 +163,8 @@ public class G3DCamera
     )]
     public bool showGizmos = true;
 
-    [Range(0.01f, 1.0f)]
+    [Tooltip("Scales the gizmos. Affectd by scene scale factor.")]
+    [Range(0.005f, 1.0f)]
     public float gizmoSize = 0.2f;
 
     public bool renderAutostereo = true;
@@ -225,6 +229,17 @@ public class G3DCamera
     private float headLostTimer = 0.0f;
     private float transitionTime = 0.0f;
 
+    private enum HeadTrackingState
+    {
+        TRACKING,
+        LOST,
+        TRANSITIONTOLOST,
+        TRANSITIONTOTRACKING,
+        LOSTGRACEPERIOD
+    }
+
+    private HeadTrackingState prevHeadTrackingState = HeadTrackingState.LOST;
+
     #endregion
 
     // TODO Handle viewport resizing/ moving
@@ -232,8 +247,8 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
-        maxHeadDistance = maxHeadDistance * headMovementScaleFactor;
-        eyeSeparation = eyeSeparation * headMovementScaleFactor;
+        maxHeadDistance = maxHeadDistance * sceneScaleFactor;
+        eyeSeparation = eyeSeparation * sceneScaleFactor;
 
         mainCamera = GetComponent<Camera>();
         mainCamera.cullingMask = 0; //disable rendering of the main camera
@@ -599,17 +614,6 @@ public class G3DCamera
         return false;
     }
 
-    private enum HeadTrackingState
-    {
-        TRACKING,
-        LOST,
-        TRANSITIONTOLOST,
-        TRANSITIONTOTRACKING,
-        LOSTGRACEPERIOD
-    }
-
-    private HeadTrackingState prevHeadTrackingState = HeadTrackingState.LOST;
-
     void updateCameras()
     {
         Vector3 defaultPostion = new Vector3(0, 0, -focusDistance);
@@ -648,20 +652,16 @@ public class G3DCamera
 
             float localCameraOffset = calculateCameraOffset(i, targetEyeSeparation);
 
-            if (useFocusDistance)
-            {
-                // horizontal obliqueness
-                float horizontalObl =
-                    -(localCameraOffset + horizontalOffset) / currentFocusDistance;
-                float vertObl = -verticalOffset / currentFocusDistance;
+            // horizontal obliqueness
+            float horizontalObl = -(localCameraOffset + horizontalOffset) / currentFocusDistance;
+            float vertObl = -verticalOffset / currentFocusDistance;
 
-                // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
-                Matrix4x4 shearMatrix = Matrix4x4.identity;
-                shearMatrix[0, 2] = horizontalObl;
-                shearMatrix[1, 2] = vertObl;
-                // apply new projection matrix
-                camera.projectionMatrix = camera.projectionMatrix * shearMatrix;
-            }
+            // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
+            Matrix4x4 shearMatrix = Matrix4x4.identity;
+            shearMatrix[0, 2] = horizontalObl;
+            shearMatrix[1, 2] = vertObl;
+            // apply new projection matrix
+            camera.projectionMatrix = camera.projectionMatrix * shearMatrix;
 
             camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
 
@@ -905,13 +905,13 @@ public class G3DCamera
         }
         if (Input.GetKeyDown(decreaseEyeSeparationKey))
         {
-            eyeSeparation -= 0.0015f * headMovementScaleFactor;
+            eyeSeparation -= 0.0015f * sceneScaleFactor;
             if (eyeSeparation < 0.0f)
                 eyeSeparation = 0.0f;
         }
         if (Input.GetKeyDown(increaseEyeSeparationKey))
         {
-            eyeSeparation += 0.0015f * headMovementScaleFactor;
+            eyeSeparation += 0.0015f * sceneScaleFactor;
         }
     }
 
@@ -985,13 +985,11 @@ public class G3DCamera
                 (float)-worldPosZ / millimeterToMeter
             );
 
-            headPosition.imagePosX =
-                imagePosX / (int)millimeterToMeter * (int)headMovementScaleFactor;
-            headPosition.imagePosY =
-                imagePosY / (int)millimeterToMeter * (int)headMovementScaleFactor;
-            headPosition.worldPosX = headPos.x * headMovementScaleFactor;
-            headPosition.worldPosY = headPos.y * headMovementScaleFactor;
-            headPosition.worldPosZ = headPos.z * headMovementScaleFactor;
+            headPosition.imagePosX = imagePosX / (int)millimeterToMeter * (int)sceneScaleFactor;
+            headPosition.imagePosY = imagePosY / (int)millimeterToMeter * (int)sceneScaleFactor;
+            headPosition.worldPosX = headPos.x * sceneScaleFactor;
+            headPosition.worldPosY = headPos.y * sceneScaleFactor;
+            headPosition.worldPosZ = headPos.z * sceneScaleFactor;
 
             if (usePositionFiltering())
             {
@@ -1011,11 +1009,11 @@ public class G3DCamera
                     );
 
                     filteredHeadPosition.worldPosX =
-                        -filteredPositionX / millimeterToMeter * headMovementScaleFactor;
+                        -filteredPositionX / millimeterToMeter * sceneScaleFactor;
                     filteredHeadPosition.worldPosY =
-                        filteredPositionY / millimeterToMeter * headMovementScaleFactor;
+                        filteredPositionY / millimeterToMeter * sceneScaleFactor;
                     filteredHeadPosition.worldPosZ =
-                        -filteredPositionZ / millimeterToMeter * headMovementScaleFactor;
+                        -filteredPositionZ / millimeterToMeter * sceneScaleFactor;
                 }
 
                 filteredHeadPosition.headDetected = headDetected;
@@ -1116,16 +1114,13 @@ public class G3DCamera
         {
             float cameraOffset = calculateCameraOffset(i, eyeSeparation);
             position = transform.position + transform.right * cameraOffset;
-            Gizmos.DrawSphere(position, 0.3f * gizmoSize);
+            Gizmos.DrawSphere(position, 0.3f * gizmoSize * sceneScaleFactor);
         }
 
-        if (useFocusDistance)
-        {
-            // draw focus distance
-            Gizmos.color = new Color(0, 1, 0, 0.75F);
-            position = transform.position + transform.forward * focusDistance;
-            Gizmos.DrawSphere(position, 0.5f * gizmoSize);
-        }
+        // draw focus distance
+        Gizmos.color = new Color(0, 1, 0, 0.75F);
+        position = transform.position + transform.forward * focusDistance;
+        Gizmos.DrawSphere(position, 0.5f * gizmoSize * sceneScaleFactor);
     }
 #endif
     #endregion
@@ -1141,10 +1136,10 @@ public class G3DCamera
         if (Math.Abs(currentView) <= 1 && cameraCount % 2 == 0)
         {
             // default only half the eye separation for correct offset to left and right of center
-            return currentView * targetEyeSeparation * headMovementScaleFactor / 2;
+            return currentView * targetEyeSeparation * sceneScaleFactor / 2;
         }
 
-        float offset = currentView * targetEyeSeparation * headMovementScaleFactor;
+        float offset = currentView * targetEyeSeparation * sceneScaleFactor;
 
         // when the camera count is even, one camera is placed half the eye separation to the right of the center
         // same for the other to the left
@@ -1152,7 +1147,7 @@ public class G3DCamera
         if (cameraCount % 2 == 0)
         {
             // subtract half of the eye separation to get the correct offset
-            float correctionTerm = targetEyeSeparation * headMovementScaleFactor / 2;
+            float correctionTerm = targetEyeSeparation * sceneScaleFactor / 2;
             if (currentView > 0)
             {
                 correctionTerm *= -1;
