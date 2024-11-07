@@ -89,6 +89,11 @@ public class G3DCamera
         "If set to true, the library will look for the calibration and config files in a \"config\" named subdirectory of the directory where the executable is located."
     )]
     public bool useExecDirectory = false;
+
+    [Tooltip(
+        "If not null the initial set of shader parameters will be based on this calibration file. If null the default shader parameters from the library will be used."
+    )]
+    public string customDefaultCalibrationFilePath = null;
     #endregion
 
     #region 3D Effect settings
@@ -319,7 +324,29 @@ public class G3DCamera
 
         lock (shaderLock)
         {
-            shaderParameters = libInterface.getCurrentShaderParameters();
+            if (customDefaultCalibrationFilePath != null && customDefaultCalibrationFilePath != "")
+            {
+                try
+                {
+                    DefaultCalibrationProvider defaultCalibrationProvider =
+                        new DefaultCalibrationProvider(customDefaultCalibrationFilePath);
+                    shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(
+                        "Failed to load custom default calibration file: "
+                            + e.Message
+                            + "\n"
+                            + "Using default shader parameters."
+                    );
+                    shaderParameters = libInterface.getCurrentShaderParameters();
+                }
+            }
+            else
+            {
+                shaderParameters = libInterface.getCurrentShaderParameters();
+            }
         }
         updateShaderParameters();
         libInterface.startHeadTracking();
