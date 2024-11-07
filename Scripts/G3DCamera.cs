@@ -1171,26 +1171,4 @@ public class G3DCamera
     {
         return headPositionFilter.x != 0 || headPositionFilter.y != 0 || headPositionFilter.z != 0;
     }
-
-    // TODO UPDATE THE CORRECT FUNCTION
-    public void simulateHeadTracking(
-        bool headDetected,
-        bool imagePosIsValid,
-        int imagePosX,
-        int imagePosY,
-        double worldPosX,
-        double worldPosY,
-        double worldPosZ
-    )
-    {
-        ((ITNewHeadPositionCallback)this).NewHeadPositionCallback(
-            headDetected,
-            imagePosIsValid,
-            imagePosX,
-            imagePosY,
-            worldPosX,
-            worldPosY,
-            worldPosZ
-        );
-    }
 }
