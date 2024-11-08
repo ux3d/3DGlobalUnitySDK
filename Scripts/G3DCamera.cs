@@ -1260,7 +1260,7 @@ public class G3DCamera
             lock (shaderLock)
             {
                 DefaultCalibrationProvider defaultCalibrationProvider =
-                    DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
+                    DefaultCalibrationProvider.getFromConfigFile(filePath);
                 shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
             }
             updateShaderParameters();
@@ -1286,7 +1286,9 @@ public class G3DCamera
         {
             lock (shaderLock)
             {
-                shaderParameters = JsonUtility.FromJson<G3DShaderParameters>(iniFile);
+                DefaultCalibrationProvider defaultCalibrationProvider =
+                    DefaultCalibrationProvider.getFromString(iniFile);
+                shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
             }
             updateShaderParameters();
         }
