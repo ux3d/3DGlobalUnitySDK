@@ -1,20 +1,32 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 public class DefaultCalibrationProvider
 {
-    public string CalibrationFile = "DefaultCalibration.ini";
+    private INIReader reader;
 
     public DefaultCalibrationProvider(string calibrationFile)
     {
-        CalibrationFile = calibrationFile;
+        if (calibrationFile == null || calibrationFile != "")
+        {
+            // calibrationFile = "./DefaultCalibration.ini";
+            return;
+        }
+
+        try
+        {
+            reader = new INIReader(calibrationFile);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning(e.Message);
+        }
     }
 
     public G3DShaderParameters getDefaultShaderParameters()
     {
-        INIReader reader = new INIReader(CalibrationFile);
-
         G3DShaderParameters parameters = new G3DShaderParameters();
 
         // display parameters
@@ -72,9 +84,38 @@ public class DefaultCalibrationProvider
     /// <returns></returns>
     private int readOrDefault(in INIReader reader, string key, int defaultValue)
     {
+        if (reader == null)
+        {
+            return defaultValue;
+        }
+
         try
         {
-            return int.Parse(reader.Read(key));
+            string value = reader.Read(key);
+
+            if (value == null)
+            {
+                return defaultValue;
+            }
+            int number;
+            if (int.TryParse("123", out number))
+            {
+                return number;
+            }
+
+            float floatNumber;
+            if (float.TryParse("123.45", out floatNumber))
+            {
+                return (int)floatNumber;
+            }
+
+            bool boolValue;
+            if (bool.TryParse("true", out boolValue))
+            {
+                return boolValue ? 1 : 0;
+            }
+
+            return defaultValue;
         }
         catch (System.Exception e)
         {

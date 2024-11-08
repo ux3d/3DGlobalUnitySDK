@@ -324,32 +324,21 @@ public class G3DCamera
 
         lock (shaderLock)
         {
-            if (customDefaultCalibrationFilePath != null && customDefaultCalibrationFilePath != "")
-            {
-                try
-                {
-                    DefaultCalibrationProvider defaultCalibrationProvider =
-                        new DefaultCalibrationProvider(customDefaultCalibrationFilePath);
-                    shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(
-                        "Failed to load custom default calibration file: "
-                            + e.Message
-                            + "\n"
-                            + "Using default shader parameters."
-                    );
-                    shaderParameters = libInterface.getCurrentShaderParameters();
-                }
-            }
-            else
-            {
-                shaderParameters = libInterface.getCurrentShaderParameters();
-            }
+            DefaultCalibrationProvider defaultCalibrationProvider = new DefaultCalibrationProvider(
+                customDefaultCalibrationFilePath
+            );
+            shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
         }
         updateShaderParameters();
-        libInterface.startHeadTracking();
+
+        try
+        {
+            libInterface.startHeadTracking();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to start head tracking: " + e.Message);
+        }
 
 #if HDRP
         // init fullscreen postprocessing for hd render pipeline
@@ -396,18 +385,26 @@ public class G3DCamera
             calibrationPath = Application.dataPath + "/config";
         }
 
-        libInterface = LibInterface.Instance;
-        libInterface.init(
-            calibrationPath,
-            configPath,
-            configFileName,
-            this,
-            this,
-            this,
-            debugMessages,
-            useHimaxD2XXDevices,
-            usePmdFlexxDevices
-        );
+        try
+        {
+            libInterface = LibInterface.Instance;
+            libInterface.init(
+                calibrationPath,
+                configPath,
+                configFileName,
+                this,
+                this,
+                this,
+                debugMessages,
+                useHimaxD2XXDevices,
+                usePmdFlexxDevices
+            );
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to initialize library: " + e.Message);
+            return;
+        }
 
         // set initial values
         // intialize head position at focus distance from focus plane
@@ -432,15 +429,21 @@ public class G3DCamera
             worldPosY = 0.0,
             worldPosZ = -focusDistance
         };
-        shaderParameters = libInterface.getCurrentShaderParameters();
 
         if (usePositionFiltering())
         {
-            libInterface.initializePositionFilter(
-                headPositionFilter.x,
-                headPositionFilter.y,
-                headPositionFilter.z
-            );
+            try
+            {
+                libInterface.initializePositionFilter(
+                    headPositionFilter.x,
+                    headPositionFilter.y,
+                    headPositionFilter.z
+                );
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to initialize position filter: " + e.Message);
+            }
         }
     }
 
@@ -451,20 +454,18 @@ public class G3DCamera
             return;
         }
 
-        libInterface.stopHeadTracking();
-
         try
         {
+            libInterface.stopHeadTracking();
             libInterface.unregisterHeadPositionChangedCallback(this);
             libInterface.unregisterShaderParametersChangedCallback(this);
             libInterface.unregisterMessageCallback(this);
+            libInterface.deinit();
         }
         catch (Exception e)
         {
             Debug.Log(e);
         }
-
-        libInterface.deinit();
     }
 
     private void reinitializeShader()
@@ -531,16 +532,27 @@ public class G3DCamera
     private void updateScreenViewportProperties()
     {
         DisplayInfo mainDisplayInfo = Screen.mainWindowDisplayInfo;
-        // This is the size of the entire monitor screen
-        libInterface.setScreenSize(mainDisplayInfo.width, mainDisplayInfo.height);
 
-        // this revers to the window in which the 3D effect is rendered (including eg windows top window menu)
-        libInterface.setWindowSize(Screen.width, Screen.height);
-        libInterface.setWindowPosition(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
+        try
+        {
+            // This is the size of the entire monitor screen
+            libInterface.setScreenSize(mainDisplayInfo.width, mainDisplayInfo.height);
 
-        // This revers to the actual viewport in which the 3D effect is rendered
-        libInterface.setViewportSize(Screen.width, Screen.height);
-        libInterface.setViewportOffset(0, 0);
+            // this revers to the window in which the 3D effect is rendered (including eg windows top window menu)
+            libInterface.setWindowSize(Screen.width, Screen.height);
+            libInterface.setWindowPosition(
+                Screen.mainWindowPosition.x,
+                Screen.mainWindowPosition.y
+            );
+
+            // This revers to the actual viewport in which the 3D effect is rendered
+            libInterface.setViewportSize(Screen.width, Screen.height);
+            libInterface.setViewportOffset(0, 0);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to update screen viewport properties: " + e.Message);
+        }
 
         // this parameter is used in the shader to invert the y axis
         material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
@@ -605,17 +617,24 @@ public class G3DCamera
             return;
         }
 
-        HeadTrackingStatus headTrackingState = libInterface.getHeadTrackingStatus();
-        if (headTrackingState.hasTrackingDevice)
+        try
         {
-            if (!headTrackingState.isTrackingActive)
+            HeadTrackingStatus headTrackingState = libInterface.getHeadTrackingStatus();
+            if (headTrackingState.hasTrackingDevice)
             {
-                libInterface.startHeadTracking();
+                if (!headTrackingState.isTrackingActive)
+                {
+                    libInterface.startHeadTracking();
+                }
+                else
+                {
+                    libInterface.stopHeadTracking();
+                }
             }
-            else
-            {
-                libInterface.stopHeadTracking();
-            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to toggle head tracking status: " + e.Message);
         }
     }
 
@@ -912,11 +931,25 @@ public class G3DCamera
         }
         if (Input.GetKeyDown(shiftViewLeftKey))
         {
-            libInterface.shiftViewToLeft();
+            try
+            {
+                libInterface.shiftViewToLeft();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to shift view to left: " + e.Message);
+            }
         }
         if (Input.GetKeyDown(shiftViewRightKey))
         {
-            libInterface.shiftViewToRight();
+            try
+            {
+                libInterface.shiftViewToRight();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to shift view to right: " + e.Message);
+            }
         }
         if (Input.GetKeyDown(toggleAutostereo))
         {
@@ -1026,21 +1059,28 @@ public class G3DCamera
 
                 if (headDetected)
                 {
-                    libInterface.applyPositionFilter(
-                        worldPosX,
-                        worldPosY,
-                        worldPosZ,
-                        out filteredPositionX,
-                        out filteredPositionY,
-                        out filteredPositionZ
-                    );
+                    try
+                    {
+                        libInterface.applyPositionFilter(
+                            worldPosX,
+                            worldPosY,
+                            worldPosZ,
+                            out filteredPositionX,
+                            out filteredPositionY,
+                            out filteredPositionZ
+                        );
 
-                    filteredHeadPosition.worldPosX =
-                        -filteredPositionX / millimeterToMeter * sceneScaleFactor;
-                    filteredHeadPosition.worldPosY =
-                        filteredPositionY / millimeterToMeter * sceneScaleFactor;
-                    filteredHeadPosition.worldPosZ =
-                        -filteredPositionZ / millimeterToMeter * sceneScaleFactor;
+                        filteredHeadPosition.worldPosX =
+                            -filteredPositionX / millimeterToMeter * sceneScaleFactor;
+                        filteredHeadPosition.worldPosY =
+                            filteredPositionY / millimeterToMeter * sceneScaleFactor;
+                        filteredHeadPosition.worldPosZ =
+                            -filteredPositionZ / millimeterToMeter * sceneScaleFactor;
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError("Failed to apply position filter: " + e.Message);
+                    }
                 }
 
                 filteredHeadPosition.headDetected = headDetected;
