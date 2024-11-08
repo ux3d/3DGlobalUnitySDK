@@ -1,28 +1,45 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using Salaros.Configuration;
 using UnityEngine;
 
 public class DefaultCalibrationProvider
 {
-    private INIReader reader;
+    private ConfigParser configParser;
 
-    public DefaultCalibrationProvider(string calibrationFile)
+    private DefaultCalibrationProvider() { }
+
+    public static DefaultCalibrationProvider getFromConfigFile(string calibrationFile)
     {
-        if (calibrationFile == null || calibrationFile != "")
+        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        if (calibrationFile == null || !File.Exists(calibrationFile))
         {
-            // calibrationFile = "./DefaultCalibration.ini";
-            return;
+            return provider;
         }
+        provider.configParser = new ConfigParser(calibrationFile);
+        return provider;
+    }
 
-        try
+    public static DefaultCalibrationProvider getFromString(string calibrationData)
+    {
+        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        if (calibrationData == null || calibrationData.Length == 0)
         {
-            reader = new INIReader(calibrationFile);
+            return provider;
         }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning(e.Message);
-        }
+        provider.configParser = new ConfigParser(
+            calibrationData,
+            new ConfigParserSettings
+            {
+                MultiLineValues =
+                    MultiLineValues.Simple
+                    | MultiLineValues.AllowValuelessKeys
+                    | MultiLineValues.QuoteDelimitedValues,
+                Culture = new System.Globalization.CultureInfo("de-DE")
+            }
+        );
+        return provider;
     }
 
     public G3DShaderParameters getDefaultShaderParameters()
@@ -37,13 +54,13 @@ public class DefaultCalibrationProvider
         parameters.bottomViewportPosition = Screen.mainWindowPosition.y + Screen.height; //< The bottom position of the viewport in screen coordinates
 
         // default values are those i got from the head tracking library when no camera was connected
-        parameters.nativeViewCount = readOrDefault(reader, "NativeViewcount", 7);
-        parameters.angleRatioNumerator = readOrDefault(reader, "AngleRatioNumerator", 4);
-        parameters.angleRatioDenominator = readOrDefault(reader, "AngleRatioDenominator", 5);
-        parameters.leftLensOrientation = readOrDefault(reader, "LeftLensOrientation", 1);
-        parameters.BGRPixelLayout = readOrDefault(reader, "isBGR", 0);
-        parameters.blackBorder = readOrDefault(reader, "BlackBorderDefault", 0);
-        parameters.blackSpace = readOrDefault(reader, "BlackSpaceDefault", 0);
+        parameters.nativeViewCount = readOrDefault("NativeViewcount", 7);
+        parameters.angleRatioNumerator = readOrDefault("AngleRatioNumerator", 4);
+        parameters.angleRatioDenominator = readOrDefault("AngleRatioDenominator", 5);
+        parameters.leftLensOrientation = readOrDefault("LeftLensOrientation", 1);
+        parameters.BGRPixelLayout = readOrDefault("isBGR", 0);
+        parameters.blackBorder = readOrDefault("BlackBorderDefault", 0);
+        parameters.blackSpace = readOrDefault("BlackSpaceDefault", 0);
 
         parameters.showTestFrame = 0;
         parameters.showTestStripe = 0;
@@ -82,16 +99,16 @@ public class DefaultCalibrationProvider
     /// <param name="section"></param>
     /// <param name="defaultValue"></param>
     /// <returns></returns>
-    private int readOrDefault(in INIReader reader, string key, int defaultValue)
+    private int readOrDefault(string key, int defaultValue)
     {
-        if (reader == null)
+        if (configParser == null)
         {
             return defaultValue;
         }
 
         try
         {
-            string value = reader.Read(key);
+            string value = configParser.GetValue("MonitorConfiguration", key);
 
             if (value == null)
             {

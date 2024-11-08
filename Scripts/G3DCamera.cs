@@ -324,9 +324,8 @@ public class G3DCamera
 
         lock (shaderLock)
         {
-            DefaultCalibrationProvider defaultCalibrationProvider = new DefaultCalibrationProvider(
-                customDefaultCalibrationFilePath
-            );
+            DefaultCalibrationProvider defaultCalibrationProvider =
+                DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
             shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
         }
         updateShaderParameters();
@@ -1232,5 +1231,57 @@ public class G3DCamera
     private bool usePositionFiltering()
     {
         return headPositionFilter.x != 0 || headPositionFilter.y != 0 || headPositionFilter.z != 0;
+    }
+
+    /// <summary>
+    /// The provided file path has to be a display calibration ini file.
+    /// </summary>
+    /// <param name="filePath"></param>
+    public void UpdateShaderParametersFromFile(string filePath)
+    {
+        if (filePath == null || filePath == "" || filePath.EndsWith(".ini") == false)
+        {
+            return;
+        }
+
+        try
+        {
+            lock (shaderLock)
+            {
+                DefaultCalibrationProvider defaultCalibrationProvider =
+                    DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
+                shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+            }
+            updateShaderParameters();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to update shader parameters from file: " + e.Message);
+        }
+    }
+
+    /// <summary>
+    /// The provided string has to be a display calibration ini file.
+    /// </summary>
+    /// <param name="json"></param>
+    public void UpdateShaderParametersFromINIString(string iniFile)
+    {
+        if (iniFile == null || iniFile == "")
+        {
+            return;
+        }
+
+        try
+        {
+            lock (shaderLock)
+            {
+                shaderParameters = JsonUtility.FromJson<G3DShaderParameters>(iniFile);
+            }
+            updateShaderParameters();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to update shader parameters from json: " + e.Message);
+        }
     }
 }
