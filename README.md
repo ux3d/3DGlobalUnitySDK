@@ -16,7 +16,8 @@ In general it renders two or more camera views per frame and combines them into 
 3. Add the "G3DCamera" script to your main camera.
 4. Set the calibration and config path to the folder containing your calibration and config files.
 5. Set the config file name to match the config file you want to use.
-6. You are done with the installation. Next you have to match your scene to the autostereo display.
+6. Set the Api Compatibility Level to ".NET Framework" in `Edit -> Project Settings -> Player -> Other Settings -> Api Compatibility Level`.
+7. You are done with the installation. Next you have to match your scene to the autostereo display.
 
 ### Basic usage
 The plugin is written wo work with real life units. i.e. the eye separation is in meters and should correspond to the real life eye separation (roughly 6 centimeter).
