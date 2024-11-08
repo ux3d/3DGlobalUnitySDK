@@ -115,19 +115,19 @@ public class DefaultCalibrationProvider
                 return defaultValue;
             }
             int number;
-            if (int.TryParse("123", out number))
+            if (int.TryParse(value, out number))
             {
                 return number;
             }
 
             float floatNumber;
-            if (float.TryParse("123.45", out floatNumber))
+            if (float.TryParse(value, out floatNumber))
             {
                 return (int)floatNumber;
             }
 
             bool boolValue;
-            if (bool.TryParse("true", out boolValue))
+            if (bool.TryParse(value, out boolValue))
             {
                 return boolValue ? 1 : 0;
             }
