@@ -25,6 +25,12 @@ public struct HeadPosition
     public double worldPosZ;
 }
 
+public enum G3DCameraMode
+{
+    DIORAMA,
+    MULTIVIEW
+}
+
 /// <summary>
 /// This struct is used to store the shader parameter handles for the individual shader parameters.
 /// Its members should always be updated when the G3DShaderParameters struct changes.
@@ -104,9 +110,7 @@ public class G3DCamera
     [Range(1, 16)]
     public int cameraCount = 2;
 
-    public bool enableDioramaEffect = false;
-
-    public bool useMultiview = false;
+    public G3DCameraMode mode = G3DCameraMode.DIORAMA;
 
     [Tooltip(
         "The distance between the two eyes in meters. This value is used to calculate the stereo effect."
@@ -187,7 +191,7 @@ public class G3DCamera
 
     [Tooltip("Shows a red/green test frame.")]
     public KeyCode toggleTestFrameKey = KeyCode.D;
-    public KeyCode toggleDioramaEffectKey = KeyCode.H;
+    public KeyCode switchCameraMode = KeyCode.H;
     public KeyCode decreaseEyeSeparationKey = KeyCode.K;
     public KeyCode increaseEyeSeparationKey = KeyCode.L;
     #endregion
@@ -469,7 +473,7 @@ public class G3DCamera
 
     private void reinitializeShader()
     {
-        if (useMultiview)
+        if (mode == G3DCameraMode.MULTIVIEW)
         {
             material = new Material(Shader.Find("G3D/AutostereoMultiview"));
         }
@@ -672,7 +676,7 @@ public class G3DCamera
         float horizontalOffset = targetPosition.x;
         float verticalOffset = targetPosition.y;
 
-        if (useMultiview)
+        if (mode == G3DCameraMode.MULTIVIEW)
         {
             targetEyeSeparation = eyeSeparation;
             cameraParent.transform.localPosition = defaultPostion;
@@ -763,7 +767,7 @@ public class G3DCamera
     */
     private void handleHeadTrackingState(ref Vector3 targetPosition, ref float targetEyeSeparation)
     {
-        if (enableDioramaEffect == false || useMultiview)
+        if (mode == G3DCameraMode.MULTIVIEW)
         {
             return;
         }
@@ -789,7 +793,7 @@ public class G3DCamera
             headTrackingState = prevHeadTrackingState;
         }
         // head detected
-        if (headPosition.headDetected && enableDioramaEffect)
+        if (headPosition.headDetected)
         {
             Vector3 headPositionWorld = new Vector3(
                 (float)headPosition.worldPosX,
@@ -958,9 +962,16 @@ public class G3DCamera
         {
             showTestFrame = !showTestFrame;
         }
-        if (Input.GetKeyDown(toggleDioramaEffectKey))
+        if (Input.GetKeyDown(switchCameraMode))
         {
-            enableDioramaEffect = !enableDioramaEffect;
+            if (mode == G3DCameraMode.DIORAMA)
+            {
+                mode = G3DCameraMode.MULTIVIEW;
+            }
+            else
+            {
+                mode = G3DCameraMode.DIORAMA;
+            }
         }
         if (Input.GetKeyDown(decreaseEyeSeparationKey))
         {
