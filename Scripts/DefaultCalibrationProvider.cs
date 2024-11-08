@@ -32,7 +32,6 @@ public class DefaultCalibrationProvider
         parameters.BGRPixelLayout = readOrDefault(reader, "isBGR", 0);
         parameters.blackBorder = readOrDefault(reader, "BlackBorderDefault", 0);
         parameters.blackSpace = readOrDefault(reader, "BlackSpaceDefault", 0);
-        int notFound = readOrDefault(reader, "DeepSpaceNine", 9);
 
         parameters.showTestFrame = 0;
         parameters.showTestStripe = 0;
