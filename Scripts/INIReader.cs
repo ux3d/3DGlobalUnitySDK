@@ -1,12 +1,16 @@
+using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
-// based on https://stackoverflow.com/a/14906422
+/// <summary>
+/// Reads an INI file into a dictionary
+/// Only supports reading, not writing
+/// Only supports one level of sections
+/// </summary>
 public class INIReader
 {
-    private string Path;
+    private Dictionary<string, string> data = new Dictionary<string, string>();
 
     public INIReader(string IniPath)
     {
@@ -16,41 +20,49 @@ public class INIReader
         if (!File.Exists(IniPath))
             throw new System.Exception("Ini file not found");
 
-        Path = new FileInfo(IniPath).FullName;
+        foreach (string line in File.ReadLines(new FileInfo(IniPath).FullName))
+        {
+            // skip empty lines and section headers
+            if (
+                line.Length == 0
+                || line == "[MonitorConfiguration]"
+                || (line.StartsWith("[") && line.EndsWith("]"))
+            )
+            {
+                continue;
+            }
+            try
+            {
+                var lineData = line.Split('=');
+                if (lineData.Length != 2)
+                {
+                    throw new System.Exception("Invalid line in ini file: " + line);
+                }
+                data.Add(lineData[0], lineData[1]);
+            }
+            catch (System.Exception e)
+            {
+                throw new System.Exception(
+                    "Error parsing line \"" + line + "\" in ini file: " + e.Message
+                );
+            }
+        }
     }
 
-    [DllImport("kernel32", CharSet = CharSet.Unicode)]
-    static extern int GetPrivateProfileString(
-        string Section,
-        string Key,
-        string Default,
-        StringBuilder RetVal,
-        int Size,
-        string FilePath
-    );
-
-    public string Read(string Key, string Section)
+    public string Read(string Key)
     {
-        if (Section == null)
-            throw new System.Exception("Section can not be null when reading ini file.");
         if (Key == null)
             throw new System.Exception("Key can not be null when reading ini file.");
 
-        if (KeyExists(Key, Section) == false)
+        if (KeyExists(Key) == false)
         {
             throw new System.Exception("Key not found in ini file.");
         }
-
-        var RetVal = new StringBuilder(255);
-        GetPrivateProfileString(Section, Key, "", RetVal, 255, Path);
-        return RetVal.ToString();
+        return data[Key];
     }
 
-    public bool KeyExists(string Key, string Section)
+    public bool KeyExists(string Key)
     {
-        var RetVal = new StringBuilder(255);
-        GetPrivateProfileString(Section, Key, "", RetVal, 255, Path);
-        string value = RetVal.ToString();
-        return value.Length > 0;
+        return data.ContainsKey(Key);
     }
 }

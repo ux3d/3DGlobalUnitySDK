@@ -72,10 +72,9 @@ public class DefaultCalibrationProvider
     /// <returns></returns>
     private int readOrDefault(in INIReader reader, string key, int defaultValue)
     {
-        const string defaultSection = "MonitorConfiguration";
         try
         {
-            return int.Parse(reader.Read(key, defaultSection));
+            return int.Parse(reader.Read(key));
         }
         catch (System.Exception e)
         {
