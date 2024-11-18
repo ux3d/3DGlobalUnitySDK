@@ -286,6 +286,9 @@ public class G3DCamera
             cameras[i].transform.SetParent(cameraParent.transform, true);
             cameras[i].gameObject.SetActive(false);
             cameras[i].transform.localRotation = Quaternion.identity;
+            cameras[i].clearFlags = mainCamera.clearFlags;
+            cameras[i].backgroundColor = mainCamera.backgroundColor;
+            cameras[i].targetDisplay = mainCamera.targetDisplay;
         }
 
         // initialize shader textures
