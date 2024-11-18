@@ -537,12 +537,10 @@ public class G3DCamera
 
     private void updateScreenViewportProperties()
     {
-        DisplayInfo mainDisplayInfo = Screen.mainWindowDisplayInfo;
-
         try
         {
             // This is the size of the entire monitor screen
-            libInterface.setScreenSize(mainDisplayInfo.width, mainDisplayInfo.height);
+            libInterface.setScreenSize(Screen.width, Screen.height);
 
             // this revers to the window in which the 3D effect is rendered (including eg windows top window menu)
             libInterface.setWindowSize(Screen.width, Screen.height);
