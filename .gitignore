@@ -74,3 +74,4 @@ crashlytics-build.properties
 # Visual Studio code directory
 .vscode/
 .config/
+.DS_Store
