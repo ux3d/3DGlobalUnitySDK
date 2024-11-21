@@ -1205,16 +1205,10 @@ public class G3DCamera
 
     private float calculateCameraOffset(int currentCamera, float targetEyeSeparation)
     {
-        int currentView = -cameraCount / 2 + currentCamera;
+        int currentView = (-cameraCount / 2 + currentCamera);
         if (cameraCount % 2 == 0 && currentView >= 0)
         {
             currentView += 1;
-        }
-
-        if (Math.Abs(currentView) <= 1 && cameraCount % 2 == 0)
-        {
-            // default only half the eye separation for correct offset to left and right of center
-            return currentView * targetEyeSeparation * sceneScaleFactor / 2;
         }
 
         float offset = currentView * targetEyeSeparation * sceneScaleFactor;
@@ -1230,10 +1224,10 @@ public class G3DCamera
             {
                 correctionTerm *= -1;
             }
-            return offset + correctionTerm;
+            return (offset + correctionTerm) * -1;
         }
 
-        return offset;
+        return offset * -1;
     }
 
     /// <summary>
