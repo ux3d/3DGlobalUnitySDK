@@ -137,10 +137,6 @@ public class G3DCamera
     private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
-    [Tooltip("Percentage of the main cameras resolution at which the stereo cameras are rendered.")]
-    [Range(1.0f, 100.0f)]
-    public float resolution = 100.0f;
-
     [Tooltip(
         "This value can be used to scale the real world values used to calibrate the extension. For example if your scene is 10 times larger than the real world, you can set this value to 10. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
@@ -177,6 +173,10 @@ public class G3DCamera
     public float gizmoSize = 0.2f;
 
     public bool renderAutostereo = true;
+
+    [Range(1, 16)]
+    public int renderTargetScaleFactor = 5;
+    private int oldFenderTargetScaleFactor = 5;
 
     #endregion
 
@@ -530,6 +530,12 @@ public class G3DCamera
             updateScreenViewportProperties();
         }
 
+        if (oldFenderTargetScaleFactor != renderTargetScaleFactor)
+        {
+            oldFenderTargetScaleFactor = renderTargetScaleFactor;
+            updateShaderViews();
+        }
+
 #if HDRP || URP
         customPass.renderAutostereo = renderAutostereo;
 #endif
@@ -699,6 +705,11 @@ public class G3DCamera
             camera.projectionMatrix = mainCamera.projectionMatrix;
             camera.transform.localPosition = cameraParent.transform.localPosition;
             camera.transform.localRotation = cameraParent.transform.localRotation;
+#if URP
+            camera.GetUniversalAdditionalCameraData().antialiasing = mainCamera
+                .GetUniversalAdditionalCameraData()
+                .antialiasing;
+#endif
 
             float localCameraOffset = calculateCameraOffset(i, targetEyeSeparation);
 
@@ -748,13 +759,13 @@ public class G3DCamera
         for (int i = 0; i < cameraCount; i++)
         {
             renderTextures[i] = new RenderTexture(
-                (int)(Screen.width * resolution / 100),
-                (int)(Screen.height * resolution / 100),
+                (int)(Screen.width / renderTargetScaleFactor),
+                Screen.height,
                 0
             )
             {
                 format = RenderTextureFormat.ARGB32,
-                depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm
+                depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
             };
             cameras[i].targetTexture = renderTextures[i];
             material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
