@@ -61,9 +61,9 @@ public class DefaultCalibrationProvider
 #endif
 
         // default values are those i got from the head tracking library when no camera was connected
-        parameters.nativeViewCount = readOrDefault("NativeViewcount", 7);
-        parameters.angleRatioNumerator = readOrDefault("AngleRatioNumerator", 4);
-        parameters.angleRatioDenominator = readOrDefault("AngleRatioDenominator", 5);
+        parameters.nativeViewCount = readOrDefault("NativeViewcount", 5);
+        parameters.angleRatioNumerator = readOrDefault("AngleRatioNumerator", 5);
+        parameters.angleRatioDenominator = readOrDefault("AngleRatioDenominator", 7);
         parameters.leftLensOrientation = readOrDefault("LeftLensOrientation", 1);
         parameters.BGRPixelLayout = readOrDefault("isBGR", 0);
         parameters.blackBorder = readOrDefault("BlackBorderDefault", 0);
