@@ -13,34 +13,38 @@ Shader "G3D/Autostereo"
     int  testgap;        // Breite der Lücke im Testbild
     int  track;          // Trackingshift
     int  mstart;         // Viewshift permanent Offset
-    int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
     int  hqview;         // hqViewCount
     int  hviews1;          // hqview - 1
     int  hviews2;       // hqview / 2
-
+    
     int  bls;            // black left start (start and end points of left and right "eye" window)
     int  ble;         // black left end 
     int  brs;          // black right start
     int  bre;      // black right end 
-        
-    int  bborder;        // blackBorder schwarz verblendung zwischen den views?
-    int  bspace;         // blackSpace
-    int  s_width;        // screen width
+    
     int  s_height;       // screen height
     int  v_pos_x;        // horizontal viewport position
     int  v_pos_y;        // vertical viewport position
     int  tvx;            // zCorrectionValue
     int  zkom;           // zCompensationValue, kompensiert den Shift der durch die Z-Korrektur entsteht
-
+    
     // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
     // to do this we need the actual viewport height
     int viewportHeight;
+    
+    int mirror; // 1: mirror from left to right, 0: no mirror
 
-    // amount of render targets (only used in multiview shader (not used in this one))
+    // unused parameters -> only here for so that this shader overlaps with the multiview shader
+    // amount of render targets
     int cameraCount;
-
-    // unused parameter -> only here for so that this shader overlaps with the multiview shader
     int isBGR; // 0 = RGB, 1 = BGR
+    
+
+    // unused parameters
+    int  bborder;        // blackBorder schwarz verblendung zwischen den views?
+    int  bspace;         // blackSpace
+    int  s_width;        // screen width
+    int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
 
     struct v2f
     {
@@ -108,9 +112,15 @@ Shader "G3D/Autostereo"
         xwert = hviews1 - (mtmp % hqview);
         // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
+        float2 uvCoords = i.uv;
+        // mirror the image if necessary
+        if (mirror != 0) {
+            uvCoords.x = 1.0 - uvCoords.x;
+        }
+
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
-        float4 colorLeft = sampleFromView(0, i.uv);              // Pixeldaten linkes Bild
-        float4 colorRight = sampleFromView(1, i.uv);             // Pixeldaten rechtes Bild
+        float4 colorLeft = sampleFromView(0, uvCoords);              // Pixeldaten linkes Bild
+        float4 colorRight = sampleFromView(1, uvCoords);             // Pixeldaten rechtes Bild
         float cor=0.0, cog=0.0, cob=0.0;
 
         

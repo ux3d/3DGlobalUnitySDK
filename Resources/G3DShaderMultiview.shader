@@ -9,39 +9,43 @@ Shader "G3D/AutostereoMultiview"
     int  nwinkel;        // Winkelnenner
     int  isleft;         // links(1) oder rechts(0) geneigtes Lentikular
     int  test;           // Rot/Schwarz (1)ein, (0)aus
-    int  stest;          // Streifen Rot/Schwarz (1)ein, (0)aus
-    int  testgap;        // Breite der Lücke im Testbild
     int  track;          // Trackingshift
     int  mstart;         // Viewshift permanent Offset
-    int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
     int  hqview;         // hqhqViewCount
-    int  hviews1;          // hqview - 1
-    int  hviews2;       // hqview / 2
-
+    
     int  bls;            // black left start (start and end points of left and right "eye" window)
     int  ble;         // black left end 
     int  brs;          // black right start
     int  bre;      // black right end 
-        
-    int  bborder;        // blackBorder schwarz verblendung zwischen den views?
-    int  bspace;         // blackSpace
-    int  s_width;        // screen width
+    
     int  s_height;       // screen height
     int  v_pos_x;        // horizontal viewport position
     int  v_pos_y;        // vertical viewport position
-    int  tvx;            // zCorrectionValue
-    int  zkom;           // zCompensationValue, kompensiert den Shift der durch die Z-Korrektur entsteht
-
+    
     // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
     // to do this we need the actual viewport height
     int viewportHeight;
-
+    
     // amount of render targets
     int cameraCount;
+
+    int mirror; // 1: mirror from left to right, 0: no mirror
     
     // unused parameter -> only here for so that this shader overlaps with the multiview shader
     int isBGR; // 0 = RGB, 1 = BGR
-
+    
+    // unused parameters -> only here for so that this shader overlaps with the multiview shader
+    int  s_width;        // screen width
+    int  bborder;        // blackBorder schwarz verblendung zwischen den views?
+    int  bspace;         // blackSpace
+    int  tvx;            // zCorrectionValue
+    int  zkom;           // zCompensationValue, kompensiert den Shift der durch die Z-Korrektur entsteht
+    int  hviews1;          // hqview - 1
+    int  hviews2;       // hqview / 2
+    int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
+    int  testgap;        // Breite der Lücke im Testbild
+    int  stest;          // Streifen Rot/Schwarz (1)ein, (0)aus
+    
     struct v2f
     {
         float2 uv : TEXCOORD0;
@@ -121,9 +125,15 @@ Shader "G3D/AutostereoMultiview"
         return float4(0, 0, 0, 0);
     }
 
-    float map(float s, float from1, float from2, float to1, float to2)
+    // original code (adapted to remove redundant calculations):
+    // map(viewIndex, 0, calculatedViewCount, 0, cameraCount);
+    // float map(float s, float from1, float from2, float to1, float to2)
+    // {
+    //     return to1 + (s-from1)*(to2-to1)/(from2-from1);
+    // }
+    float map(float s, float from2, float to2)
     {
-        return to1 + (s-from1)*(to2-to1)/(from2-from1);
+        return s*to2/from2;
     }
 
     float4 frag (v2f i) : SV_Target
@@ -166,6 +176,12 @@ Shader "G3D/AutostereoMultiview"
         viewIndices += track;
         viewIndices = viewIndices % calculatedViewCount;
 
+        float2 uvCoords = i.uv;
+        // mirror the image if necessary
+        if (mirror != 0) {
+            uvCoords.x = 1.0 - uvCoords.x;
+        }
+
         //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
         int viewIndex = 0;
@@ -183,8 +199,8 @@ Shader "G3D/AutostereoMultiview"
                 continue;
             }
 
-            float mappedIndex = map(viewIndex, 0, calculatedViewCount, 0, cameraCount);
-            float4 tmpColor = sampleFromView(mappedIndex, i.uv);
+            float mappedIndex = map(viewIndex, calculatedViewCount, cameraCount);
+            float4 tmpColor = sampleFromView(mappedIndex, uvCoords);
 
             if(channel == 0) {
                 color.x = tmpColor.x;

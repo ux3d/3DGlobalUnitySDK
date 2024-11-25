@@ -154,6 +154,9 @@ public class G3DCamera
     public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
 
     private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
+
+    [Tooltip("If set to true, the views will be flipped horizontally.")]
+    public bool mirrorViews = false;
     #endregion
 
     #region Device settings
@@ -609,6 +612,8 @@ public class G3DCamera
             material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
 
             material?.SetInt(Shader.PropertyToID("cameraCount"), internalCameraCount);
+
+            material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
         }
     }
 
