@@ -180,7 +180,7 @@ public class G3DCamera
     [Range(0.005f, 1.0f)]
     public float gizmoSize = 0.2f;
 
-    private int oldFenderTargetScaleFactor = 5;
+    private int oldRenderTargetScaleFactor = 5;
 
     #endregion
 
@@ -767,9 +767,9 @@ public class G3DCamera
 
         // check if shaderviews should be updated
         bool shouldUpdateShaderViews = false;
-        if (oldFenderTargetScaleFactor != renderTargetScaleFactor)
+        if (oldRenderTargetScaleFactor != renderTargetScaleFactor)
         {
-            oldFenderTargetScaleFactor = renderTargetScaleFactor;
+            oldRenderTargetScaleFactor = renderTargetScaleFactor;
             shouldUpdateShaderViews = true;
         }
         if (lockCameraCountToShaderParameters())
