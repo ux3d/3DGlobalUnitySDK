@@ -109,6 +109,12 @@ public class G3DCamera
     )]
     [Range(1, 16)]
     public int cameraCount = 2;
+    private int internalCameraCount = 2;
+
+    [Tooltip(
+        "If set to true, the amount of cameras will be limited by the amount of native views the display supports."
+    )]
+    public bool lockCameraCountToDisplay = false;
 
     public G3DCameraMode mode = G3DCameraMode.DIORAMA;
 
@@ -145,7 +151,7 @@ public class G3DCamera
     [Tooltip(
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
-    public Vector3Int headPositionFilter = new Vector3Int(0, 0, 0);
+    public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
 
     private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
     #endregion
@@ -161,7 +167,6 @@ public class G3DCamera
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
     public bool showTestFrame = false;
-    public bool showTestStripes = false;
 
     [Tooltip(
         "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
@@ -172,10 +177,6 @@ public class G3DCamera
     [Range(0.005f, 1.0f)]
     public float gizmoSize = 0.2f;
 
-    public bool renderAutostereo = true;
-
-    [Range(1, 16)]
-    public int renderTargetScaleFactor = 5;
     private int oldFenderTargetScaleFactor = 5;
 
     #endregion
@@ -185,7 +186,6 @@ public class G3DCamera
     [Tooltip("If set to true, the library will react to certain keyboard keys.")]
     public bool enableKeys = true;
     public KeyCode toggleHeadTrackingKey = KeyCode.Space;
-    public KeyCode toggleAutostereo = KeyCode.A;
     public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
     public KeyCode shiftViewRightKey = KeyCode.RightArrow;
 
@@ -215,6 +215,7 @@ public class G3DCamera
     private List<Camera> cameras = null;
     private GameObject focusPlaneObject = null;
     private GameObject cameraParent = null;
+    private int renderTargetScaleFactor = 5;
 
     private Material material;
 #if HDRP
@@ -365,6 +366,7 @@ public class G3DCamera
         halfCameraWidthAtStart =
             Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;
 
+        updateShaderViews(true);
         updateCameras();
 
         // This has to be done after the cameras are updated
@@ -373,7 +375,6 @@ public class G3DCamera
             Screen.mainWindowPosition.y
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
-        cachedCameraCount = cameraCount;
 
         prevEyeSeparation = eyeSeparation;
     }
@@ -517,6 +518,9 @@ public class G3DCamera
     #region Updates
     void Update()
     {
+        renderTargetScaleFactor = shaderParameters.nativeViewCount;
+
+        updateShaderViews();
         updateCameras();
         updateShaderParameters();
 
@@ -529,16 +533,6 @@ public class G3DCamera
         {
             updateScreenViewportProperties();
         }
-
-        if (oldFenderTargetScaleFactor != renderTargetScaleFactor)
-        {
-            oldFenderTargetScaleFactor = renderTargetScaleFactor;
-            updateShaderViews();
-        }
-
-#if HDRP || URP
-        customPass.renderAutostereo = renderAutostereo;
-#endif
     }
 
     private void updateScreenViewportProperties()
@@ -614,7 +608,7 @@ public class G3DCamera
             material?.SetInt(shaderHandles.zCompensationValue, shaderParameters.zCompensationValue);
             material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
 
-            material?.SetInt(Shader.PropertyToID("cameraCount"), cameraCount);
+            material?.SetInt(Shader.PropertyToID("cameraCount"), internalCameraCount);
         }
     }
 
@@ -695,7 +689,7 @@ public class G3DCamera
             2 * Mathf.Atan(halfCameraWidthAtStart / currentFocusDistance) * Mathf.Rad2Deg;
 
         //calculate camera positions and matrices
-        for (int i = 0; i < cameraCount; i++)
+        for (int i = 0; i < internalCameraCount; i++)
         {
             var camera = cameras[i];
             //copy any changes to the main camera
@@ -711,7 +705,11 @@ public class G3DCamera
                 .antialiasing;
 #endif
 
-            float localCameraOffset = calculateCameraOffset(i, targetEyeSeparation);
+            float localCameraOffset = calculateCameraOffset(
+                i,
+                targetEyeSeparation,
+                internalCameraCount
+            );
 
             // horizontal obliqueness
             float horizontalObl = -(localCameraOffset + horizontalOffset) / currentFocusDistance;
@@ -730,33 +728,67 @@ public class G3DCamera
         }
 
         //disable all the other cameras, we are not using them with this cameracount
-        for (int i = cameraCount; i < MAX_CAMERAS; i++)
+        for (int i = internalCameraCount; i < MAX_CAMERAS; i++)
         {
             cameras[i].gameObject.SetActive(false);
         }
-
-        if (cachedCameraCount != cameraCount)
-        {
-            cachedCameraCount = cameraCount;
-            updateShaderViews();
-        }
     }
 
-    public void updateShaderViews()
+    /// <summary>
+    /// Ensures that the camera count is not higher than the maximum the display is capable of.
+    /// </summary>
+    /// <returns>true if camera count was changed.</returns>
+    private bool lockCameraCountToShaderParameters()
+    {
+        int shaderMaxCount = shaderParameters.nativeViewCount;
+
+        internalCameraCount = cameraCount;
+
+        if (cameraCount > shaderMaxCount && lockCameraCountToDisplay)
+        {
+            internalCameraCount = shaderMaxCount;
+            return true;
+        }
+
+        return false;
+    }
+
+    public void updateShaderViews(bool initialUpdate = false)
     {
         if (material == null)
             return;
         if (cameras == null)
             return;
 
+        // check if shaderviews should be updated
+        bool shouldUpdateShaderViews = false;
+        if (oldFenderTargetScaleFactor != renderTargetScaleFactor)
+        {
+            oldFenderTargetScaleFactor = renderTargetScaleFactor;
+            shouldUpdateShaderViews = true;
+        }
+        if (lockCameraCountToShaderParameters())
+        {
+            shouldUpdateShaderViews = true;
+        }
+        if (cachedCameraCount != internalCameraCount)
+        {
+            cachedCameraCount = internalCameraCount;
+            shouldUpdateShaderViews = true;
+        }
+        if (shouldUpdateShaderViews == false && initialUpdate == false)
+        {
+            return;
+        }
+
         //prevent any memory leaks
         for (int i = 0; i < MAX_CAMERAS; i++)
             cameras[i].targetTexture?.Release();
 
-        RenderTexture[] renderTextures = new RenderTexture[cameraCount];
+        RenderTexture[] renderTextures = new RenderTexture[internalCameraCount];
 
         //set only those we need
-        for (int i = 0; i < cameraCount; i++)
+        for (int i = 0; i < internalCameraCount; i++)
         {
             renderTextures[i] = new RenderTexture(
                 (int)(Screen.width / renderTargetScaleFactor),
@@ -966,10 +998,6 @@ public class G3DCamera
                 Debug.LogError("Failed to shift view to right: " + e.Message);
             }
         }
-        if (Input.GetKeyDown(toggleAutostereo))
-        {
-            renderAutostereo = !renderAutostereo;
-        }
         if (Input.GetKeyDown(toggleTestFrameKey))
         {
             showTestFrame = !showTestFrame;
@@ -1007,7 +1035,7 @@ public class G3DCamera
         //legacy support (no URP or HDRP)
 #if HDRP || URP
 #else
-        if (material == null || renderAutostereo == false)
+        if (material == null)
             Graphics.Blit(source, destination);
         else
             Graphics.Blit(source, destination, material);
@@ -1163,14 +1191,6 @@ public class G3DCamera
             {
                 this.shaderParameters.showTestFrame = 0;
             }
-            if (showTestStripes)
-            {
-                this.shaderParameters.showTestStripe = 1;
-            }
-            else
-            {
-                this.shaderParameters.showTestStripe = 0;
-            }
         }
     }
 
@@ -1201,7 +1221,7 @@ public class G3DCamera
         Gizmos.color = new Color(0, 0, 1, 0.75F);
         for (int i = 0; i < cameraCount; i++)
         {
-            float cameraOffset = calculateCameraOffset(i, eyeSeparation);
+            float cameraOffset = calculateCameraOffset(i, eyeSeparation, cameraCount);
             position = transform.position + transform.right * cameraOffset;
             Gizmos.DrawSphere(position, 0.3f * gizmoSize * sceneScaleFactor);
         }
@@ -1214,10 +1234,14 @@ public class G3DCamera
 #endif
     #endregion
 
-    private float calculateCameraOffset(int currentCamera, float targetEyeSeparation)
+    private float calculateCameraOffset(
+        int currentCamera,
+        float targetEyeSeparation,
+        int tmpCameraCount
+    )
     {
-        int currentView = (-cameraCount / 2 + currentCamera);
-        if (cameraCount % 2 == 0 && currentView >= 0)
+        int currentView = -tmpCameraCount / 2 + currentCamera;
+        if (tmpCameraCount % 2 == 0 && currentView >= 0)
         {
             currentView += 1;
         }
@@ -1227,7 +1251,7 @@ public class G3DCamera
         // when the camera count is even, one camera is placed half the eye separation to the right of the center
         // same for the other to the left
         // therefore we need to add the correction term to the offset to get the correct position
-        if (cameraCount % 2 == 0)
+        if (tmpCameraCount % 2 == 0)
         {
             // subtract half of the eye separation to get the correct offset
             float correctionTerm = targetEyeSeparation * sceneScaleFactor / 2;

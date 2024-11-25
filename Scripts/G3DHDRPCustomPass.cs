@@ -5,17 +5,10 @@ using UnityEngine.Rendering.HighDefinition;
 
 internal class G3DHDRPCustomPass : FullScreenCustomPass
 {
-    public bool renderAutostereo = true;
-
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
     {
-        if (renderAutostereo == false)
-        {
-            return;
-        }
-
         // only render for game cameras and cameras with the G3D camera component
         if (
             ctx.hdCamera.camera.cameraType != CameraType.Game
