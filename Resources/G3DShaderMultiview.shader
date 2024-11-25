@@ -13,11 +13,6 @@ Shader "G3D/AutostereoMultiview"
     int  mstart;         // Viewshift permanent Offset
     int  hqview;         // hqhqViewCount
     
-    int  bls;            // black left start (start and end points of left and right "eye" window)
-    int  ble;         // black left end 
-    int  brs;          // black right start
-    int  bre;      // black right end 
-    
     int  s_height;       // screen height
     int  v_pos_x;        // horizontal viewport position
     int  v_pos_y;        // vertical viewport position
@@ -28,7 +23,7 @@ Shader "G3D/AutostereoMultiview"
     
     // amount of render targets
     int cameraCount;
-
+    
     int mirror; // 1: mirror from left to right, 0: no mirror
     
     // unused parameter -> only here for so that this shader overlaps with the multiview shader
@@ -45,6 +40,10 @@ Shader "G3D/AutostereoMultiview"
     int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
     int  testgap;        // Breite der Lücke im Testbild
     int  stest;          // Streifen Rot/Schwarz (1)ein, (0)aus
+    int  bls;            // black left start (start and end points of left and right "eye" window)
+    int  ble;         // black left end 
+    int  brs;          // black right start
+    int  bre;      // black right end 
     
     struct v2f
     {
