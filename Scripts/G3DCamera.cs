@@ -545,14 +545,14 @@ public class G3DCamera
             // This is the size of the entire monitor screen
             libInterface.setScreenSize(Screen.width, Screen.height);
 
-            // this revers to the window in which the 3D effect is rendered (including eg windows top window menu)
+            // this refers to the window in which the 3D effect is rendered (including eg windows top window menu)
             libInterface.setWindowSize(Screen.width, Screen.height);
             libInterface.setWindowPosition(
                 Screen.mainWindowPosition.x,
                 Screen.mainWindowPosition.y
             );
 
-            // This revers to the actual viewport in which the 3D effect is rendered
+            // This refers to the actual viewport in which the 3D effect is rendered
             libInterface.setViewportSize(Screen.width, Screen.height);
             libInterface.setViewportOffset(0, 0);
         }
