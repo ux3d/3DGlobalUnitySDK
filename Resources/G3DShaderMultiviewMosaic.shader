@@ -29,8 +29,8 @@ Shader "G3D/AutostereoMultiviewMosaic"
     int isBGR; // 0 = RGB, 1 = BGR
 
     // mosaic video parameters
-    int mosaic_rows; // number of rows in the mosaic
-    int mosaic_columns; // number of columns in the mosaic
+    int mosaic_rows = 1; // number of rows in the mosaic
+    int mosaic_columns = 1; // number of columns in the mosaic
     
     struct v2f
     {
@@ -55,11 +55,9 @@ Shader "G3D/AutostereoMultiviewMosaic"
 
     float2 calculateUVForMosaic(int index, float2 startingUV) {
         int2 moasicIndex = int2(index % mosaic_rows, index / mosaic_rows);
-        float2 uv = float2(0, 0);
         float2 scaledUV = float2(startingUV.x / mosaic_columns, startingUV.y / mosaic_rows);
         float2 cellSize = float2(1.0 / mosaic_columns, 1.0 / mosaic_rows);
-        uv = scaledUV + cellSize * moasicIndex;
-        return uv;
+        return scaledUV + cellSize * moasicIndex;
     }
 
     float4 frag (v2f i) : SV_Target
@@ -107,8 +105,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
 
         //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
-        float4 tmpColor = mosaictexture.Sample(samplermosaictexture, i.uv);
-        return tmpColor;
         int viewIndex = 0;
         for (int channel = 0; channel < 3; channel++) {
             if(isBGR != 0) {
@@ -125,8 +121,9 @@ Shader "G3D/AutostereoMultiviewMosaic"
             }
 
             float mappedIndex = map(viewIndex, calculatedViewCount, cameraCount);
-            uvCoords = calculateUVForMosaic(mappedIndex, uvCoords);
-            float4 tmpColor = mosaictexture.Sample(samplermosaictexture, uvCoords);
+            float2 mappedUVCoords = calculateUVForMosaic(mappedIndex, uvCoords);
+
+            float4 tmpColor = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
 
             if(channel == 0) {
                 color.x = tmpColor.x;
@@ -136,7 +133,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
                 color.z = tmpColor.z;
             }
         }
-        
         return color;
     }
     ENDHLSL

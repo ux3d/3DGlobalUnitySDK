@@ -88,8 +88,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     #endregion
 
-    // TODO Handle viewport resizing/ moving
-
     #region Initialization
     void Start()
     {
@@ -113,6 +111,21 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             hqViewCount = Shader.PropertyToID("hqview"),
         };
 
+        reinitializeShader();
+        updateScreenViewportProperties();
+
+        DefaultCalibrationProvider defaultCalibrationProvider =
+            DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
+        shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+        updateShaderParameters();
+
+        // This has to be done after the cameras are updated
+        cachedWindowPosition = new Vector2Int(
+            Screen.mainWindowPosition.x,
+            Screen.mainWindowPosition.y
+        );
+        cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
+
 #if HDRP
         // init fullscreen postprocessing for hd render pipeline
         var customPassVolume = gameObject.AddComponent<CustomPassVolume>();
@@ -128,21 +141,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 #if URP
         customPass = new G3DUrpScriptableRenderPass(material);
 #endif
-
-        reinitializeShader();
-        updateScreenViewportProperties();
-
-        DefaultCalibrationProvider defaultCalibrationProvider =
-            DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
-        shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
-        updateShaderParameters();
-
-        // This has to be done after the cameras are updated
-        cachedWindowPosition = new Vector2Int(
-            Screen.mainWindowPosition.x,
-            Screen.mainWindowPosition.y
-        );
-        cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
         // VideoPlayer videoPlayer = GetComponent<VideoPlayer>();
         // uint width = videoPlayer.width;
