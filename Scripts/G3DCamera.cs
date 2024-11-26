@@ -855,7 +855,7 @@ public class G3DCamera
             );
 
             // if head within max tracking distance
-            if (headPositionWorld.magnitude <= maxHeadDistance)
+            if (headPositionWorld.magnitude <= maxHeadDistance * sceneScaleFactor)
             {
                 headTrackingState = HeadTrackingState.TRACKING;
                 targetPosition = headPositionWorld;
