@@ -9,6 +9,9 @@ internal class G3DHDRPCustomPass : FullScreenCustomPass
 
     protected override void Execute(CustomPassContext ctx)
     {
+        var camera = renderingData.cameraData.camera;
+        if (camera.cameraType != CameraType.Game)
+            return;
         // only render for game cameras and cameras with the G3D camera component
         if (
             ctx.hdCamera.camera.cameraType != CameraType.Game
@@ -21,6 +24,17 @@ internal class G3DHDRPCustomPass : FullScreenCustomPass
         {
             return;
         }
+
+        bool isG3DCamera = camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera);
+        bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled;
+
+        bool isMosaicMultiviewCamera = camera.gameObject.TryGetComponent<G3DCameraMosaicMultiview>(
+            out var mosaicCamera
+        );
+        bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled;
+
+        if (!isG3DCameraEnabled && !isMosaicMultiviewCameraEnabled)
+            return;
 
         // skip all cameras created by the G3D Camera script
         if (ctx.hdCamera.camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))

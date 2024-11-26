@@ -20,26 +20,25 @@ internal class G3DUrpScriptableRenderPass : ScriptableRenderPass
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        var cameraData = renderingData.cameraData;
-        if (cameraData.camera.cameraType != CameraType.Game)
+        var camera = renderingData.cameraData.camera;
+        if (camera.cameraType != CameraType.Game)
             return;
-        // only render for game cameras and cameras with the G3D camera component
-        if (
-            cameraData.camera.cameraType != CameraType.Game
-            || (
-                cameraData.camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera) == false
-                || g3dCamera.enabled == false
-            )
-        )
-        {
+        bool isG3DCamera = camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera);
+        bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled;
+
+        bool isMosaicMultiviewCamera = camera.gameObject.TryGetComponent<G3DCameraMosaicMultiview>(
+            out var mosaicCamera
+        );
+        bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled;
+
+        if (!isG3DCameraEnabled && !isMosaicMultiviewCameraEnabled)
             return;
-        }
 
         if (m_Material == null)
             return;
 
         // skip all cameras created by the G3D Camera script
-        if (cameraData.camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))
+        if (camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))
         {
             return;
         }
