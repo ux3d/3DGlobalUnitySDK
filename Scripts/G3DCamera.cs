@@ -71,7 +71,11 @@ struct ShaderHandles
     public int zCompensationValue;
 }
 
+/// <summary>
+/// IMPORTANT: This script must not be attached to a camera already using a G3D camera script.
+/// </summary>
 [RequireComponent(typeof(Camera))]
+[DisallowMultipleComponent]
 public class G3DCamera
     : MonoBehaviour,
         ITNewHeadPositionCallback,
