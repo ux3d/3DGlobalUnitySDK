@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -230,6 +230,7 @@ public class G3DCamera
 #endif
 #if URP
     private G3DUrpScriptableRenderPass customPass;
+    AntialiasingMode antialiasingMode = AntialiasingMode.None;
 #endif
 
     private int[] id_View = new int[MAX_CAMERAS];
@@ -368,6 +369,8 @@ public class G3DCamera
 
 #if URP
         customPass = new G3DUrpScriptableRenderPass(material);
+        antialiasingMode = mainCamera.GetUniversalAdditionalCameraData().antialiasing;
+        mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
 #endif
 
         halfCameraWidthAtStart =
@@ -525,7 +528,13 @@ public class G3DCamera
     #region Updates
     void Update()
     {
-        renderTargetScaleFactor = shaderParameters.nativeViewCount;
+        int tmpRenderScaleFactor = shaderParameters.nativeViewCount;
+        if (cameraCount < tmpRenderScaleFactor)
+        {
+            tmpRenderScaleFactor = cameraCount;
+        }
+
+        renderTargetScaleFactor = tmpRenderScaleFactor;
 
         updateShaderViews();
         updateCameras();
@@ -709,9 +718,7 @@ public class G3DCamera
             camera.transform.localPosition = cameraParent.transform.localPosition;
             camera.transform.localRotation = cameraParent.transform.localRotation;
 #if URP
-            camera.GetUniversalAdditionalCameraData().antialiasing = mainCamera
-                .GetUniversalAdditionalCameraData()
-                .antialiasing;
+            camera.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
 #endif
 
             float localCameraOffset = calculateCameraOffset(
@@ -1268,10 +1275,10 @@ public class G3DCamera
             {
                 correctionTerm *= -1;
             }
-            return (offset + correctionTerm) * -1;
+            return offset + correctionTerm;
         }
 
-        return offset * -1;
+        return offset;
     }
 
     /// <summary>
