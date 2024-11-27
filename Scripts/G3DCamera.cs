@@ -1275,10 +1275,10 @@ public class G3DCamera
             {
                 correctionTerm *= -1;
             }
-            return offset + correctionTerm;
+            return (offset + correctionTerm) * -1;
         }
 
-        return offset;
+        return offset * -1;
     }
 
     /// <summary>
