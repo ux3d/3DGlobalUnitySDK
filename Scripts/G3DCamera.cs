@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
 using UnityEditor.EditorTools;
+using System.IO;
+
 #endif
 
 #if HDRP
@@ -201,6 +203,7 @@ public class G3DCamera
     public KeyCode switchCameraMode = KeyCode.H;
     public KeyCode decreaseEyeSeparationKey = KeyCode.K;
     public KeyCode increaseEyeSeparationKey = KeyCode.L;
+    public KeyCode cameraPositionLogginKey = KeyCode.W;
     #endregion
 
     #region Private variables
@@ -246,6 +249,8 @@ public class G3DCamera
 
     private float headLostTimer = 0.0f;
     private float transitionTime = 0.0f;
+
+    private Queue<string> headPoitionLog;
 
     private enum HeadTrackingState
     {
@@ -387,6 +392,8 @@ public class G3DCamera
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
         prevEyeSeparation = eyeSeparation;
+
+        headPoitionLog = new Queue<string>(10000);
     }
 
     void OnApplicationQuit()
@@ -1039,6 +1046,20 @@ public class G3DCamera
         {
             eyeSeparation += 0.0015f * sceneScaleFactor;
         }
+
+        if (Input.GetKeyDown(cameraPositionLogginKey))
+        {
+            System.IO.StreamWriter writer = new StreamWriter(
+                Application.dataPath + "/HeadPositionLog.txt",
+                false
+            );
+            string[] headPoitionLogArray = headPoitionLog.ToArray();
+            for (int i = 0; i < headPoitionLogArray.Length; i++)
+            {
+                writer.WriteLine(headPoitionLogArray[i]);
+            }
+            writer.Close();
+        }
     }
 
     // This function only does something when you use the SRP render pipeline.
@@ -1104,6 +1125,17 @@ public class G3DCamera
             headPosition.imagePosIsValid = imagePosIsValid;
 
             int millimeterToMeter = 1000;
+
+            headPoitionLog.Enqueue(
+                DateTime.Now.ToString("HH:mm::ss.fff")
+                    + " "
+                    + "Head position: "
+                    + worldPosX
+                    + ", "
+                    + worldPosY
+                    + ", "
+                    + worldPosZ
+            );
 
             Vector3 headPos = new Vector3(
                 (float)-worldPosX / millimeterToMeter,
