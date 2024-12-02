@@ -1049,7 +1049,7 @@ public class G3DCamera
 
         if (Input.GetKeyDown(cameraPositionLogginKey))
         {
-            System.IO.StreamWriter writer = new StreamWriter(
+            System.IO.StreamWriter writer = new System.IO.StreamWriter(
                 Application.dataPath + "/HeadPositionLog.txt",
                 false
             );
