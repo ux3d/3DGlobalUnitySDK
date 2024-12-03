@@ -1053,6 +1053,9 @@ public class G3DCamera
                 Application.dataPath + "/HeadPositionLog.txt",
                 false
             );
+            writer.WriteLine(
+                "Log time; X; Y; Z; Head detected; Image position valid; Filtered X; Filtered Y; Filtered Z;"
+            );
             string[] headPoitionLogArray = headPoitionLog.ToArray();
             for (int i = 0; i < headPoitionLogArray.Length; i++)
             {
@@ -1121,21 +1124,24 @@ public class G3DCamera
     {
         lock (headPosLock)
         {
+            string logEntry =
+                DateTime.Now.ToString("HH:mm::ss.fff")
+                + ";"
+                + worldPosX
+                + ";"
+                + worldPosY
+                + ";"
+                + worldPosZ
+                + ";"
+                + headDetected
+                + ";"
+                + imagePosIsValid
+                + ";";
+
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
 
             int millimeterToMeter = 1000;
-
-            headPoitionLog.Enqueue(
-                DateTime.Now.ToString("HH:mm::ss.fff")
-                    + " "
-                    + "Head position: "
-                    + worldPosX
-                    + ", "
-                    + worldPosY
-                    + ", "
-                    + worldPosZ
-            );
 
             Vector3 headPos = new Vector3(
                 (float)-worldPosX / millimeterToMeter,
@@ -1183,7 +1189,17 @@ public class G3DCamera
 
                 filteredHeadPosition.headDetected = headDetected;
                 filteredHeadPosition.imagePosIsValid = imagePosIsValid;
+
+                logEntry +=
+                    filteredHeadPosition.worldPosX
+                    + ";"
+                    + filteredHeadPosition.worldPosY
+                    + ";"
+                    + filteredHeadPosition.worldPosZ
+                    + ";";
             }
+
+            headPoitionLog.Enqueue(logEntry);
         }
     }
 
