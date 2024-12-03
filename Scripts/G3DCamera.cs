@@ -1144,7 +1144,7 @@ public class G3DCamera
                 + lastHeadPosition.y
                 + ";"
                 + lastHeadPosition.z
-                + " ";
+                + ";";
 
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
