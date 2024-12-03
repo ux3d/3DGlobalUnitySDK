@@ -1050,11 +1050,11 @@ public class G3DCamera
         if (Input.GetKeyDown(cameraPositionLogginKey))
         {
             System.IO.StreamWriter writer = new System.IO.StreamWriter(
-                Application.dataPath + "/HeadPositionLog.txt",
+                Application.dataPath + "/HeadPositionLog.csv",
                 false
             );
             writer.WriteLine(
-                "Log time; X; Y; Z; Head detected; Image position valid; Filtered X; Filtered Y; Filtered Z;"
+                "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Unity head tracking state; Used head X; Used head Y; Used head Z; Filtered X; Filtered Y; Filtered Z"
             );
             string[] headPoitionLogArray = headPoitionLog.ToArray();
             for (int i = 0; i < headPoitionLogArray.Length; i++)
@@ -1136,7 +1136,15 @@ public class G3DCamera
                 + headDetected
                 + ";"
                 + imagePosIsValid
-                + ";";
+                + ";"
+                + headTrackingStateToString()
+                + ";"
+                + lastHeadPosition.x
+                + ";"
+                + lastHeadPosition.y
+                + ";"
+                + lastHeadPosition.z
+                + " ";
 
             headPosition.headDetected = headDetected;
             headPosition.imagePosIsValid = imagePosIsValid;
@@ -1296,6 +1304,25 @@ public class G3DCamera
         Gizmos.DrawSphere(position, 0.5f * gizmoSize * sceneScaleFactor);
     }
 #endif
+
+    private string headTrackingStateToString()
+    {
+        switch (prevHeadTrackingState)
+        {
+            case HeadTrackingState.TRACKING:
+                return "TRACKING";
+            case HeadTrackingState.LOST:
+                return "LOST";
+            case HeadTrackingState.LOSTGRACEPERIOD:
+                return "LOSTGRACEPERIOD";
+            case HeadTrackingState.TRANSITIONTOLOST:
+                return "TRANSITIONTOLOST";
+            case HeadTrackingState.TRANSITIONTOTRACKING:
+                return "TRANSITIONTOTRACKING";
+            default:
+                return "UNKNOWN";
+        }
+    }
     #endregion
 
     private float calculateCameraOffset(
