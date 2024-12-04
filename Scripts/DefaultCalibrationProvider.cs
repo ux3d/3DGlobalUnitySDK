@@ -1,15 +1,14 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Salaros.Configuration;
+using IniParser;
+using IniParser.Model;
+using IniParser.Parser;
 using UnityEngine;
 using UnityEngine.Networking;
 
 public class DefaultCalibrationProvider
 {
-    private ConfigParser configParser;
+    private IniData iniData;
 
     private DefaultCalibrationProvider() { }
 
@@ -21,7 +20,6 @@ public class DefaultCalibrationProvider
             return provider;
         }
 
-        Uri tmpURI = new Uri(uri, UriKind.RelativeOrAbsolute);
         UnityWebRequest webRequest = UnityWebRequest.Get(uri);
         await webRequest.SendWebRequest();
 
@@ -32,17 +30,10 @@ public class DefaultCalibrationProvider
         }
 
         string calibrationData = webRequest.downloadHandler.text;
-        provider.configParser = new ConfigParser(
-            calibrationData,
-            new ConfigParserSettings
-            {
-                MultiLineValues =
-                    MultiLineValues.Simple
-                    | MultiLineValues.AllowValuelessKeys
-                    | MultiLineValues.QuoteDelimitedValues,
-                Culture = new System.Globalization.CultureInfo("de-DE")
-            }
-        );
+
+        IniDataParser parser = new IniDataParser();
+        provider.iniData = parser.Parse(calibrationData);
+
         return provider;
     }
 
@@ -53,7 +44,8 @@ public class DefaultCalibrationProvider
         {
             return provider;
         }
-        provider.configParser = new ConfigParser(calibrationFile);
+        FileIniDataParser parser = new FileIniDataParser();
+        provider.iniData = parser.ReadFile(calibrationFile);
         return provider;
     }
 
@@ -64,17 +56,8 @@ public class DefaultCalibrationProvider
         {
             return provider;
         }
-        provider.configParser = new ConfigParser(
-            calibrationData,
-            new ConfigParserSettings
-            {
-                MultiLineValues =
-                    MultiLineValues.Simple
-                    | MultiLineValues.AllowValuelessKeys
-                    | MultiLineValues.QuoteDelimitedValues,
-                Culture = new System.Globalization.CultureInfo("de-DE")
-            }
-        );
+        IniDataParser parser = new IniDataParser();
+        provider.iniData = parser.Parse(calibrationData);
         return provider;
     }
 
@@ -144,14 +127,15 @@ public class DefaultCalibrationProvider
     /// <returns></returns>
     private int readOrDefault(string key, int defaultValue)
     {
-        if (configParser == null)
+        if (iniData == null)
         {
             return defaultValue;
         }
 
         try
         {
-            string value = configParser.GetValue("MonitorConfiguration", key);
+            string value = null;
+            iniData.TryGetKey("MonitorConfiguration." + key, out value);
 
             if (value == null)
             {
