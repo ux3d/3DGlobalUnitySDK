@@ -1,14 +1,50 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Salaros.Configuration;
 using UnityEngine;
+using UnityEngine.Networking;
 
 public class DefaultCalibrationProvider
 {
     private ConfigParser configParser;
 
     private DefaultCalibrationProvider() { }
+
+    public static async Task<DefaultCalibrationProvider> getFromURI(string uri)
+    {
+        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        if (uri == null || uri.Length == 0)
+        {
+            return provider;
+        }
+
+        Uri tmpURI = new Uri(uri, UriKind.RelativeOrAbsolute);
+        UnityWebRequest webRequest = UnityWebRequest.Get(uri);
+        await webRequest.SendWebRequest();
+
+        if (!webRequest.isDone && webRequest.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError(webRequest.error);
+            return provider;
+        }
+
+        string calibrationData = webRequest.downloadHandler.text;
+        provider.configParser = new ConfigParser(
+            calibrationData,
+            new ConfigParserSettings
+            {
+                MultiLineValues =
+                    MultiLineValues.Simple
+                    | MultiLineValues.AllowValuelessKeys
+                    | MultiLineValues.QuoteDelimitedValues,
+                Culture = new System.Globalization.CultureInfo("de-DE")
+            }
+        );
+        return provider;
+    }
 
     public static DefaultCalibrationProvider getFromConfigFile(string calibrationFile)
     {

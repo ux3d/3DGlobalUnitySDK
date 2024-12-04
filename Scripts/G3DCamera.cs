@@ -1366,6 +1366,33 @@ public class G3DCamera
     }
 
     /// <summary>
+    /// The provided file uri has to be a display calibration ini file.
+    /// </summary>
+    /// <param name="uri"></param>
+    public async void UpdateShaderParametersFromURI(string uri)
+    {
+        if (uri == null || uri == "")
+        {
+            return;
+        }
+
+        try
+        {
+            DefaultCalibrationProvider defaultCalibrationProvider =
+                await DefaultCalibrationProvider.getFromURI(uri);
+            lock (shaderLock)
+            {
+                shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+            }
+            updateShaderParameters();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to update shader parameters from uri: " + e.Message);
+        }
+    }
+
+    /// <summary>
     /// The provided file path has to be a display calibration ini file.
     /// </summary>
     /// <param name="filePath"></param>
