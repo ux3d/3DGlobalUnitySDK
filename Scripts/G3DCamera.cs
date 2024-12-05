@@ -837,6 +837,16 @@ public class G3DCamera
             cameras[i].targetTexture = renderTextures[i];
             material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
         }
+
+        // TODO REMOVE THIS ENTIRE IF BLOCK
+        if (shaderParameters.screenWidth > 0 && shaderParameters.screenHeight > 0)
+        {
+            Screen.SetResolution(
+                shaderParameters.screenWidth,
+                shaderParameters.screenHeight,
+                FullScreenMode.FullScreenWindow
+            );
+        }
     }
 
     /**
