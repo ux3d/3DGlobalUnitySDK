@@ -381,7 +381,7 @@ public class G3DCamera
         halfCameraWidthAtStart =
             Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;
 
-        updateShaderViews(true);
+        updateShaderRenderTextures(true);
         updateCameras();
 
         // This has to be done after the cameras are updated
@@ -543,7 +543,7 @@ public class G3DCamera
 
         renderTargetScaleFactor = tmpRenderScaleFactor;
 
-        updateShaderViews();
+        updateShaderRenderTextures();
         updateCameras();
         updateShaderParameters();
 
@@ -555,6 +555,7 @@ public class G3DCamera
         if (windowResized() || windowMoved())
         {
             updateScreenViewportProperties();
+            updateShaderRenderTextures(true);
         }
     }
 
@@ -581,8 +582,11 @@ public class G3DCamera
             Debug.LogError("Failed to update screen viewport properties: " + e.Message);
         }
 
+        // TODO DO NOT USE SHADERPARAMETERS HERE
+        // THIS IS A HACK TO USE THE DIMENSIONS FROM THE MONITORDATA.INI
+        // USE Screen.height INSTEAD
         // this parameter is used in the shader to invert the y axis
-        material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
+        material?.SetInt(Shader.PropertyToID("viewportHeight"), shaderParameters.screenHeight);
     }
 
     private void updateShaderParameters()
@@ -776,7 +780,7 @@ public class G3DCamera
         return false;
     }
 
-    public void updateShaderViews(bool initialUpdate = false)
+    public void updateShaderRenderTextures(bool forceUpdate = false)
     {
         if (material == null)
             return;
@@ -799,7 +803,7 @@ public class G3DCamera
             cachedCameraCount = internalCameraCount;
             shouldUpdateShaderViews = true;
         }
-        if (shouldUpdateShaderViews == false && initialUpdate == false)
+        if (shouldUpdateShaderViews == false && forceUpdate == false)
         {
             return;
         }
@@ -813,11 +817,19 @@ public class G3DCamera
         //set only those we need
         for (int i = 0; i < internalCameraCount; i++)
         {
-            renderTextures[i] = new RenderTexture(
-                (int)(Screen.width / renderTargetScaleFactor),
-                Screen.height,
-                0
-            )
+            int width = Screen.width / renderTargetScaleFactor;
+            int height = Screen.height;
+
+            // TODO DO NOT DO THIS HERE
+            // THIS IS A HACK TO USE THE DIMENSIONS FROM THE MONITORDATA.INI
+            // USE PROPER VALUES FROM ABOVE ONLY
+            if (shaderParameters.screenWidth > 0 && shaderParameters.screenHeight > 0)
+            {
+                width = shaderParameters.screenWidth / renderTargetScaleFactor;
+                height = shaderParameters.screenHeight;
+            }
+
+            renderTextures[i] = new RenderTexture(width, height, 0)
             {
                 format = RenderTextureFormat.ARGB32,
                 depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
@@ -1385,6 +1397,10 @@ public class G3DCamera
                 shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
             }
             updateShaderParameters();
+
+            // TODO DO NOT DO THIS HERE
+            // THIS IS A HACK TO USE THE DIMENSIONS FROM THE MONITORDATA.INI
+            updateShaderRenderTextures(true);
         }
         catch (Exception e)
         {

@@ -67,14 +67,14 @@ public class DefaultCalibrationProvider
 
         // display parameters
 #if UNITY_IOS
-        parameters.screenWidth = Screen.width;
-        parameters.screenHeight = Screen.height;
+        parameters.screenWidth = readOrDefault("HorizontalResolution", Screen.width);
+        parameters.screenHeight = readOrDefault("VerticalResolution", Screen.height);
         parameters.leftViewportPosition = 0; //< The left position of the viewport in screen coordinates
         parameters.bottomViewportPosition = 0; //< The bottom position of the viewport in screen coordinates
 #else
         DisplayInfo mainDisplayInfo = Screen.mainWindowDisplayInfo;
-        parameters.screenWidth = mainDisplayInfo.width;
-        parameters.screenHeight = mainDisplayInfo.height;
+        parameters.screenWidth = readOrDefault("HorizontalResolution", mainDisplayInfo.width);
+        parameters.screenHeight = readOrDefault("VerticalResolution", mainDisplayInfo.height);
         parameters.leftViewportPosition = Screen.mainWindowPosition.x; //< The left position of the viewport in screen coordinates
         parameters.bottomViewportPosition = Screen.mainWindowPosition.y + Screen.height; //< The bottom position of the viewport in screen coordinates
 #endif
