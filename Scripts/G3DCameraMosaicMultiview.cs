@@ -193,28 +193,20 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     private void updateScreenViewportProperties()
     {
-        // TODO UNCOMMENT THIS
-        // try
-        // {
-        //     shaderParameters.screenHeight = Screen.height;
-        //     shaderParameters.screenWidth = Screen.width;
-        //     shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
-        //     shaderParameters.bottomViewportPosition = Screen.mainWindowPosition.y + Screen.height;
-        // }
-        // catch (Exception e)
-        // {
-        //     Debug.LogError("Failed to update screen viewport properties: " + e.Message);
-        // }
+        try
+        {
+            shaderParameters.screenHeight = Screen.height;
+            shaderParameters.screenWidth = Screen.width;
+            shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
+            shaderParameters.bottomViewportPosition = Screen.mainWindowPosition.y + Screen.height;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to update screen viewport properties: " + e.Message);
+        }
 
-        // // this parameter is used in the shader to invert the y axis
-        // material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
-
-        material?.SetInt(Shader.PropertyToID("viewportHeight"), shaderParameters.screenHeight);
-        Screen.SetResolution(
-            shaderParameters.screenWidth,
-            shaderParameters.screenHeight,
-            FullScreenMode.FullScreenWindow
-        );
+        // this parameter is used in the shader to invert the y axis
+        material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
     }
 
     private void updateShaderParameters()
@@ -345,8 +337,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         {
             Debug.LogError("Failed to update shader parameters from uri: " + e.Message);
         }
-
-        updateScreenViewportProperties();
     }
 
     /// <summary>
