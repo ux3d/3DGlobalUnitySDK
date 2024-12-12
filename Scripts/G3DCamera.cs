@@ -1379,12 +1379,18 @@ public class G3DCamera
         try
         {
             DefaultCalibrationProvider defaultCalibrationProvider =
-                await DefaultCalibrationProvider.getFromURI(uri);
-            lock (shaderLock)
-            {
-                shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
-            }
-            updateShaderParameters();
+                DefaultCalibrationProvider.getFromURI(
+                    uri,
+                    (DefaultCalibrationProvider provider) =>
+                    {
+                        lock (shaderLock)
+                        {
+                            shaderParameters = provider.getDefaultShaderParameters();
+                        }
+                        updateShaderParameters();
+                        return 0;
+                    }
+                );
         }
         catch (Exception e)
         {

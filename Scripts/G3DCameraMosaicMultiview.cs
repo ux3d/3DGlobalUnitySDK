@@ -321,7 +321,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     /// The provided file uri has to be a display calibration ini file.
     /// </summary>
     /// <param name="uri"></param>
-    public async void UpdateShaderParametersFromURI(string uri)
+    public void UpdateShaderParametersFromURI(string uri)
     {
         if (uri == null || uri == "")
         {
@@ -331,9 +331,15 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         try
         {
             DefaultCalibrationProvider defaultCalibrationProvider =
-                await DefaultCalibrationProvider.getFromURI(uri);
-            shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
-            updateShaderParameters();
+                DefaultCalibrationProvider.getFromURI(
+                    uri,
+                    (DefaultCalibrationProvider provider) =>
+                    {
+                        shaderParameters = provider.getDefaultShaderParameters();
+                        updateShaderParameters();
+                        return 0;
+                    }
+                );
         }
         catch (Exception e)
         {

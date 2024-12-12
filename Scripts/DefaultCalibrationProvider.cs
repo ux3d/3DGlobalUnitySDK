@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using IniParser;
@@ -12,7 +13,16 @@ public class DefaultCalibrationProvider
 
     private DefaultCalibrationProvider() { }
 
-    public static async Task<DefaultCalibrationProvider> getFromURI(string uri)
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <param name="callback">int return parameter can be ignored</param>
+    /// <returns></returns>
+    public static DefaultCalibrationProvider getFromURI(
+        string uri,
+        Func<DefaultCalibrationProvider, int> callback
+    )
     {
         DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
         if (uri == null || uri.Length == 0)
@@ -21,18 +31,23 @@ public class DefaultCalibrationProvider
         }
 
         UnityWebRequest webRequest = UnityWebRequest.Get(uri);
-        await webRequest.SendWebRequest();
+        UnityWebRequestAsyncOperation asyncOperation = webRequest.SendWebRequest();
 
-        if (!webRequest.isDone && webRequest.result != UnityWebRequest.Result.Success)
+        asyncOperation.completed += (op) =>
         {
-            Debug.LogError(webRequest.error);
-            return provider;
-        }
+            if (!webRequest.isDone && webRequest.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError(webRequest.error);
+                return;
+            }
 
-        string calibrationData = webRequest.downloadHandler.text;
+            string calibrationData = webRequest.downloadHandler.text;
 
-        IniDataParser parser = new IniDataParser();
-        provider.iniData = parser.Parse(calibrationData);
+            IniDataParser parser = new IniDataParser();
+            provider.iniData = parser.Parse(calibrationData);
+
+            callback(provider);
+        };
 
         return provider;
     }
