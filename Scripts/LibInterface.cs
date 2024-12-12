@@ -1626,15 +1626,28 @@ public sealed class LibInterface
         int result = LibInterfaceCpp.initializePositionFilter(lenX, lenY, lenZ);
         if (logToConsole)
         {
-            Debug.Log("G3D library: initializePositionFilter success. Filter set to (" + lenX + "," + lenY + "," + lenZ + "," + ")");
+            Debug.Log(
+                "G3D library: initializePositionFilter success. Filter set to ("
+                    + lenX
+                    + ","
+                    + lenY
+                    + ","
+                    + lenZ
+                    + ","
+                    + ")"
+            );
         }
         if (result == -100)
         {
-            throw new G3D_AlreadyInitializedException("G3D library initializePositionFilter: position filter already initialized.");
+            throw new G3D_AlreadyInitializedException(
+                "G3D library initializePositionFilter: position filter already initialized."
+            );
         }
         if (result == -101)
         {
-            throw new G3D_NotInitializedException("G3D library initializePositionFilter: not initialized.");
+            throw new G3D_NotInitializedException(
+                "G3D library initializePositionFilter: not initialized."
+            );
         }
         if (result == -102)
         {
@@ -1652,10 +1665,22 @@ public sealed class LibInterface
 
     // extern G3D_UNIVERSAL_HEADTRACKING_LIBRARY_EXPORT int applyPositionFilter(const double posX, const double posY, const double posZ,
     //     double* filteredX, double* filteredY, double* filteredZ);
-    public void applyPositionFilter(double posX, double posY, double posZ, out double filteredX, out double filteredY, out double filteredZ)
+    public void applyPositionFilter(
+        double posX,
+        double posY,
+        double posZ,
+        out double filteredX,
+        out double filteredY,
+        out double filteredZ
+    )
     {
         int result = LibInterfaceCpp.applyPositionFilter(
-            posX, posY, posZ, out filteredX, out filteredY, out filteredZ
+            posX,
+            posY,
+            posZ,
+            out filteredX,
+            out filteredY,
+            out filteredZ
         );
         if (logToConsole)
         {
@@ -1677,11 +1702,15 @@ public sealed class LibInterface
         }
         if (result == -100)
         {
-            throw new G3D_AlreadyInitializedException("G3D library applyPositionFilter: library already initialized error.");
+            throw new G3D_AlreadyInitializedException(
+                "G3D library applyPositionFilter: library already initialized error."
+            );
         }
         if (result == -101)
         {
-            throw new G3D_NotInitializedException("G3D library applyPositionFilter: position filter not initialized.");
+            throw new G3D_NotInitializedException(
+                "G3D library applyPositionFilter: position filter not initialized."
+            );
         }
         if (result == -102)
         {
@@ -1985,7 +2014,6 @@ internal static class LibInterfaceCpp
     )]
     public static extern int shiftViewToRight();
 
-
     // ------------------------------------------------
 
     [DllImport(
@@ -2000,7 +2028,12 @@ internal static class LibInterfaceCpp
         EntryPoint = "?applyPositionFilter@G3D_UHTL@@YAHNNNPEAN00@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
-    public static extern int applyPositionFilter(double posX, double posY, double posZ,
-        out double filteredX, out double filteredY, out double filteredZ);
-
+    public static extern int applyPositionFilter(
+        double posX,
+        double posY,
+        double posZ,
+        out double filteredX,
+        out double filteredY,
+        out double filteredZ
+    );
 }
