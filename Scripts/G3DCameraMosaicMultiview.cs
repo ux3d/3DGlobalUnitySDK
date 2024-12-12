@@ -111,14 +111,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             hqViewCount = Shader.PropertyToID("hqview"),
         };
 
-        reinitializeShader();
-        updateScreenViewportProperties();
-
-        DefaultCalibrationProvider defaultCalibrationProvider =
-            DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
-        shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
-        updateShaderParameters();
-
         // This has to be done after the cameras are updated
         cachedWindowPosition = new Vector2Int(
             Screen.mainWindowPosition.x,
@@ -142,17 +134,27 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         customPass = new G3DUrpScriptableRenderPass(material);
 #endif
 
-        // VideoPlayer videoPlayer = GetComponent<VideoPlayer>();
-        // uint width = videoPlayer.width;
-        // uint height = videoPlayer.height;
-        // mosaicTexture = new RenderTexture((int)width, (int)height, 0);
-        // GetComponent<VideoPlayer>().targetTexture = mosaicTexture;
+        // Dot his last to ensure custom passes are already set up
+        DefaultCalibrationProvider defaultCalibrationProvider =
+            DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
+        shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+        reinitializeShader();
     }
 
-    private void reinitializeShader()
+    public void reinitializeShader()
     {
         material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
         material.SetTexture("mosaictexture", mosaicTexture, RenderTextureSubElement.Color);
+
+        updateScreenViewportProperties();
+        updateShaderParameters();
+
+#if HDRP
+        customPass.fullscreenPassMaterial = material;
+#endif
+#if URP
+        customPass.updateMaterial(material);
+#endif
     }
 
 #if URP

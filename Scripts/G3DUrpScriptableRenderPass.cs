@@ -18,6 +18,11 @@ internal class G3DUrpScriptableRenderPass : ScriptableRenderPass
         ConfigureTarget(renderingData.cameraData.renderer.cameraColorTargetHandle);
     }
 
+    public void updateMaterial(Material material)
+    {
+        m_Material = material;
+    }
+
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var camera = renderingData.cameraData.camera;
