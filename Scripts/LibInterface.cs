@@ -1728,7 +1728,7 @@ public sealed class LibInterface
 }
 
 /// <summary>
-/// This class provides the raw C++ interface to the G3D Universal Head Tracking Library.
+/// This class provides the raw C interface to the G3D Universal Head Tracking Library.
 /// </summary>
 internal static class LibInterfaceCpp
 {
@@ -1741,36 +1741,36 @@ internal static class LibInterfaceCpp
 
     //function definitions
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?initLibrary@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?initLibrary@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int initLibrary();
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?deinitLibrary@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?deinitLibrary@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int deinitLibrary();
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setCalibrationPath@G3D_UHTL@@YAHPEBD@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setCalibrationPath@G3D_HTL@@YAHPEBD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setCalibrationPath(byte[] path);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setConfigPath@G3D_UHTL@@YAHPEBD@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setConfigPath@G3D_HTL@@YAHPEBD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setConfigPath(byte[] path);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setConfigFileName@G3D_UHTL@@YAHPEBD@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setConfigFileName@G3D_HTL@@YAHPEBD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setConfigFileName(byte[] path);
@@ -1778,8 +1778,8 @@ internal static class LibInterfaceCpp
     // ------------------------------------------------
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?registerHeadPositionChangedCallback@G3D_UHTL@@YAHPEAXP6AXHHHHNNN0@Z@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?registerHeadPositionChangedCallback@G3D_HTL@@YAHPEAXP6AXHHHHNNN0@Z@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int registerHeadPositionChangedCallback(
@@ -1788,15 +1788,15 @@ internal static class LibInterfaceCpp
     );
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?unregisterHeadPositionChangedCallback@G3D_UHTL@@YAHPEAX@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?unregisterHeadPositionChangedCallback@G3D_HTL@@YAHPEAX@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int unregisterHeadPositionChangedCallback(IntPtr listener);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?registerShaderParametersChangedCallback@G3D_UHTL@@YAHPEAXP6AXPEBUCG3DShaderParameters@@0@Z@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?registerShaderParametersChangedCallback@G3D_HTL@@YAHPEAXP6AXPEBUCG3DShaderParameters@@0@Z@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int registerShaderParametersChangedCallback(
@@ -1805,15 +1805,15 @@ internal static class LibInterfaceCpp
     );
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?unregisterShaderParametersChangedCallback@G3D_UHTL@@YAHPEAX@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?unregisterShaderParametersChangedCallback@G3D_HTL@@YAHPEAX@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int unregisterShaderParametersChangedCallback(IntPtr listener);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?registerMessageCallback@G3D_UHTL@@YAHPEAXP6AXW4EMessageSeverity@@PEBD2220@Z@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?registerMessageCallback@G3D_HTL@@YAHPEAXP6AXW4EMessageSeverity@@PEBD2220@Z@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int registerMessageCallback(
@@ -1822,8 +1822,8 @@ internal static class LibInterfaceCpp
     );
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?unregisterMessageCallback@G3D_UHTL@@YAHPEAX@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?unregisterMessageCallback@G3D_HTL@@YAHPEAX@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int unregisterMessageCallback(IntPtr listener);
@@ -1831,29 +1831,29 @@ internal static class LibInterfaceCpp
     // ------------------------------------------------
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?useHimaxD2XXDevices@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?useHimaxD2XXDevices@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int useHimaxD2XXDevices();
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?usePmdFlexxDevices@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?usePmdFlexxDevices@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int usePmdFlexxDevices();
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?initHeadTracking@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?initHeadTracking@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int initHeadTracking();
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?deinitHeadTracking@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?deinitHeadTracking@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int deinitHeadTracking();
@@ -1861,36 +1861,36 @@ internal static class LibInterfaceCpp
     // ------------------------------------------------
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getHeadTrackingDeviceCount@G3D_UHTL@@YAHPEAH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getHeadTrackingDeviceCount@G3D_HTL@@YAHPEAH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getHeadTrackingDeviceCount(out int deviceCount);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getHeadTrackingDeviceName@G3D_UHTL@@YAHHPEAPEAD@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getHeadTrackingDeviceName@G3D_HTL@@YAHHPEAPEAD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getHeadTrackingDeviceName(int deviceNumber, out IntPtr deviceName);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getCurrentHeadTrackingDevice@G3D_UHTL@@YAHPEAPEAD@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getCurrentHeadTrackingDevice@G3D_HTL@@YAHPEAPEAD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getCurrentHeadTrackingDevice(out IntPtr deviceName);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setCurrentHeadTrackingDevice@G3D_UHTL@@YAHPEBD@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setCurrentHeadTrackingDevice@G3D_HTL@@YAHPEBD@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setCurrentHeadTrackingDevice(in byte[] device);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getHeadTrackingDeviceResolution@G3D_UHTL@@YAHPEAH0@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getHeadTrackingDeviceResolution@G3D_HTL@@YAHPEAH0@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getHeadTrackingDeviceResolution(
@@ -1901,29 +1901,29 @@ internal static class LibInterfaceCpp
     // ------------------------------------------------
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getFirstValidCalibrationMatrixCol@G3D_UHTL@@YAHPEAH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getFirstValidCalibrationMatrixCol@G3D_HTL@@YAHPEAH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getFirstValidCalibrationMatrixCol(out int value);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getLastValidCalibrationMatrixCol@G3D_UHTL@@YAHPEAH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getLastValidCalibrationMatrixCol@G3D_HTL@@YAHPEAH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getLastValidCalibrationMatrixCol(out int value);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getFirstValidCalibrationMatrixRow@G3D_UHTL@@YAHPEAH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getFirstValidCalibrationMatrixRow@G3D_HTL@@YAHPEAH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getFirstValidCalibrationMatrixRow(out int value);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getLastValidCalibrationMatrixRow@G3D_UHTL@@YAHPEAH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getLastValidCalibrationMatrixRow@G3D_HTL@@YAHPEAH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getLastValidCalibrationMatrixRow(out int value);
@@ -1931,22 +1931,22 @@ internal static class LibInterfaceCpp
     // ------------------------------------------------
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?startHeadTracking@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?startHeadTracking@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int startHeadTracking();
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?stopHeadTracking@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?stopHeadTracking@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int stopHeadTracking();
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getHeadTrackingStatus@G3D_UHTL@@YAHPEA_N0@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getHeadTrackingStatus@G3D_HTL@@YAHPEA_N0@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getHeadTrackingStatus(
@@ -1957,43 +1957,43 @@ internal static class LibInterfaceCpp
     // ------------------------------------------------
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?getCurrentShaderParameters@G3D_UHTL@@YAHPEAUCG3DShaderParameters@@@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?getCurrentShaderParameters@G3D_HTL@@YAHPEAUCG3DShaderParameters@@@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int getCurrentShaderParameters(out G3DShaderParameters shaderParameters);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setWindowPosition@G3D_UHTL@@YAHHH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setWindowPosition@G3D_HTL@@YAHHH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setWindowPosition(int left, int top);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setWindowSize@G3D_UHTL@@YAHHH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setWindowSize@G3D_HTL@@YAHHH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setWindowSize(int width, int height);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setViewportOffset@G3D_UHTL@@YAHHH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setViewportOffset@G3D_HTL@@YAHHH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setViewportOffset(int left, int top);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setViewportSize@G3D_UHTL@@YAHHH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setViewportSize@G3D_HTL@@YAHHH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setViewportSize(int width, int height);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?setScreenSize@G3D_UHTL@@YAHHH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?setScreenSize@G3D_HTL@@YAHHH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int setScreenSize(int width, int height);
@@ -2001,15 +2001,15 @@ internal static class LibInterfaceCpp
     // ------------------------------------------------
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?shiftViewToLeft@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?shiftViewToLeft@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int shiftViewToLeft();
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?shiftViewToRight@G3D_UHTL@@YAHXZ",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?shiftViewToRight@G3D_HTL@@YAHXZ",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int shiftViewToRight();
@@ -2017,15 +2017,15 @@ internal static class LibInterfaceCpp
     // ------------------------------------------------
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?initializePositionFilter@G3D_UHTL@@YAHHHH@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?initializePositionFilter@G3D_HTL@@YAHHHH@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int initializePositionFilter(int lenX, int lenY, int lenZ);
 
     [DllImport(
-        "G3D_UniversalHeadTrackingLibrary.dll",
-        EntryPoint = "?applyPositionFilter@G3D_UHTL@@YAHNNNPEAN00@Z",
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?applyPositionFilter@G3D_HTL@@YAHNNNPEAN00@Z",
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int applyPositionFilter(
