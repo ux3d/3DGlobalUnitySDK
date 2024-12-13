@@ -163,6 +163,8 @@ public class G3DCamera
 
     [Tooltip("If set to true, the views will be flipped horizontally.")]
     public bool mirrorViews = false;
+
+    public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
     #endregion
 
     #region Device settings
@@ -543,6 +545,13 @@ public class G3DCamera
 
         renderTargetScaleFactor = tmpRenderScaleFactor;
 
+        // update the shader parameters
+        libInterface.calculateShaderParameters(latencyCorrectionMode);
+        lock (shaderLock)
+        {
+            shaderParameters = libInterface.getCurrentShaderParameters();
+        }
+
         updateShaderRenderTextures();
         updateCameras();
         updateShaderParameters();
@@ -614,8 +623,11 @@ public class G3DCamera
                 shaderParameters.leftLensOrientation
             );
             material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
-            material?.SetInt(shaderHandles.showTestFrame, shaderParameters.showTestFrame);
+
+            // test frame and stripe
+            material?.SetInt(shaderHandles.showTestFrame, showTestFrame ? 1 : 0);
             material?.SetInt(shaderHandles.showTestStripe, shaderParameters.showTestStripe);
+
             material?.SetInt(shaderHandles.testGapWidth, shaderParameters.testGapWidth);
             material?.SetInt(shaderHandles.track, shaderParameters.track);
             material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
@@ -1254,15 +1266,6 @@ public class G3DCamera
         lock (shaderLock)
         {
             this.shaderParameters = shaderParameters;
-
-            if (showTestFrame)
-            {
-                this.shaderParameters.showTestFrame = 1;
-            }
-            else
-            {
-                this.shaderParameters.showTestFrame = 0;
-            }
         }
     }
 

@@ -38,6 +38,12 @@ public enum EMessageSeverity
     MS_EXCEPTION
 };
 
+public enum LatencyCorrectionMode
+{
+    LCM_SIMPLE = 0, //< Simple or No LatencyCorrection (position prediction) - without timestamp from render event / paintGL
+    LCM_EXTENDED = 1, //< Extended prediction - considering timestamp from render event / paintGL
+}
+
 public struct G3DShaderParameters
 {
     // Viewport properties
@@ -1725,6 +1731,39 @@ public sealed class LibInterface
             );
         }
     }
+
+    public void calculateShaderParameters(LatencyCorrectionMode latencyCorrectionMode)
+    {
+        int result = LibInterfaceCpp.calculateShaderParameters(latencyCorrectionMode);
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: calculateShaderParameters success");
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException(
+                "G3D library calculateShaderParameters: library already initialized error."
+            );
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException(
+                "G3D library calculateShaderParameters: library not initialized."
+            );
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library calculateShaderParameters: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library calculateShaderParameters: an unknown error occurred when calculating the shader parameters."
+            );
+        }
+    }
 }
 
 /// <summary>
@@ -2036,4 +2075,13 @@ internal static class LibInterfaceCpp
         out double filteredY,
         out double filteredZ
     );
+
+    // ------------------------------------------------
+
+    [DllImport(
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?calculateShaderParameters@G3D_HTL@@YAHW4LatencyCorrectionMode@1@@Z",
+        CallingConvention = CallingConvention.Cdecl
+    )]
+    public static extern int calculateShaderParameters(LatencyCorrectionMode latencyCorrectionMode);
 }
