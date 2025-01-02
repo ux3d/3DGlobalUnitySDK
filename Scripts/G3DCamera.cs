@@ -165,6 +165,11 @@ public class G3DCamera
     public bool mirrorViews = false;
 
     public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
+
+    [Tooltip(
+        "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width."
+    )]
+    public bool adaptRenderResolutionToViews = true;
     #endregion
 
     #region Device settings
@@ -541,6 +546,11 @@ public class G3DCamera
         if (cameraCount < tmpRenderScaleFactor)
         {
             tmpRenderScaleFactor = cameraCount;
+        }
+
+        if (adaptRenderResolutionToViews == false)
+        {
+            tmpRenderScaleFactor = 1;
         }
 
         renderTargetScaleFactor = tmpRenderScaleFactor;
