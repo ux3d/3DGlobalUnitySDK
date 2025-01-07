@@ -281,8 +281,6 @@ public class G3DCamera
         eyeSeparation = eyeSeparation * sceneScaleFactor;
 
         mainCamera = GetComponent<Camera>();
-        mainCamera.cullingMask = 0; //disable rendering of the main camera
-        mainCamera.clearFlags = CameraClearFlags.Color;
 
         // create a focus plane object at foxus distance from camera.
         // then parent the camera parent to that object
@@ -311,6 +309,11 @@ public class G3DCamera
             cameras[i].backgroundColor = mainCamera.backgroundColor;
             cameras[i].targetDisplay = mainCamera.targetDisplay;
         }
+
+        // disable rendering on main camera after other cameras have been created and settings have been copied over
+        // otherwise the secondary cameras are initialized wrong
+        mainCamera.cullingMask = 0; //disable rendering of the main camera
+        mainCamera.clearFlags = CameraClearFlags.Color;
 
         // initialize shader textures
         for (int i = 0; i < MAX_CAMERAS; i++)
