@@ -129,6 +129,11 @@ public class G3DCamera
     )]
     [Range(0.00001f, 5.0f)]
     public float eyeSeparation = 0.065f;
+
+    [Tooltip(
+        "The amount the eye separation changes when the user presses the eye separation keys (in meter)."
+    )]
+    public float eyeSeparationChange = 0.001f;
     private float prevEyeSeparation = 0.065f;
 
     [Tooltip("The distance between the camera and the focus plane in meters. Defaults is 70 cm.")]
@@ -1063,13 +1068,13 @@ public class G3DCamera
         }
         if (Input.GetKeyDown(decreaseEyeSeparationKey))
         {
-            eyeSeparation -= 0.0015f * sceneScaleFactor;
+            eyeSeparation -= eyeSeparationChange * sceneScaleFactor;
             if (eyeSeparation < 0.0f)
                 eyeSeparation = 0.0f;
         }
         if (Input.GetKeyDown(increaseEyeSeparationKey))
         {
-            eyeSeparation += 0.0015f * sceneScaleFactor;
+            eyeSeparation += eyeSeparationChange * sceneScaleFactor;
         }
 
         if (Input.GetKeyDown(cameraPositionLogginKey))
