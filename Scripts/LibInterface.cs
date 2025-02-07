@@ -150,6 +150,7 @@ public sealed class LibInterface
         in ITNewErrorMessageCallback errorInterfaceInstance,
         bool logToConsole = true,
         bool useHimaxD2XXDevice = true,
+        bool useHimaxRP2040Device = true,
         bool usePmdFlexxDevice = true
     )
     {
@@ -254,6 +255,17 @@ public sealed class LibInterface
             if (useHimaxD2XXDevice)
             {
                 useHimaxD2XXDevices();
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+        }
+        try
+        {
+            if (useHimaxRP2040Device)
+            {
+                useHimaxRP2040Devices();
             }
         }
         catch (Exception e)
@@ -499,6 +511,46 @@ public sealed class LibInterface
                 "G3D library: an unknown error occurred when setting the config file name."
             );
         }
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns>(has device, is tracking)</returns>
+    /// <exception cref="G3D_AlreadyInitializedException"></exception>
+    /// <exception cref="G3D_NotInitializedException"></exception>
+    /// <exception cref="G3D_IndexOutOfRangeException"></exception>
+    /// <exception cref="Exception"></exception>
+    public bool currentHeadTrackingDeviceHasValidCalibration()
+    {
+        bool isValid;
+        int result = LibInterfaceCpp.currentHeadTrackingDeviceHasValidCalibration(out isValid);
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: currentHeadTrackingDeviceHasValidCalibration success");
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library not initialized.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library: an unknown error occurred when trying toi check if the current devide has a valid calibration."
+            );
+        }
+
+        return isValid;
     }
 
     // ------------------------------------------------
@@ -856,6 +908,35 @@ public sealed class LibInterface
         {
             throw new Exception(
                 "G3D library: an unknown error occurred when using Himax D2XX devices."
+            );
+        }
+    }
+
+    public void useHimaxRP2040Devices()
+    {
+        int result = LibInterfaceCpp.useHimaxRP2040Devices();
+        if (logToConsole)
+        {
+            Debug.Log("G3D library: useHimaxRP2040Devices success.");
+        }
+        if (result == -100)
+        {
+            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+        }
+        if (result == -101)
+        {
+            throw new G3D_NotInitializedException("G3D library not initialized.");
+        }
+        if (result == -102)
+        {
+            throw new G3D_IndexOutOfRangeException(
+                "G3D library: a provided index is out of range."
+            );
+        }
+        if (result == -200)
+        {
+            throw new Exception(
+                "G3D library: an unknown error occurred when using Himax RP2040 devices."
             );
         }
     }
@@ -1814,6 +1895,15 @@ internal static class LibInterfaceCpp
     )]
     public static extern int setConfigFileName(byte[] path);
 
+    [DllImport(
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?currentHeadTrackingDeviceHasValidCalibration@G3D_HTL@@YAHPEA_N@Z",
+        CallingConvention = CallingConvention.Cdecl
+    )]
+    public static extern int currentHeadTrackingDeviceHasValidCalibration(
+        [MarshalAs(UnmanagedType.U1)] out bool isValid
+    );
+
     // ------------------------------------------------
 
     [DllImport(
@@ -1875,6 +1965,13 @@ internal static class LibInterfaceCpp
         CallingConvention = CallingConvention.Cdecl
     )]
     public static extern int useHimaxD2XXDevices();
+
+    [DllImport(
+        "G3D_HeadTrackingLibrary_c.dll",
+        EntryPoint = "?useHimaxRP2040Devices@G3D_HTL@@YAHXZ",
+        CallingConvention = CallingConvention.Cdecl
+    )]
+    public static extern int useHimaxRP2040Devices();
 
     [DllImport(
         "G3D_HeadTrackingLibrary_c.dll",

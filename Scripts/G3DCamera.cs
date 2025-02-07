@@ -180,6 +180,7 @@ public class G3DCamera
     #region Device settings
     [Header("Device settings")]
     public bool useHimaxD2XXDevices = true;
+    public bool useHimaxRP2040Devices = true;
     public bool usePmdFlexxDevices = true;
     #endregion
 
@@ -436,6 +437,7 @@ public class G3DCamera
                 this,
                 debugMessages,
                 useHimaxD2XXDevices,
+                useHimaxRP2040Devices,
                 usePmdFlexxDevices
             );
         }
