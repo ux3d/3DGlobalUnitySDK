@@ -1392,7 +1392,7 @@ public class G3DCamera
     /// The provided file uri has to be a display calibration ini file.
     /// </summary>
     /// <param name="uri"></param>
-    public async void UpdateShaderParametersFromURI(string uri)
+    public void UpdateShaderParametersFromURI(string uri)
     {
         if (uri == null || uri == "")
         {
