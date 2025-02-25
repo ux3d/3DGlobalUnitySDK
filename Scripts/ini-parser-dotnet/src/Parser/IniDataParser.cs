@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using IniParser.Exceptions;
 using IniParser.Model;
 using IniParser.Model.Configuration;
-using System.Collections.ObjectModel;
 
 namespace IniParser.Parser
 {
-	/// <summary>
-	/// 	Responsible for parsing an string from an ini file, and creating
-	/// 	an <see cref="IniData"/> structure.
-	/// </summary>
+    /// <summary>
+    /// 	Responsible for parsing an string from an ini file, and creating
+    /// 	an <see cref="IniData"/> structure.
+    /// </summary>
     public class IniDataParser
     {
         #region Private
@@ -26,8 +26,7 @@ namespace IniParser.Parser
         ///     The parser uses a <see cref="IniParserConfiguration"/> by default
         /// </remarks>
         public IniDataParser()
-            : this(new IniParserConfiguration())
-        { }
+            : this(new IniParserConfiguration()) { }
 
         /// <summary>
         ///     Ctor
@@ -57,21 +56,27 @@ namespace IniParser.Parser
         /// <summary>
         /// True is the parsing operation encounter any problem
         /// </summary>
-        public bool HasError { get { return _errorExceptions.Count > 0; } }
+        public bool HasError
+        {
+            get { return _errorExceptions.Count > 0; }
+        }
 
         /// <summary>
         /// Returns the list of errors found while parsing the ini file.
         /// </summary>
         /// <remarks>
         /// If the configuration option ThrowExceptionOnError is false it can contain one element
-        /// for each problem found while parsing; otherwise it will only contain the very same 
+        /// for each problem found while parsing; otherwise it will only contain the very same
         /// exception that was raised.
         /// </remarks>
 
-        public ReadOnlyCollection<Exception> Errors {get {return _errorExceptions.AsReadOnly();} }
-		#endregion
+        public ReadOnlyCollection<Exception> Errors
+        {
+            get { return _errorExceptions.AsReadOnly(); }
+        }
+        #endregion
 
-		#region Operations
+        #region Operations
 
         /// <summary>
         ///     Parses a string containing valid ini data
@@ -88,8 +93,9 @@ namespace IniParser.Parser
         /// </exception>
         public IniData Parse(string iniDataString)
         {
-            
-            IniData iniData = Configuration.CaseInsensitive ? new IniDataCaseInsensitive() : new IniData();
+            IniData iniData = Configuration.CaseInsensitive
+                ? new IniDataCaseInsensitive()
+                : new IniData();
             iniData.Configuration = this.Configuration.Clone();
 
             if (string.IsNullOrEmpty(iniDataString))
@@ -103,12 +109,13 @@ namespace IniParser.Parser
 
             try
             {
-                var lines = iniDataString.Split(new []{"\n", "\r\n"}, StringSplitOptions.None);
+                var lines = iniDataString.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
                 for (int lineNumber = 0; lineNumber < lines.Length; lineNumber++)
                 {
                     var line = lines[lineNumber];
 
-                    if (line.Trim() == String.Empty) continue;
+                    if (line.Trim() == String.Empty)
+                        continue;
 
                     try
                     {
@@ -116,8 +123,8 @@ namespace IniParser.Parser
                     }
                     catch (Exception ex)
                     {
-                        var errorEx = new ParsingException(ex.Message, lineNumber+1, line, ex);
-                        if (Configuration.ThrowExceptionsOnError) 
+                        var errorEx = new ParsingException(ex.Message, lineNumber + 1, line, ex);
+                        if (Configuration.ThrowExceptionsOnError)
                         {
                             throw errorEx;
                         }
@@ -125,7 +132,6 @@ namespace IniParser.Parser
                         {
                             _errorExceptions.Add(errorEx);
                         }
-
                     }
                 }
 
@@ -135,46 +141,44 @@ namespace IniParser.Parser
                     // Check if there are actually sections in the file
                     if (iniData.Sections.Count > 0)
                     {
-                        iniData.Sections.GetSectionData(_currentSectionNameTemp).TrailingComments
-                            .AddRange(_currentCommentListTemp);
+                        iniData
+                            .Sections.GetSectionData(_currentSectionNameTemp)
+                            .TrailingComments.AddRange(_currentCommentListTemp);
                     }
                     // No sections, put the comment in the last key value pair
                     // but only if the ini file contains at least one key-value pair
-                    else if (iniData.Global.Count > 0) 
+                    else if (iniData.Global.Count > 0)
                     {
-                        iniData.Global.GetLast().Comments
-                            .AddRange(_currentCommentListTemp);
+                        iniData.Global.GetLast().Comments.AddRange(_currentCommentListTemp);
                     }
-                    
-                    
+
                     _currentCommentListTemp.Clear();
                 }
-
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _errorExceptions.Add(ex);
-                if (Configuration.ThrowExceptionsOnError) 
-                { 
+                if (Configuration.ThrowExceptionsOnError)
+                {
                     throw;
                 }
             }
 
-
-            if (HasError) return null;
+            if (HasError)
+                return null;
             return (IniData)iniData.Clone();
         }
         #endregion
 
-        #region Template Method Design Pattern 
-        // All this methods controls the parsing behaviour, so it can be modified 
+        #region Template Method Design Pattern
+        // All this methods controls the parsing behaviour, so it can be modified
         // in derived classes.
         // See http://www.dofactory.com/Patterns/PatternTemplate.aspx for an
         // explanation of this pattern.
         // Probably for the most common cases you can change the parsing behavior
         //  using a custom configuration object rather than creating derived classes.
         // See IniParserConfiguration interface, and IniDataParser constructor
-		//  to change the default configuration.
+        //  to change the default configuration.
 
         /// <summary>
         ///     Checks if a given string contains a comment.
@@ -187,8 +191,7 @@ namespace IniParser.Parser
         /// </returns>
         protected virtual bool LineContainsAComment(string line)
         {
-            return !string.IsNullOrEmpty(line) 
-                && Configuration.CommentRegex.Match(line).Success;
+            return !string.IsNullOrEmpty(line) && Configuration.CommentRegex.Match(line).Success;
         }
 
         /// <summary>
@@ -202,8 +205,7 @@ namespace IniParser.Parser
         /// </returns>
         protected virtual bool LineMatchesASection(string line)
         {
-            return !string.IsNullOrEmpty(line) 
-                && Configuration.SectionRegex.Match(line).Success;
+            return !string.IsNullOrEmpty(line) && Configuration.SectionRegex.Match(line).Success;
         }
 
         /// <summary>
@@ -217,7 +219,8 @@ namespace IniParser.Parser
         /// </returns>
         protected virtual bool LineMatchesAKeyValuePair(string line)
         {
-            return !string.IsNullOrEmpty(line) && line.Contains(Configuration.KeyValueAssigmentChar.ToString());
+            return !string.IsNullOrEmpty(line)
+                && line.Contains(Configuration.KeyValueAssigmentChar.ToString());
         }
 
         /// <summary>
@@ -287,7 +290,8 @@ namespace IniParser.Parser
                 return;
 
             throw new ParsingException(
-                "Unknown file format. Couldn't parse the line: '" + currentLine + "'.");
+                "Unknown file format. Couldn't parse the line: '" + currentLine + "'."
+            );
         }
 
         /// <summary>
@@ -314,24 +318,29 @@ namespace IniParser.Parser
             _currentSectionNameTemp = sectionName;
 
             //Checks if the section already exists
-            if (currentIniData.Sections.ContainsSection(sectionName))
+            if (currentIniData.Sections.Contains(sectionName))
             {
                 if (Configuration.AllowDuplicateSections)
                 {
                     return;
                 }
 
-                throw new ParsingException(string.Format("Duplicate section with name '{0}' on line '{1}'", sectionName, line));
+                throw new ParsingException(
+                    string.Format(
+                        "Duplicate section with name '{0}' on line '{1}'",
+                        sectionName,
+                        line
+                    )
+                );
             }
 
-
             // If the section does not exists, add it to the ini data
-            currentIniData.Sections.AddSection(sectionName);
+            currentIniData.Sections.Add(sectionName);
 
             // Save comments read until now and assign them to this section
-            currentIniData.Sections.GetSectionData(sectionName).LeadingComments = _currentCommentListTemp;
+            currentIniData.Sections.GetSectionData(sectionName).LeadingComments =
+                _currentCommentListTemp;
             _currentCommentListTemp.Clear();
-
         }
 
         /// <summary>
@@ -345,7 +354,8 @@ namespace IniParser.Parser
             // get key and value data
             string key = ExtractKey(line);
 
-			if (string.IsNullOrEmpty(key) && Configuration.SkipInvalidLines) return;
+            if (string.IsNullOrEmpty(key) && Configuration.SkipInvalidLines)
+                return;
 
             string value = ExtractValue(line);
 
@@ -361,16 +371,23 @@ namespace IniParser.Parser
             }
             else
             {
-                var currentSection = currentIniData.Sections.GetSectionData(_currentSectionNameTemp);
+                var currentSection = currentIniData.Sections.GetSectionData(
+                    _currentSectionNameTemp
+                );
 
-                AddKeyToKeyValueCollection(key, value, currentSection.Keys, _currentSectionNameTemp);
+                AddKeyToKeyValueCollection(
+                    key,
+                    value,
+                    currentSection.Keys,
+                    _currentSectionNameTemp
+                );
             }
         }
 
         /// <summary>
         ///     Extracts the key portion of a string containing a key/value pair..
         /// </summary>
-        /// <param name="s">    
+        /// <param name="s">
         ///     The string to be processed, which contains a key/value pair
         /// </param>
         /// <returns>
@@ -402,13 +419,20 @@ namespace IniParser.Parser
         /// <summary>
         ///     Abstract Method that decides what to do in case we are trying to add a duplicated key to a section
         /// </summary>
-        protected virtual void HandleDuplicatedKeyInCollection(string key, string value, KeyDataCollection keyDataCollection, string sectionName)
+        protected virtual void HandleDuplicatedKeyInCollection(
+            string key,
+            string value,
+            KeyDataCollection keyDataCollection,
+            string sectionName
+        )
         {
             if (!Configuration.AllowDuplicateKeys)
             {
-                throw new ParsingException(string.Format("Duplicated key '{0}' found in section '{1}", key, sectionName));
+                throw new ParsingException(
+                    string.Format("Duplicated key '{0}' found in section '{1}", key, sectionName)
+                );
             }
-            else if(Configuration.OverrideDuplicateKeys)
+            else if (Configuration.OverrideDuplicateKeys)
             {
                 keyDataCollection[key] = value;
             }
@@ -430,10 +454,15 @@ namespace IniParser.Parser
         ///     <see cref="KeyData"/> collection where the key should be inserted
         /// </param>
         /// <param name="sectionName">
-        ///     Name of the section where the <see cref="KeyDataCollection"/> is contained. 
+        ///     Name of the section where the <see cref="KeyDataCollection"/> is contained.
         ///     Used only for logging purposes.
         /// </param>
-        private void AddKeyToKeyValueCollection(string key, string value, KeyDataCollection keyDataCollection, string sectionName)
+        private void AddKeyToKeyValueCollection(
+            string key,
+            string value,
+            KeyDataCollection keyDataCollection,
+            string sectionName
+        )
         {
             // Check for duplicated keys
             if (keyDataCollection.ContainsKey(key))
@@ -444,7 +473,7 @@ namespace IniParser.Parser
             else
             {
                 // Save the keys
-                keyDataCollection.AddKey(key, value);
+                keyDataCollection.Add(key, value);
             }
 
             keyDataCollection.GetKeyData(key).Comments = _currentCommentListTemp;

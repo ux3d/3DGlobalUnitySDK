@@ -10,14 +10,14 @@ namespace IniParser.Model
     public class SectionDataCollection : ICloneable, IEnumerable<SectionData>
     {
         IEqualityComparer<string> _searchComparer;
+
         #region Initialization
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SectionDataCollection"/> class.
         /// </summary>
         public SectionDataCollection()
-            :this(EqualityComparer<string>.Default)
-        {}
+            : this(EqualityComparer<string>.Default) { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IniParser.Model.SectionDataCollection"/> class.
@@ -40,17 +40,21 @@ namespace IniParser.Model
         /// Data is deeply copied
         /// </remarks>
         /// <param name="ori">
-        /// The instance of the <see cref="SectionDataCollection"/> class 
+        /// The instance of the <see cref="SectionDataCollection"/> class
         /// used to create the new instance.</param>
-        public SectionDataCollection(SectionDataCollection ori, IEqualityComparer<string> searchComparer)
+        public SectionDataCollection(
+            SectionDataCollection ori,
+            IEqualityComparer<string> searchComparer
+        )
         {
             _searchComparer = searchComparer ?? EqualityComparer<string>.Default;
-                
+
             _sectionData = new Dictionary<string, SectionData>(_searchComparer);
-            foreach(var sectionData in ori)
+            foreach (var sectionData in ori)
             {
                 _sectionData.Add(sectionData.SectionName, (SectionData)sectionData.Clone());
-            };
+            }
+            ;
         }
 
         #endregion
@@ -60,19 +64,22 @@ namespace IniParser.Model
         /// <summary>
         /// Returns the number of SectionData elements in the collection
         /// </summary>
-        public int Count { get { return _sectionData.Count; } }
+        public int Count
+        {
+            get { return _sectionData.Count; }
+        }
 
         /// <summary>
         /// Gets the key data associated to a specified section name.
         /// </summary>
-        /// <value>An instance of as <see cref="KeyDataCollection"/> class 
+        /// <value>An instance of as <see cref="KeyDataCollection"/> class
         /// holding the key data from the current parsed INI data, or a <c>null</c>
         /// value if the section doesn't exist.</value>
         public KeyDataCollection this[string sectionName]
         {
             get
             {
-                if ( _sectionData.ContainsKey(sectionName) )
+                if (_sectionData.ContainsKey(sectionName))
                     return _sectionData[sectionName].Keys;
 
                 return null;
@@ -115,9 +122,9 @@ namespace IniParser.Model
             //if ( !Assert.StringHasNoBlankSpaces(keyName) )
             //    throw new ArgumentException("Section name contain whitespaces");
 
-            if ( !ContainsSection(keyName) )
+            if (!Contains(keyName))
             {
-                _sectionData.Add( keyName, new SectionData(keyName, _searchComparer) );
+                _sectionData.Add(keyName, new SectionData(keyName, _searchComparer));
                 return true;
             }
 
@@ -130,7 +137,7 @@ namespace IniParser.Model
         /// <param name="data">Data.</param>
         public void Add(SectionData data)
         {
-            if (ContainsSection(data.SectionName))
+            if (Contains(data.SectionName))
             {
                 SetSectionData(data.SectionName, new SectionData(data, _searchComparer));
             }
@@ -139,6 +146,7 @@ namespace IniParser.Model
                 _sectionData.Add(data.SectionName, new SectionData(data, _searchComparer));
             }
         }
+
         /// <summary>
         /// Removes all entries from this collection
         /// </summary>
@@ -146,7 +154,6 @@ namespace IniParser.Model
         {
             _sectionData.Clear();
         }
-
 
         /// <summary>
         /// Gets if a section with a specified name exists in the collection.
@@ -180,7 +187,7 @@ namespace IniParser.Model
         /// </summary>
         /// <param name="sectionName">Name of the section.</param>
         /// <returns>
-        /// An instance of a <see cref="SectionData"/> class 
+        /// An instance of a <see cref="SectionData"/> class
         /// holding the section data for the currently INI data
         /// </returns>
         public SectionData GetSectionData(string sectionName)
@@ -193,13 +200,13 @@ namespace IniParser.Model
 
         public void Merge(SectionDataCollection sectionsToMerge)
         {
-            foreach(var sectionDataToMerge in sectionsToMerge)
+            foreach (var sectionDataToMerge in sectionsToMerge)
             {
                 var sectionDataInThis = GetSectionData(sectionDataToMerge.SectionName);
 
                 if (sectionDataInThis == null)
                 {
-                    AddSection(sectionDataToMerge.SectionName);
+                    Add(sectionDataToMerge.SectionName);
                 }
 
                 this[sectionDataToMerge.SectionName].Merge(sectionDataToMerge.Keys);
@@ -213,21 +220,20 @@ namespace IniParser.Model
         /// <param name="data">The new <see cref="SectionData"/>instance.</param>
         public void SetSectionData(string sectionName, SectionData data)
         {
-            if ( data != null )
+            if (data != null)
                 _sectionData[sectionName] = data;
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="keyName"></param>
-        /// <return><c>true</c> if the section with the specified name was removed, 
+        /// <return><c>true</c> if the section with the specified name was removed,
         /// <c>false</c> otherwise</return>
         public bool RemoveSection(string keyName)
         {
             return _sectionData.Remove(keyName);
         }
-
 
         #endregion
 
@@ -285,6 +291,5 @@ namespace IniParser.Model
         private readonly Dictionary<string, SectionData> _sectionData;
 
         #endregion
-
     }
 }
