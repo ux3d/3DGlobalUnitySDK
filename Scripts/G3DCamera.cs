@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEditor;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
@@ -8,11 +10,11 @@ using System.IO;
 
 #endif
 
-#if HDRP
+#if G3D_HDRP
 using UnityEngine.Rendering.HighDefinition;
 #endif
 
-#if URP
+#if G3D_URP
 using UnityEngine.Rendering.Universal;
 #endif
 
@@ -241,10 +243,10 @@ public class G3DCamera
     private int renderTargetScaleFactor = 5;
 
     private Material material;
-#if HDRP
+#if G3D_HDRP
     private G3DHDRPCustomPass customPass;
 #endif
-#if URP
+#if G3D_URP
     private G3DUrpScriptableRenderPass customPass;
     AntialiasingMode antialiasingMode = AntialiasingMode.None;
 #endif
@@ -283,6 +285,14 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
+        BuildTarget buildTarget = EditorUserBuildSettings.activeBuildTarget;
+        BuildTargetGroup targetGroup = BuildPipeline.GetBuildTargetGroup(buildTarget);
+        UnityEditor.Build.NamedBuildTarget namedBuildTarget =
+            UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(targetGroup);
+        string defines = PlayerSettings.GetScriptingDefineSymbols(namedBuildTarget);
+
+        Debug.Log(defines);
+
         maxHeadDistance = maxHeadDistance * sceneScaleFactor;
         eyeSeparation = eyeSeparation * sceneScaleFactor;
 
@@ -376,7 +386,7 @@ public class G3DCamera
             Debug.LogError("Failed to start head tracking: " + e.Message);
         }
 
-#if HDRP
+#if G3D_HDRP
         // init fullscreen postprocessing for hd render pipeline
         var customPassVolume = gameObject.AddComponent<CustomPassVolume>();
         customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
@@ -388,7 +398,7 @@ public class G3DCamera
         customPass.materialPassName = "G3DFullScreen3D";
 #endif
 
-#if URP
+#if G3D_URP
         customPass = new G3DUrpScriptableRenderPass(material);
         antialiasingMode = mainCamera.GetUniversalAdditionalCameraData().antialiasing;
         mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
@@ -521,7 +531,7 @@ public class G3DCamera
         }
     }
 
-#if URP
+#if G3D_URP
     private void OnEnable()
     {
         RenderPipelineManager.beginCameraRendering += OnBeginCamera;
@@ -757,7 +767,7 @@ public class G3DCamera
             camera.projectionMatrix = mainCamera.projectionMatrix;
             camera.transform.localPosition = cameraParent.transform.localPosition;
             camera.transform.localRotation = cameraParent.transform.localRotation;
-#if URP
+#if G3D_URP
             camera.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
 #endif
 
@@ -1105,7 +1115,7 @@ public class G3DCamera
     {
         // This is where the material and shader are applied to the camera image.
         //legacy support (no URP or HDRP)
-#if HDRP || URP
+#if G3D_HDRP || URP
 #else
         if (material == null)
             Graphics.Blit(source, destination);

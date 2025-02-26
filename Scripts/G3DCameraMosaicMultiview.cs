@@ -8,11 +8,11 @@ using UnityEngine.Video;
 
 #endif
 
-#if HDRP
+#if G3D_HDRP
 using UnityEngine.Rendering.HighDefinition;
 #endif
 
-#if URP
+#if G3D_URP
 using UnityEngine.Rendering.Universal;
 #endif
 
@@ -67,10 +67,10 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     private Camera mainCamera;
     private Material material;
-#if HDRP
+#if G3D_HDRP
     private G3DHDRPCustomPass customPass;
 #endif
-#if URP
+#if G3D_URP
     private G3DUrpScriptableRenderPass customPass;
 #endif
 
@@ -118,7 +118,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
-#if HDRP
+#if G3D_HDRP
         // init fullscreen postprocessing for hd render pipeline
         var customPassVolume = gameObject.AddComponent<CustomPassVolume>();
         customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
@@ -130,7 +130,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         customPass.materialPassName = "G3DFullScreen3D";
 #endif
 
-#if URP
+#if G3D_URP
         customPass = new G3DUrpScriptableRenderPass(material);
 #endif
 
@@ -149,15 +149,15 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         updateScreenViewportProperties();
         updateShaderParameters();
 
-#if HDRP
+#if G3D_HDRP
         customPass.fullscreenPassMaterial = material;
 #endif
-#if URP
+#if G3D_URP
         customPass.updateMaterial(material);
 #endif
     }
 
-#if URP
+#if G3D_URP
     private void OnEnable()
     {
         RenderPipelineManager.beginCameraRendering += OnBeginCamera;
@@ -307,7 +307,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     {
         // This is where the material and shader are applied to the camera image.
         //legacy support (no URP or HDRP)
-#if HDRP || URP
+#if G3D_HDRP || URP
 #else
         if (material == null)
             Graphics.Blit(source, destination);

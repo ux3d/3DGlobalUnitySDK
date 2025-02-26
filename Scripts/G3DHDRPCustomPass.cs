@@ -1,4 +1,4 @@
-#if HDRP
+#if G3D_HDRP
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;

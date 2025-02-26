@@ -1,4 +1,4 @@
-#if URP
+#if G3D_URP
 using Unity.Burst;
 using UnityEngine;
 using UnityEngine.Rendering;
