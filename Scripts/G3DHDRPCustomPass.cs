@@ -9,22 +9,29 @@ internal class G3DHDRPCustomPass : FullScreenCustomPass
 
     protected override void Execute(CustomPassContext ctx)
     {
-        var camera = renderingData.cameraData.camera;
-        if (camera.cameraType != CameraType.Game)
-            return;
-        // only render for game cameras and cameras with the G3D camera component
-        if (
-            ctx.hdCamera.camera.cameraType != CameraType.Game
-            || (
-                ctx.hdCamera.camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera)
-                    == false
-                || g3dCamera.enabled == false
-            )
-        )
+        var camera = ctx.hdCamera.camera;
+        if (performBlit(camera))
         {
-            return;
+            CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
+            CoreUtils.DrawFullScreen(
+                ctx.cmd,
+                fullscreenPassMaterial,
+                ctx.propertyBlock,
+                shaderPassId: 0
+            );
         }
+    }
 
+    /// <summary>
+    /// Checks whether the camera is a G3D camera or a Mosaic Multiview camera and if the blit material has been set.
+    /// If so returns true, otherwise returns false.
+    /// </summary>
+    /// <param name="camera"></param>
+    /// <returns></returns>
+    static bool performBlit(Camera camera)
+    {
+        if (camera.cameraType != CameraType.Game)
+            return false;
         bool isG3DCamera = camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera);
         bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled;
 
@@ -34,21 +41,15 @@ internal class G3DHDRPCustomPass : FullScreenCustomPass
         bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled;
 
         if (!isG3DCameraEnabled && !isMosaicMultiviewCameraEnabled)
-            return;
+            return false;
 
         // skip all cameras created by the G3D Camera script
-        if (ctx.hdCamera.camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))
+        if (camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))
         {
-            return;
+            return false;
         }
 
-        CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
-        CoreUtils.DrawFullScreen(
-            ctx.cmd,
-            fullscreenPassMaterial,
-            ctx.propertyBlock,
-            shaderPassId: 0
-        );
+        return true;
     }
 
     protected override void Cleanup() { }
