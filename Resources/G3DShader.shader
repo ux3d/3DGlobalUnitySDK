@@ -38,6 +38,7 @@ Shader "G3D/Autostereo"
     // amount of render targets
     int cameraCount;
     int isBGR; // 0 = RGB, 1 = BGR
+    float indexMap[64];
     
 
     // unused parameters
