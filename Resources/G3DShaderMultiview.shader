@@ -28,7 +28,6 @@ Shader "G3D/AutostereoMultiview"
     
     // unused parameter -> only here for so that this shader overlaps with the multiview shader
     int isBGR; // 0 = RGB, 1 = BGR
-
     float indexMap[64];
     
     // unused parameters -> only here for so that this shader overlaps with the multiview shader
@@ -141,26 +140,90 @@ Shader "G3D/AutostereoMultiview"
         return f - floor(f / m) * m;
     }
 
-    float4 frag (v2f i) : SV_Target
+    float customMod(float x, float y)
     {
-        int yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
-        int2 screenPos = int2(i.screenPos.x, yPos) + int2(v_pos_x, v_pos_y);
+        return x - y * floor(x / y);
+    }
 
+    int3 getSubPixelViewIndices(float2 screenPos)
+    {
+        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (nwinkel / zwinkel)) % nativeViewCount) + nativeViewCount) + mstart;
+        view = view % nativeViewCount;
+        int3 viewIndices = int3(view, view, view);
 
-        float4 oColor = float4(0.0, 1.0, 0.0, 1.0);
+        viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));
 
+        return viewIndices;
+    }
+
+    float3 sampleColorFromSubPixels(int3 subPixelIndices, float2 uv)
+    {
+        float3 pixelR = sampleFromView(subPixelIndices.r, uv);
+        float3 pixelG = sampleFromView(subPixelIndices.g, uv);
+        float3 pixelB = sampleFromView(subPixelIndices.b, uv);
+
+        return float3(pixelR.r, pixelG.g, pixelB.b);
+    }
+
+    float4 frag(v2f i) : SV_Target
+    {
+        float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
+        float2 computedScreenPos = float2(i.screenPos.x, yPos) + float2(v_pos_x, v_pos_y);
+
+        float4 color = float4(0, 0, 0, 0);
+
+        int3 subPixelIndices = getSubPixelViewIndices(computedScreenPos);
+        color.rgb = sampleColorFromSubPixels(subPixelIndices, i.uv);
+
+        color.a = 1.0;
+
+        return color;
+    }
+
+    float4 fragasdasd (v2f i) : SV_Target
+    {
+        float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
+        float2 computedScreenPos = float2(i.screenPos.x, yPos) + float2(v_pos_x, v_pos_y);
+        int calculatedViewCount = nativeViewCount * nwinkel;
         /*
         1) startIndex
             each horizontal line starts with a different view index:
-                (y * angle_counter) % max_views
-                e.g.: angle_counter = 4 and max_views = 35: 34,3,7,11,15,19,23,27,31,0,4,...
+                (y * uzwinkel) % max_views
+                e.g.: uzwinkel = 4 and max_views = 35: 34,3,7,11,15,19,23,27,31,0,4,...
             depending on the screen, this view index will increase or decrease in its modulo loop, therefore:
-                direction (either -1 or 1)
+                uDirection (either -1 or 1)
             handling negative modulo mod(a,b) means we need to add b IF the result is negative, but we dont want that IF, therefore:
-                + y * view_count_monitor_hq
+                + y * calculatedViewCount
+            each step on the horizontal line in x increases the startIndex by wn (on a subpixel level), therefore:
+                startIndex + xScreenCoords * 3 * unwinkel
         */
+        // shift direction from 0 or 1 to -1 or 1
+        // int direction = (isleft + 1) * 2 - 3;
+        // * 3 bacause we have three color chanels
         int direction = (isleft + 1) * 2 - 3;
-        float startIndex = screenPos.y * zwinkel * (direction * -1) + screenPos.y * hqview;
+        direction = direction * -1;
+        int startIndex = computedScreenPos.y * zwinkel * direction +
+            computedScreenPos.y * calculatedViewCount + computedScreenPos.x * 3 * nwinkel;
+
+
+        /*
+        2) viewIndex
+            in a shader we operate on a color level tho, so we need to add wn:
+                + float3(0, unwinkel, 2*unwinkel)
+            offsets from the UI or headtracking can factor into this as well:
+                view_offset + view_offset_headtracking
+            of course, this value will be out of range for our views, so we need a modulo operation that can only behave as expected
+                glsl_mod(float3, float) = f - floor(f / m) * m;
+        */
+        int3 viewIndices = int3(startIndex, startIndex, startIndex);
+        viewIndices += int3(0, nwinkel, nwinkel + nwinkel);
+        viewIndices += mstart;
+        // This parameter always seems to be 0, so we can ignore this line
+        viewIndices += track;
+        viewIndices = viewIndices % calculatedViewCount;
+
+
+        float startIndexTest = computedScreenPos.y * zwinkel * direction + computedScreenPos.y * hqview;
 
         /*
         2) viewIndex
@@ -173,42 +236,50 @@ Shader "G3D/AutostereoMultiview"
             of course, this value will be out of range for our views, so we need a modulo operation that can only behave as expected
                 glsl_mod(float3, float) = f - floor(f / m) * m;
         */
-        float3 viewIndex = glsl_mod(
-            (startIndex + screenPos.x * 3 * nwinkel)
+        float3 viewIndexTest = glsl_mod(
+            (startIndexTest + computedScreenPos.x * 3 * nwinkel)
             + float3(0, nwinkel, nwinkel + nwinkel)
             + mstart,
             hqview
         );
 
-        /*
-        2.5) example 10x10 with 7 views, 4/5 angle and direction = -1:
-                0  5 10 15 20 25 30  0  5 10
-            31  1  6 11 16 21 26 31  1  6
-            27 32  2  7 12 17 22 27 32  2
-            23 28 33  3  8 13 18 23 28 33
-            19 24 29 34  4  9 14 19 24 29
-            15 20 25 30  0  5 10 15 20 25
-            11 16 21 26 31  1  6 11 16 21
-                7 12 17 22 27 32  2  7 12 17
-                3  8 13 18 23 28 33  3  8 13
-            34  4  9 14 19 24 29 34  4  9
-
-            in y the next row always starts with angle_counter less, each element in x is increased by angle_denominator
-            also see: ViewMapCalculator (Delphi)
-            note that there are multiple ways to create an algorithm that produces valid results
-            its just one of the versions I fully understand
-        */
-
-        /*
-        3) colors
-            fetching colors according to the viewIndex should be trivial
-            unfortunately, at the time of writing, unity handles texture2D arrays very poorly and I was not able to get rid of that horrible switch case statement
-        */
-        for (int channel = 0; channel < 3; channel++) {
-            oColor[channel] = sampleFromView(indexMap[viewIndex[channel]], i.uv)[channel];
+        float2 uvCoords = i.uv;
+        // mirror the image if necessary
+        if (mirror != 0) {
+            uvCoords.x = 1.0 - uvCoords.x;
         }
 
-        return oColor;
+        //use indices to sample correct subpixels
+        float4 color = float4(0.0, 0.0, 0.0, 1.0);
+        int viewIndex = 0;
+        for (int channel = 0; channel < 3; channel++) {
+            if(isBGR != 0) {
+                viewIndex = viewIndexTest[2 - channel];
+            } else {
+                viewIndex = viewIndexTest[channel];
+            }
+
+            if (test != 0) {
+                if (viewIndex == 0) {
+                    color[channel] = 1.0;
+                }
+                continue;
+            }
+
+            float mappedIndex = map(viewIndex, calculatedViewCount, cameraCount);
+            float4 tmpColor = sampleFromView(mappedIndex, uvCoords);
+            // float4 tmpColor = sampleFromView(indexMap[viewIndex], uvCoords);
+
+            if(channel == 0) {
+                color.x = tmpColor.x;
+            } else if(channel == 1) {
+                color.y = tmpColor.y;
+            } else if(channel == 2) {
+                color.z = tmpColor.z;
+            }
+        }
+        
+        return color;
     }
     ENDHLSL
 
