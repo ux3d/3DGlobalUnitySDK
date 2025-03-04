@@ -363,7 +363,7 @@ public class G3DCamera
                 DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
             shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
         }
-        // updateShaderParameters();
+        updateShaderParameters();
 
         try
         {
@@ -665,30 +665,6 @@ public class G3DCamera
             material?.SetInt(Shader.PropertyToID("cameraCount"), internalCameraCount);
 
             material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
-
-            float[] indexMap = new float[shaderParameters.hqViewCount];
-            //multiview is spaced as evenly as possible, starting and ending with a delimiter view
-            int spacePerView = (shaderParameters.hqViewCount - 2) / cameraCount;
-            int spaceLeftover = (shaderParameters.hqViewCount - 2) % cameraCount;
-
-            int i = 0;
-            indexMap[i++] = 255f;
-            for (int viewIndex = 0; viewIndex < cameraCount; viewIndex++)
-            {
-                int offset = 0;
-                if (spaceLeftover > 0)
-                {
-                    offset = 1;
-                    spaceLeftover--;
-                }
-
-                for (int currentSpace = spacePerView + offset; currentSpace > 0; currentSpace--)
-                {
-                    indexMap[i++] = viewIndex;
-                }
-            }
-            indexMap[i++] = 255f;
-            material.SetFloatArray(Shader.PropertyToID("indexMap"), indexMap);
         }
     }
 
