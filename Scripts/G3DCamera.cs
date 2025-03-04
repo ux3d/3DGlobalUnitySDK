@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using UnityEditor;
-using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
-using UnityEditor.EditorTools;
-using System.IO;
 
 #endif
 
@@ -285,14 +281,6 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
-        BuildTarget buildTarget = EditorUserBuildSettings.activeBuildTarget;
-        BuildTargetGroup targetGroup = BuildPipeline.GetBuildTargetGroup(buildTarget);
-        UnityEditor.Build.NamedBuildTarget namedBuildTarget =
-            UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(targetGroup);
-        string defines = PlayerSettings.GetScriptingDefineSymbols(namedBuildTarget);
-
-        Debug.Log(defines);
-
         maxHeadDistance = maxHeadDistance * sceneScaleFactor;
         eyeSeparation = eyeSeparation * sceneScaleFactor;
 

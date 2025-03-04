@@ -1,12 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.Rendering;
+#if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
-using UnityEngine.Rendering;
+#endif
+
 
 public class PackageManagerInteractor
 {
+#if UNITY_EDITOR
     // You must use '[InitializeOnLoadMethod]' or '[InitializeOnLoad]' to subscribe to this event.
     [InitializeOnLoadMethod]
     static void SubscribeToEvent()
@@ -97,4 +101,5 @@ public class PackageManagerInteractor
         // request a script compilation to apply the changescaused by the new scripting define symbols.
         CompilationPipeline.RequestScriptCompilation();
     }
+#endif
 }
