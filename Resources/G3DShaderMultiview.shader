@@ -135,11 +135,38 @@ Shader "G3D/AutostereoMultiview"
         return s*to2/from2;
     }
 
+    float customMod(float x, float y)
+    {
+        return x - y * floor(x / y);
+    }
+
+    int3 getSubPixelViewIndices(float2 screenPos)
+    {
+        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount)) + float(nativeViewCount)) + mstart;
+        int3 viewIndices = int3(view, view, view);
+
+        viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));
+
+        viewIndices.x = viewIndices.x % nativeViewCount;
+        viewIndices.y = viewIndices.y % nativeViewCount;
+        viewIndices.z = viewIndices.z % nativeViewCount;
+
+        return viewIndices;
+    }
+
     float4 frag (v2f i) : SV_Target
     {
         float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
-        float2 computedScreenPos = float2(i.screenPos.x, yPos) + float2(v_pos_x, v_pos_y);
-        int calculatedViewCount = nativeViewCount * nwinkel;
+        
+        // OLD SHADER
+        float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
+        int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
+        // OLD SHADER END
+        
+        // NEW SHADER
+        // float2 computedScreenPos = float2(i.screenPos.x, yPos) + float2(v_pos_x, v_pos_y);
+        // NEW SHADER END
+
         /*
         1) startIndex
             each horizontal line starts with a different view index:
@@ -155,25 +182,29 @@ Shader "G3D/AutostereoMultiview"
         // shift direction from 0 or 1 to -1 or 1
         // int direction = (isleft + 1) * 2 - 3;
         // * 3 bacause we have three color chanels
-        int direction = (isleft + 1) * 2 - 3;
-        int startIndex = computedScreenPos.y * zwinkel * (direction * -1) +
-            computedScreenPos.y * calculatedViewCount + computedScreenPos.x * 3 * nwinkel;
 
-        /*
-        2) viewIndex
-            in a shader we operate on a color level tho, so we need to add wn:
-                + float3(0, unwinkel, 2*unwinkel)
-            offsets from the UI or headtracking can factor into this as well:
-                view_offset + view_offset_headtracking
-            of course, this value will be out of range for our views, so we need a modulo operation that can only behave as expected
-                glsl_mod(float3, float) = f - floor(f / m) * m;
-        */
-        int3 viewIndices = int3(startIndex, startIndex, startIndex);
-        viewIndices += int3(0, nwinkel, nwinkel + nwinkel);
-        viewIndices += mstart;
-        // This parameter always seems to be 0, so we can ignore this line
-        viewIndices += track;
-        viewIndices = viewIndices % calculatedViewCount;
+        // NEW SHADER
+        // int calculatedViewCount = nativeViewCount * nwinkel;
+        // int direction = (isleft + 1) * 2 - 3;
+        // int startIndex = computedScreenPos.y * zwinkel * (direction * -1) +
+        // computedScreenPos.y * calculatedViewCount + computedScreenPos.x * 3 * nwinkel;
+
+        // /*
+        // 2) viewIndex
+        //     in a shader we operate on a color level tho, so we need to add wn:
+        //         + float3(0, unwinkel, 2*unwinkel)
+        //     offsets from the UI or headtracking can factor into this as well:
+        //         view_offset + view_offset_headtracking
+        //     of course, this value will be out of range for our views, so we need a modulo operation that can only behave as expected
+        //         glsl_mod(float3, float) = f - floor(f / m) * m;
+        // */
+        // int3 viewIndices = int3(startIndex, startIndex, startIndex);
+        // viewIndices += int3(0, nwinkel, nwinkel + nwinkel);
+        // viewIndices += mstart;
+        // // This parameter always seems to be 0, so we can ignore this line
+        // viewIndices += track;
+        // viewIndices = customMod(viewIndices, calculatedViewCount);
+        // NEW SHADER END
 
         float2 uvCoords = i.uv;
         // mirror the image if necessary
@@ -198,8 +229,13 @@ Shader "G3D/AutostereoMultiview"
                 continue;
             }
 
-            float mappedIndex = map(viewIndex, calculatedViewCount, cameraCount);
-            float4 tmpColor = sampleFromView(mappedIndex, uvCoords);
+            // OLD SHADER
+            float4 tmpColor = sampleFromView(viewIndex, uvCoords);
+
+            // NEW SHADER
+            // float mappedIndex = map(viewIndex, calculatedViewCount, cameraCount);
+            // float4 tmpColor = sampleFromView(mappedIndex, uvCoords);
+            // NEW SHADER END
 
             if(channel == 0) {
                 color.x = tmpColor.x;
