@@ -170,9 +170,15 @@ public class G3DCamera
     public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
     [Tooltip(
-        "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width."
+        "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
     )]
     public bool adaptRenderResolutionToViews = true;
+    
+    [Tooltip(
+        "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4. Adapt Render Resolution To Views takes precedence."
+    )]
+    [Range(1, 100)]
+    public int renderResolutionScale = 100;
     #endregion
 
     #region Device settings
@@ -198,6 +204,7 @@ public class G3DCamera
     public float gizmoSize = 0.2f;
 
     private int oldRenderTargetScaleFactor = 5;
+    private int oldRenderResolutionScale = 100;
 
     #endregion
 
@@ -215,6 +222,8 @@ public class G3DCamera
     public KeyCode decreaseEyeSeparationKey = KeyCode.K;
     public KeyCode increaseEyeSeparationKey = KeyCode.L;
     public KeyCode cameraPositionLogginKey = KeyCode.W;
+    public KeyCode increaseRenderScale = KeyCode.UpArrow;
+    public KeyCode decreaseRenderScale = KeyCode.DownArrow;
     #endregion
 
     #region Private variables
@@ -556,11 +565,6 @@ public class G3DCamera
             tmpRenderScaleFactor = cameraCount;
         }
 
-        if (adaptRenderResolutionToViews == false)
-        {
-            tmpRenderScaleFactor = 1;
-        }
-
         renderTargetScaleFactor = tmpRenderScaleFactor;
 
         // update the shader parameters
@@ -821,6 +825,11 @@ public class G3DCamera
             oldRenderTargetScaleFactor = renderTargetScaleFactor;
             shouldUpdateShaderViews = true;
         }
+        if (oldRenderResolutionScale != renderResolutionScale)
+        {
+            oldRenderResolutionScale = renderResolutionScale;
+            shouldUpdateShaderViews = true;
+        }
         if (lockCameraCountToShaderParameters())
         {
             shouldUpdateShaderViews = true;
@@ -844,8 +853,15 @@ public class G3DCamera
         //set only those we need
         for (int i = 0; i < internalCameraCount; i++)
         {
-            int width = Screen.width / renderTargetScaleFactor;
+            int width = Screen.width;
             int height = Screen.height;
+
+            if (adaptRenderResolutionToViews) {
+                width = width / renderTargetScaleFactor;
+            } else {
+                width = (int)(width * ((float)renderResolutionScale / 100f));
+                height = (int)(height * ((float)renderResolutionScale / 100f));
+            }
 
             renderTextures[i] = new RenderTexture(width, height, 0)
             {
@@ -1092,6 +1108,16 @@ public class G3DCamera
                 writer.WriteLine(headPoitionLogArray[i]);
             }
             writer.Close();
+        }
+
+        if (Input.GetKeyDown(increaseRenderScale))
+        {
+            renderResolutionScale = Math.Min(renderResolutionScale + 10, 100);
+        }
+
+        if (Input.GetKeyDown(decreaseRenderScale))
+        {
+            renderResolutionScale = Math.Max(renderResolutionScale - 10, 10);
         }
     }
 
