@@ -173,7 +173,7 @@ public class G3DCamera
         "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
     )]
     public bool adaptRenderResolutionToViews = true;
-    
+
     [Tooltip(
         "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4. Adapt Render Resolution To Views takes precedence."
     )]
@@ -206,24 +206,6 @@ public class G3DCamera
     private int oldRenderTargetScaleFactor = 5;
     private int oldRenderResolutionScale = 100;
 
-    #endregion
-
-    #region Keys
-    [Header("Keys")]
-    [Tooltip("If set to true, the library will react to certain keyboard keys.")]
-    public bool enableKeys = true;
-    public KeyCode toggleHeadTrackingKey = KeyCode.Space;
-    public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
-    public KeyCode shiftViewRightKey = KeyCode.RightArrow;
-
-    [Tooltip("Shows a red/green test frame.")]
-    public KeyCode toggleTestFrameKey = KeyCode.D;
-    public KeyCode switchCameraMode = KeyCode.H;
-    public KeyCode decreaseEyeSeparationKey = KeyCode.K;
-    public KeyCode increaseEyeSeparationKey = KeyCode.L;
-    public KeyCode cameraPositionLogginKey = KeyCode.W;
-    public KeyCode increaseRenderScale = KeyCode.UpArrow;
-    public KeyCode decreaseRenderScale = KeyCode.DownArrow;
     #endregion
 
     #region Private variables
@@ -578,11 +560,6 @@ public class G3DCamera
         updateCameras();
         updateShaderParameters();
 
-        if (enableKeys)
-        {
-            handleKeyPresses();
-        }
-
         if (windowResized() || windowMoved())
         {
             updateScreenViewportProperties();
@@ -856,9 +833,12 @@ public class G3DCamera
             int width = Screen.width;
             int height = Screen.height;
 
-            if (adaptRenderResolutionToViews) {
+            if (adaptRenderResolutionToViews)
+            {
                 width = width / renderTargetScaleFactor;
-            } else {
+            }
+            else
+            {
                 width = (int)(width * ((float)renderResolutionScale / 100f));
                 height = (int)(height * ((float)renderResolutionScale / 100f));
             }
@@ -1037,88 +1017,6 @@ public class G3DCamera
         }
 
         prevHeadTrackingState = headTrackingState;
-    }
-
-    private void handleKeyPresses()
-    {
-        if (Input.GetKeyDown(toggleHeadTrackingKey))
-        {
-            toggleHeadTrackingStatus();
-        }
-        if (Input.GetKeyDown(shiftViewLeftKey))
-        {
-            try
-            {
-                libInterface.shiftViewToLeft();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to shift view to left: " + e.Message);
-            }
-        }
-        if (Input.GetKeyDown(shiftViewRightKey))
-        {
-            try
-            {
-                libInterface.shiftViewToRight();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to shift view to right: " + e.Message);
-            }
-        }
-        if (Input.GetKeyDown(toggleTestFrameKey))
-        {
-            showTestFrame = !showTestFrame;
-        }
-        if (Input.GetKeyDown(switchCameraMode))
-        {
-            if (mode == G3DCameraMode.DIORAMA)
-            {
-                mode = G3DCameraMode.MULTIVIEW;
-            }
-            else
-            {
-                mode = G3DCameraMode.DIORAMA;
-            }
-        }
-        if (Input.GetKeyDown(decreaseEyeSeparationKey))
-        {
-            eyeSeparation -= eyeSeparationChange * sceneScaleFactor;
-            if (eyeSeparation < 0.0f)
-                eyeSeparation = 0.0f;
-        }
-        if (Input.GetKeyDown(increaseEyeSeparationKey))
-        {
-            eyeSeparation += eyeSeparationChange * sceneScaleFactor;
-        }
-
-        if (Input.GetKeyDown(cameraPositionLogginKey))
-        {
-            System.IO.StreamWriter writer = new System.IO.StreamWriter(
-                Application.dataPath + "/HeadPositionLog.csv",
-                false
-            );
-            writer.WriteLine(
-                "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Unity head tracking state; Used head X; Used head Y; Used head Z; Filtered X; Filtered Y; Filtered Z"
-            );
-            string[] headPoitionLogArray = headPoitionLog.ToArray();
-            for (int i = 0; i < headPoitionLogArray.Length; i++)
-            {
-                writer.WriteLine(headPoitionLogArray[i]);
-            }
-            writer.Close();
-        }
-
-        if (Input.GetKeyDown(increaseRenderScale))
-        {
-            renderResolutionScale = Math.Min(renderResolutionScale + 10, 100);
-        }
-
-        if (Input.GetKeyDown(decreaseRenderScale))
-        {
-            renderResolutionScale = Math.Max(renderResolutionScale - 10, 10);
-        }
     }
 
     // This function only does something when you use the SRP render pipeline.
@@ -1496,6 +1394,47 @@ public class G3DCamera
         catch (Exception e)
         {
             Debug.LogError("Failed to update shader parameters from json: " + e.Message);
+        }
+    }
+
+    public void logCameraPOsitionsToFile()
+    {
+        System.IO.StreamWriter writer = new System.IO.StreamWriter(
+            Application.dataPath + "/HeadPositionLog.csv",
+            false
+        );
+        writer.WriteLine(
+            "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Unity head tracking state; Used head X; Used head Y; Used head Z; Filtered X; Filtered Y; Filtered Z"
+        );
+        string[] headPoitionLogArray = headPoitionLog.ToArray();
+        for (int i = 0; i < headPoitionLogArray.Length; i++)
+        {
+            writer.WriteLine(headPoitionLogArray[i]);
+        }
+        writer.Close();
+    }
+
+    public void shiftViewToLeft()
+    {
+        try
+        {
+            libInterface.shiftViewToLeft();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to shift view to left: " + e.Message);
+        }
+    }
+
+    public void shiftViewToRight()
+    {
+        try
+        {
+            libInterface.shiftViewToRight();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to shift view to right: " + e.Message);
         }
     }
 }

@@ -52,17 +52,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     #endregion
 
-    #region Keys
-    [Header("Keys")]
-    [Tooltip("If set to true, the library will react to certain keyboard keys.")]
-    public bool enableKeys = true;
-    public KeyCode shiftViewLeftKey = KeyCode.LeftArrow;
-    public KeyCode shiftViewRightKey = KeyCode.RightArrow;
-
-    [Tooltip("Shows a red/green test frame.")]
-    public KeyCode toggleTestFrameKey = KeyCode.D;
-    #endregion
-
     #region Private variables
 
     private Camera mainCamera;
@@ -182,11 +171,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     {
         updateShaderParameters();
 
-        if (enableKeys)
-        {
-            handleKeyPresses();
-        }
-
         if (windowResized() || windowMoved())
         {
             updateScreenViewportProperties();
@@ -265,38 +249,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             return true;
         }
         return false;
-    }
-
-    private void handleKeyPresses()
-    {
-        if (Input.GetKeyDown(shiftViewLeftKey))
-        {
-            try
-            {
-                // TODO emulate
-                // libInterface.shiftViewToLeft();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to shift view to left: " + e.Message);
-            }
-        }
-        if (Input.GetKeyDown(shiftViewRightKey))
-        {
-            try
-            {
-                // TODO emulate
-                // libInterface.shiftViewToRight();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to shift view to right: " + e.Message);
-            }
-        }
-        if (Input.GetKeyDown(toggleTestFrameKey))
-        {
-            showTestFrame = !showTestFrame;
-        }
     }
 
     // This function only does something when you use the SRP render pipeline.
