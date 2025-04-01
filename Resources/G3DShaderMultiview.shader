@@ -132,7 +132,8 @@ Shader "G3D/AutostereoMultiview"
 
     int3 getSubPixelViewIndices(float2 screenPos)
     {
-        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount)) + float(nativeViewCount)) + mstart;
+        int direction = 0 == 1 ? 1 : -1;
+        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount) * direction) + float(nativeViewCount)) + mstart;
         int3 viewIndices = int3(view, view, view);
 
         viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));

@@ -42,17 +42,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
     Texture2D mosaictexture;
     SamplerState samplermosaictexture;
 
-    // original code (adapted to remove redundant calculations):
-    // map(viewIndex, 0, calculatedViewCount, 0, cameraCount);
-    // float map(float s, float from1, float from2, float to1, float to2)
-    // {
-    //     return to1 + (s-from1)*(to2-to1)/(from2-from1);
-    // }
-    float map(float s, float from2, float to2)
-    {
-        return s*to2/from2;
-    }
-
     float2 calculateUVForMosaic(int index, float2 startingUV) {
         int2 moasicIndex = int2(index % mosaic_columns, index / mosaic_rows);
         float2 scaledUV = float2(startingUV.x / mosaic_columns, startingUV.y / mosaic_rows);
@@ -63,7 +52,8 @@ Shader "G3D/AutostereoMultiviewMosaic"
 
     int3 getSubPixelViewIndices(float2 screenPos)
     {
-        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount)) + float(nativeViewCount));
+        int direction = 0 == 1 ? 1 : -1;
+        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount) * direction) + float(nativeViewCount));
         int3 viewIndices = int3(view, view, view);
 
         viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));
