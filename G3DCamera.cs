@@ -128,26 +128,10 @@ public class G3DCamera
     [Range(0.00001f, 5.0f)]
     public float eyeSeparation = 0.065f;
 
-    [Tooltip(
-        "The amount the eye separation changes when the user presses the eye separation keys (in meter)."
-    )]
-    public float eyeSeparationChange = 0.001f;
-    private float prevEyeSeparation = 0.065f;
 
     [Tooltip("The distance between the camera and the focus plane in meters. Defaults is 70 cm.")]
     [Min(0.0000001f)]
     public float focusDistance = 0.7f;
-
-    [Tooltip(
-        "The maximum distance between the head and the focus plane (i.e. display) in meter. If the head is further away, the head position will not be updated."
-    )]
-    public float maxHeadDistance = 0.85f;
-
-    [Tooltip("Time it takes till the reset animation starts in seconds.")]
-    public float headLostTimeoutInSec = 3.0f;
-
-    [Tooltip("Reset animation duratuion in seconds.")]
-    public float transitionDuration = 1.5f;
 
     private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
@@ -157,12 +141,6 @@ public class G3DCamera
     )]
     public float sceneScaleFactor = 1.0f;
 
-    [Tooltip(
-        "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
-    )]
-    public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
-
-    private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
 
     [Tooltip("If set to true, the views will be flipped horizontally.")]
     public bool mirrorViews = false;
@@ -249,21 +227,7 @@ public class G3DCamera
     // half of the width of field of view at start at focus distance
     private float halfCameraWidthAtStart = 1.0f;
 
-    private float headLostTimer = 0.0f;
-    private float transitionTime = 0.0f;
-
     private Queue<string> headPoitionLog;
-
-    private enum HeadTrackingState
-    {
-        TRACKING,
-        LOST,
-        TRANSITIONTOLOST,
-        TRANSITIONTOTRACKING,
-        LOSTGRACEPERIOD
-    }
-
-    private HeadTrackingState prevHeadTrackingState = HeadTrackingState.LOST;
 
     #endregion
 
@@ -272,7 +236,6 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
-        maxHeadDistance = maxHeadDistance * sceneScaleFactor;
         eyeSeparation = eyeSeparation * sceneScaleFactor;
 
         mainCamera = GetComponent<Camera>();
@@ -396,8 +359,6 @@ public class G3DCamera
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
-        prevEyeSeparation = eyeSeparation;
-
         headPoitionLog = new Queue<string>(10000);
     }
 
@@ -448,7 +409,6 @@ public class G3DCamera
             worldPosY = 0.0,
             worldPosZ = -focusDistance
         };
-        lastHeadPosition = new Vector3(0, 0, -focusDistance);
         filteredHeadPosition = new HeadPosition
         {
             headDetected = false,
@@ -875,16 +835,6 @@ public class G3DCamera
         }
         Vector3 defaultPostion = new Vector3(0, 0, -focusDistance);
 
-        HeadTrackingState headTrackingState = HeadTrackingState.LOST;
-
-        if (
-            prevHeadTrackingState == HeadTrackingState.LOSTGRACEPERIOD
-            || prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
-            || prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-        )
-        {
-            headTrackingState = prevHeadTrackingState;
-        }
         // head detected
         if (headPosition.headDetected)
         {
@@ -894,129 +844,9 @@ public class G3DCamera
                 (float)headPosition.worldPosZ
             );
 
-            // if head within max tracking distance
-            if (headPositionWorld.magnitude <= maxHeadDistance * sceneScaleFactor)
-            {
-                headTrackingState = HeadTrackingState.TRACKING;
-                targetPosition = headPositionWorld;
-                targetEyeSeparation = eyeSeparation;
-            }
+            targetPosition = headPositionWorld;
+            targetEyeSeparation = eyeSeparation;
         }
-
-        // if reaquired and we were in lost state or transitioning to lost, start transition to tracking
-        if (
-            headTrackingState == HeadTrackingState.TRACKING
-            && (
-                prevHeadTrackingState == HeadTrackingState.LOST
-                || prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
-            )
-        )
-        {
-            headTrackingState = HeadTrackingState.TRANSITIONTOTRACKING;
-            transitionTime = 0.0f;
-        }
-
-        if (
-            headTrackingState == HeadTrackingState.TRACKING
-            && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-        )
-        {
-            headTrackingState = HeadTrackingState.TRANSITIONTOTRACKING;
-        }
-
-        // if lost, start grace period
-        if (
-            headTrackingState == HeadTrackingState.LOST
-            && prevHeadTrackingState == HeadTrackingState.TRACKING
-        )
-        {
-            headTrackingState = HeadTrackingState.LOSTGRACEPERIOD;
-            targetPosition = lastHeadPosition;
-        }
-
-        if (headTrackingState == HeadTrackingState.LOSTGRACEPERIOD)
-        {
-            // if we have waited for the timeout
-            if (Time.time - headLostTimer > headLostTimeoutInSec)
-            {
-                headTrackingState = HeadTrackingState.TRANSITIONTOLOST;
-                headLostTimer = Time.time;
-                transitionTime = 0.0f;
-            }
-            else
-            {
-                targetPosition = lastHeadPosition;
-                targetEyeSeparation = prevEyeSeparation;
-            }
-        }
-
-        // if we are in a transition when the transition flips reset the transition time
-        if (
-            headTrackingState == HeadTrackingState.TRANSITIONTOLOST
-                && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-            || headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-                && prevHeadTrackingState == HeadTrackingState.TRANSITIONTOLOST
-        )
-        {
-            transitionTime = 0.0f;
-        }
-
-        if (
-            headTrackingState == HeadTrackingState.TRANSITIONTOLOST
-            || headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING
-        )
-        {
-            // interpolate values
-            float transitionPercentage = transitionTime / transitionDuration;
-            transitionTime += Time.deltaTime;
-
-            Vector3 transitionTargetPosition = defaultPostion;
-            if (headTrackingState == HeadTrackingState.TRANSITIONTOTRACKING)
-            {
-                transitionTargetPosition = targetPosition;
-            }
-
-            Vector3 interpolatedPosition = Vector3.Lerp(
-                cameraParent.transform.localPosition,
-                transitionTargetPosition,
-                transitionPercentage
-            );
-            float interpolatedEyeSeparation = Mathf.Lerp(
-                prevEyeSeparation,
-                targetEyeSeparation,
-                transitionPercentage
-            );
-
-            // apply values
-            float distance = Vector3.Distance(interpolatedPosition, transitionTargetPosition);
-            // only use interpolated position if we are not close enough to the target position
-            if (distance > 0.0001f)
-            {
-                targetPosition = interpolatedPosition;
-                targetEyeSeparation = interpolatedEyeSeparation;
-            }
-            else
-            {
-                // if we have reached the target position, we are no longer in transition
-                if (headTrackingState == HeadTrackingState.TRANSITIONTOLOST)
-                {
-                    headTrackingState = HeadTrackingState.LOST;
-                }
-                else
-                {
-                    headTrackingState = HeadTrackingState.TRACKING;
-                }
-            }
-        }
-
-        // store last known position data for tracking loss case
-        if (headTrackingState == HeadTrackingState.TRACKING)
-        {
-            lastHeadPosition = targetPosition;
-            prevEyeSeparation = targetEyeSeparation;
-        }
-
-        prevHeadTrackingState = headTrackingState;
     }
 
     // This function only does something when you use the SRP render pipeline.
@@ -1090,14 +920,6 @@ public class G3DCamera
                 + headDetected
                 + ";"
                 + imagePosIsValid
-                + ";"
-                + headTrackingStateToString()
-                + ";"
-                + lastHeadPosition.x
-                + ";"
-                + lastHeadPosition.y
-                + ";"
-                + lastHeadPosition.z
                 + ";";
 
             headPosition.headDetected = headDetected;
@@ -1249,25 +1071,6 @@ public class G3DCamera
         Gizmos.DrawSphere(position, 0.5f * gizmoSize * sceneScaleFactor);
     }
 #endif
-
-    private string headTrackingStateToString()
-    {
-        switch (prevHeadTrackingState)
-        {
-            case HeadTrackingState.TRACKING:
-                return "TRACKING";
-            case HeadTrackingState.LOST:
-                return "LOST";
-            case HeadTrackingState.LOSTGRACEPERIOD:
-                return "LOSTGRACEPERIOD";
-            case HeadTrackingState.TRANSITIONTOLOST:
-                return "TRANSITIONTOLOST";
-            case HeadTrackingState.TRANSITIONTOTRACKING:
-                return "TRANSITIONTOTRACKING";
-            default:
-                return "UNKNOWN";
-        }
-    }
     #endregion
 
     private float calculateCameraOffset(
@@ -1404,7 +1207,7 @@ public class G3DCamera
             false
         );
         writer.WriteLine(
-            "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Unity head tracking state; Used head X; Used head Y; Used head Z; Filtered X; Filtered Y; Filtered Z"
+            "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Filtered X; Filtered Y; Filtered Z"
         );
         string[] headPoitionLogArray = headPoitionLog.ToArray();
         for (int i = 0; i < headPoitionLogArray.Length; i++)
