@@ -668,7 +668,30 @@ public class G3DCamera
         float targetEyeSeparation = 0.0f;
 
         // calculate the camera center position and eye separation if head tracking and the diorama effect are enabled
-        handleHeadTrackingState(ref targetPosition, ref targetEyeSeparation);
+        if (mode == G3DCameraMode.DIORAMA)
+        {
+            HeadPosition headPosition;
+            if (usePositionFiltering())
+            {
+                headPosition = getFilteredHeadPosition();
+            }
+            else
+            {
+                headPosition = getHeadPosition();
+            }
+            // head detected
+            if (headPosition.headDetected)
+            {
+                Vector3 headPositionWorld = new Vector3(
+                    (float)headPosition.worldPosX,
+                    (float)headPosition.worldPosY,
+                    (float)headPosition.worldPosZ
+                );
+
+                targetPosition = headPositionWorld;
+                targetEyeSeparation = eyeSeparation;
+            }
+        }
 
         cameraParent.transform.localPosition = targetPosition;
         float horizontalOffset = targetPosition.x;
@@ -810,42 +833,6 @@ public class G3DCamera
             };
             cameras[i].targetTexture = renderTextures[i];
             material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
-        }
-    }
-
-    /**
-    * Calculate the new camera center position based on the head tracking.
-    * If head tracking is lost, or the head moves to far away from the tracking camera a grace periope is started.
-    * Afterwards the camera center will be animated back towards the default position.
-    */
-    private void handleHeadTrackingState(ref Vector3 targetPosition, ref float targetEyeSeparation)
-    {
-        if (mode == G3DCameraMode.MULTIVIEW)
-        {
-            return;
-        }
-        HeadPosition headPosition;
-        if (usePositionFiltering())
-        {
-            headPosition = getFilteredHeadPosition();
-        }
-        else
-        {
-            headPosition = getHeadPosition();
-        }
-        Vector3 defaultPostion = new Vector3(0, 0, -focusDistance);
-
-        // head detected
-        if (headPosition.headDetected)
-        {
-            Vector3 headPositionWorld = new Vector3(
-                (float)headPosition.worldPosX,
-                (float)headPosition.worldPosY,
-                (float)headPosition.worldPosZ
-            );
-
-            targetPosition = headPositionWorld;
-            targetEyeSeparation = eyeSeparation;
         }
     }
 
