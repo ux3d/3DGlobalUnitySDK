@@ -82,44 +82,15 @@ public class G3DCamera
         ITNewShaderParametersCallback,
         ITNewErrorMessageCallback
 {
-    #region Calibration
     [Header("Calibration and configuration files")]
     [Tooltip(
         "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
     )]
     public string calibrationPath = "";
 
-    [Tooltip(
-        "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
-    )]
-    public string configPath = "";
-    public string configFileName = "";
-
-    [Tooltip(
-        "If set to true, the library will look for the calibration and config files in a \"config\" named subdirectory of the directory where the executable is located."
-    )]
-    public bool useExecDirectory = false;
-
-    [Tooltip(
-        "If not null the initial set of shader parameters will be based on this calibration file. If null the default shader parameters from the library will be used."
-    )]
-    public string customDefaultCalibrationFilePath = null;
-    #endregion
-
     #region 3D Effect settings
     [Header("3D Effect settings")]
-    private int internalCameraCount = 2;
-
     public G3DCameraMode mode = G3DCameraMode.DIORAMA;
-
-    // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
-    private float eyeSeparation = 0.065f;
-
-    [Tooltip("The distance between the camera and the focus plane in meters. Defaults is 70 cm.")]
-    [Min(0.0000001f)]
-    public float focusDistance = 0.7f;
-
-    private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ..
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
     [Tooltip(
@@ -180,15 +151,24 @@ public class G3DCamera
     [Range(0.005f, 1.0f)]
     public float gizmoSize = 0.2f;
 
-    private int oldRenderTargetScaleFactor = 5;
-    private int oldRenderResolutionScale = 100;
     #endregion
 
     #region Private variables
 
     private LibInterface libInterface;
 
-    public int viewCount = 2;
+    // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
+    private float eyeSeparation = 0.065f;
+
+    /// <summary>
+    /// The distance between the camera and the focus plane in meters. Default is 70 cm.
+    /// Is read from calibration file at startup
+    /// </summary>
+    private float focusDistance = 0.7f;
+
+    private const int MAX_CAMERAS = 19; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
+    private int internalCameraCount = 2;
+    private int oldRenderResolutionScale = 100;
 
     /// <summary>
     /// This struct is used to store the current head position.
@@ -203,7 +183,6 @@ public class G3DCamera
 
     private Camera mainCamera;
     private List<Camera> cameras = null;
-    private GameObject focusPlaneObject = null;
     private GameObject cameraParent = null;
 
     private Material material;
@@ -212,10 +191,9 @@ public class G3DCamera
 #endif
 #if G3D_URP
     private G3DUrpScriptableRenderPass customPass;
-    AntialiasingMode antialiasingMode = AntialiasingMode.None;
+    private AntialiasingMode antialiasingMode = AntialiasingMode.None;
 #endif
 
-    private int[] id_View = new int[MAX_CAMERAS];
     private ShaderHandles shaderHandles;
     private G3DShaderParameters shaderParameters;
 
@@ -238,11 +216,11 @@ public class G3DCamera
 
         mainCamera = GetComponent<Camera>();
 
-        // create a focus plane object at foxus distance from camera.
+        // create a focus plane object at focus distance from camera.
         // then parent the camera parent to that object
         // this way we can place the camera parent relative to the focus plane
 
-        focusPlaneObject = new GameObject("focus plane center");
+        GameObject focusPlaneObject = new GameObject("focus plane center");
         focusPlaneObject.transform.parent = transform;
         focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
         focusPlaneObject.transform.localRotation = Quaternion.identity;
@@ -270,10 +248,6 @@ public class G3DCamera
         // otherwise the secondary cameras are initialized wrong
         mainCamera.cullingMask = 0; //disable rendering of the main camera
         mainCamera.clearFlags = CameraClearFlags.Color;
-
-        // initialize shader textures
-        for (int i = 0; i < MAX_CAMERAS; i++)
-            id_View[i] = Shader.PropertyToID("texture" + i);
 
         shaderHandles = new ShaderHandles()
         {
@@ -311,8 +285,9 @@ public class G3DCamera
 
         lock (shaderLock)
         {
+            // TODO insert path to calibration file
             DefaultCalibrationProvider defaultCalibrationProvider =
-                DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
+                DefaultCalibrationProvider.getFromConfigFile(null);
             shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
         }
         updateShaderParameters();
@@ -367,19 +342,24 @@ public class G3DCamera
 
     private void initLibrary()
     {
-        if (useExecDirectory)
+        string applicationName = Application.productName;
+        if (string.IsNullOrEmpty(applicationName))
         {
-            configPath = Application.dataPath + "/config";
-            calibrationPath = Application.dataPath + "/config";
+            applicationName = "Unity";
         }
+        var invalids = System.IO.Path.GetInvalidFileNameChars();
+        applicationName = String
+            .Join("_", applicationName.Split(invalids, StringSplitOptions.RemoveEmptyEntries))
+            .TrimEnd('.');
+        applicationName = applicationName + "_G3D_Config.ini";
 
         try
         {
             libInterface = LibInterface.Instance;
             libInterface.init(
                 calibrationPath,
-                configPath,
-                configFileName,
+                Application.persistentDataPath,
+                applicationName,
                 this,
                 this,
                 this,
