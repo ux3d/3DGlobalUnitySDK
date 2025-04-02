@@ -108,26 +108,12 @@ public class G3DCamera
 
     #region 3D Effect settings
     [Header("3D Effect settings")]
-    [Tooltip(
-        "The amount of used cameras. The maximum amount of cameras is 16. Two corresponds to a stereo setup."
-    )]
-    [Range(1, 16)]
-    public int cameraCount = 2;
     private int internalCameraCount = 2;
-
-    [Tooltip(
-        "If set to true, the amount of cameras will be limited by the amount of native views the display supports."
-    )]
-    public bool lockCameraCountToDisplay = false;
 
     public G3DCameraMode mode = G3DCameraMode.DIORAMA;
 
-    [Tooltip(
-        "The distance between the two eyes in meters. This value is used to calculate the stereo effect."
-    )]
-    [Range(0.00001f, 5.0f)]
-    public float eyeSeparation = 0.065f;
-
+    // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
+    private float eyeSeparation = 0.065f;
 
     [Tooltip("The distance between the camera and the focus plane in meters. Defaults is 70 cm.")]
     [Min(0.0000001f)]
@@ -141,16 +127,8 @@ public class G3DCamera
     )]
     public float sceneScaleFactor = 1.0f;
 
-
     [Tooltip("If set to true, the views will be flipped horizontally.")]
     public bool mirrorViews = false;
-
-    public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
-
-    [Tooltip(
-        "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
-    )]
-    public bool adaptRenderResolutionToViews = true;
 
     [Tooltip(
         "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4. Adapt Render Resolution To Views takes precedence."
@@ -159,14 +137,35 @@ public class G3DCamera
     public int renderResolutionScale = 100;
     #endregion
 
-    #region Device settings
+    #region Advanced settings
+    [Header("Advanced settings")]
+    [Tooltip(
+        "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
+    )]
+    public bool adaptRenderResolutionToViews = true;
+
+    [Tooltip(
+        "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
+    )]
+    public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
+    public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
+
+    [Tooltip(
+        "If set to true, the amount of views will not automatically be the maximum amount the display is capable of. Instead the amount of views will be the amount set in the camera count."
+    )]
+    public bool overwriteDisplayViewCount = true;
+
+    [Tooltip(
+        "The amount of used cameras. The maximum amount of cameras is 16. Two corresponds to a stereo setup."
+    )]
+    [Range(1, 19)]
+    public int overwriteViewCount = 2;
+
     [Header("Device settings")]
     public bool useHimaxD2XXDevices = true;
     public bool useHimaxRP2040Devices = true;
     public bool usePmdFlexxDevices = true;
-    #endregion
 
-    #region Debugging
     [Header("Debugging")]
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
@@ -183,12 +182,13 @@ public class G3DCamera
 
     private int oldRenderTargetScaleFactor = 5;
     private int oldRenderResolutionScale = 100;
-
     #endregion
 
     #region Private variables
 
     private LibInterface libInterface;
+
+    public int viewCount = 2;
 
     /// <summary>
     /// This struct is used to store the current head position.
@@ -205,7 +205,6 @@ public class G3DCamera
     private List<Camera> cameras = null;
     private GameObject focusPlaneObject = null;
     private GameObject cameraParent = null;
-    private int renderTargetScaleFactor = 5;
 
     private Material material;
 #if G3D_HDRP
@@ -222,12 +221,11 @@ public class G3DCamera
 
     private Vector2Int cachedWindowPosition;
     private Vector2Int cachedWindowSize;
-    private int cachedCameraCount;
 
     // half of the width of field of view at start at focus distance
     private float halfCameraWidthAtStart = 1.0f;
 
-    private Queue<string> headPoitionLog;
+    private Queue<string> headPositionLog;
 
     #endregion
 
@@ -349,8 +347,8 @@ public class G3DCamera
         halfCameraWidthAtStart =
             Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;
 
-        updateShaderRenderTextures(true);
         updateCameras();
+        updateShaderRenderTextures();
 
         // This has to be done after the cameras are updated
         cachedWindowPosition = new Vector2Int(
@@ -359,7 +357,7 @@ public class G3DCamera
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
-        headPoitionLog = new Queue<string>(10000);
+        headPositionLog = new Queue<string>(10000);
     }
 
     void OnApplicationQuit()
@@ -501,14 +499,6 @@ public class G3DCamera
     #region Updates
     void Update()
     {
-        int tmpRenderScaleFactor = shaderParameters.nativeViewCount;
-        if (cameraCount < tmpRenderScaleFactor)
-        {
-            tmpRenderScaleFactor = cameraCount;
-        }
-
-        renderTargetScaleFactor = tmpRenderScaleFactor;
-
         // update the shader parameters
         libInterface.calculateShaderParameters(latencyCorrectionMode);
         lock (shaderLock)
@@ -516,14 +506,24 @@ public class G3DCamera
             shaderParameters = libInterface.getCurrentShaderParameters();
         }
 
-        updateShaderRenderTextures();
+        bool cameraCountChanged = updateCameraCountBasedOnMode();
         updateCameras();
         updateShaderParameters();
 
+        bool screenSizeChanged = false;
         if (windowResized() || windowMoved())
         {
             updateScreenViewportProperties();
-            updateShaderRenderTextures(true);
+            screenSizeChanged = true;
+        }
+
+        if (
+            screenSizeChanged
+            || cameraCountChanged
+            || oldRenderResolutionScale != renderResolutionScale
+        )
+        {
+            updateShaderRenderTextures();
         }
     }
 
@@ -606,36 +606,6 @@ public class G3DCamera
             material?.SetInt(Shader.PropertyToID("cameraCount"), internalCameraCount);
 
             material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
-        }
-    }
-
-    [ContextMenu("Toggle head tracking")]
-    public void toggleHeadTrackingStatus()
-    {
-        Debug.Log("Toggling head tracking status");
-        if (libInterface == null || !libInterface.isInitialized())
-        {
-            return;
-        }
-
-        try
-        {
-            HeadTrackingStatus headTrackingState = libInterface.getHeadTrackingStatus();
-            if (headTrackingState.hasTrackingDevice)
-            {
-                if (!headTrackingState.isTrackingActive)
-                {
-                    libInterface.startHeadTracking();
-                }
-                else
-                {
-                    libInterface.stopHeadTracking();
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to toggle head tracking status: " + e.Message);
         }
     }
 
@@ -753,56 +723,39 @@ public class G3DCamera
     }
 
     /// <summary>
-    /// Ensures that the camera count is not higher than the maximum the display is capable of.
+    /// Sets the camera count to two if we are in diorama mode. Sets it to the maximum amount of views the display is capable of if we are in multiview mode.
     /// </summary>
     /// <returns>true if camera count was changed.</returns>
-    private bool lockCameraCountToShaderParameters()
+    private bool updateCameraCountBasedOnMode()
     {
-        int shaderMaxCount = shaderParameters.nativeViewCount;
-
-        internalCameraCount = cameraCount;
-
-        if (cameraCount > shaderMaxCount && lockCameraCountToDisplay)
+        int previousCameraCount = internalCameraCount;
+        if (mode == G3DCameraMode.DIORAMA)
         {
-            internalCameraCount = shaderMaxCount;
+            internalCameraCount = 2;
+        }
+        else if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            internalCameraCount = shaderParameters.nativeViewCount;
+            if (internalCameraCount > MAX_CAMERAS)
+            {
+                internalCameraCount = MAX_CAMERAS;
+            }
+        }
+
+        if (internalCameraCount != previousCameraCount)
+        {
             return true;
         }
 
         return false;
     }
 
-    public void updateShaderRenderTextures(bool forceUpdate = false)
+    public void updateShaderRenderTextures()
     {
         if (material == null)
             return;
         if (cameras == null)
             return;
-
-        // check if shaderviews should be updated
-        bool shouldUpdateShaderViews = false;
-        if (oldRenderTargetScaleFactor != renderTargetScaleFactor)
-        {
-            oldRenderTargetScaleFactor = renderTargetScaleFactor;
-            shouldUpdateShaderViews = true;
-        }
-        if (oldRenderResolutionScale != renderResolutionScale)
-        {
-            oldRenderResolutionScale = renderResolutionScale;
-            shouldUpdateShaderViews = true;
-        }
-        if (lockCameraCountToShaderParameters())
-        {
-            shouldUpdateShaderViews = true;
-        }
-        if (cachedCameraCount != internalCameraCount)
-        {
-            cachedCameraCount = internalCameraCount;
-            shouldUpdateShaderViews = true;
-        }
-        if (shouldUpdateShaderViews == false && forceUpdate == false)
-        {
-            return;
-        }
 
         //prevent any memory leaks
         for (int i = 0; i < MAX_CAMERAS; i++)
@@ -818,7 +771,7 @@ public class G3DCamera
 
             if (adaptRenderResolutionToViews)
             {
-                width = width / renderTargetScaleFactor;
+                width = width / internalCameraCount;
             }
             else
             {
@@ -970,7 +923,7 @@ public class G3DCamera
                     + ";";
             }
 
-            headPoitionLog.Enqueue(logEntry);
+            headPositionLog.Enqueue(logEntry);
         }
     }
 
@@ -1045,9 +998,10 @@ public class G3DCamera
         Vector3 position;
         // draw eye separation
         Gizmos.color = new Color(0, 0, 1, 0.75F);
-        for (int i = 0; i < cameraCount; i++)
+        // TODO set internal camera count to the correct value based on mode and display calibration
+        for (int i = 0; i < internalCameraCount; i++)
         {
-            float cameraOffset = calculateCameraOffset(i, eyeSeparation, cameraCount);
+            float cameraOffset = calculateCameraOffset(i, eyeSeparation, internalCameraCount);
             position = transform.position + transform.right * cameraOffset;
             Gizmos.DrawSphere(position, 0.3f * gizmoSize * sceneScaleFactor);
         }
@@ -1196,7 +1150,7 @@ public class G3DCamera
         writer.WriteLine(
             "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Filtered X; Filtered Y; Filtered Z"
         );
-        string[] headPoitionLogArray = headPoitionLog.ToArray();
+        string[] headPoitionLogArray = headPositionLog.ToArray();
         for (int i = 0; i < headPoitionLogArray.Length; i++)
         {
             writer.WriteLine(headPoitionLogArray[i]);
@@ -1225,6 +1179,35 @@ public class G3DCamera
         catch (Exception e)
         {
             Debug.LogError("Failed to shift view to right: " + e.Message);
+        }
+    }
+
+    public void toggleHeadTracking()
+    {
+        Debug.Log("Toggling head tracking status");
+        if (libInterface == null || !libInterface.isInitialized())
+        {
+            return;
+        }
+
+        try
+        {
+            HeadTrackingStatus headTrackingState = libInterface.getHeadTrackingStatus();
+            if (headTrackingState.hasTrackingDevice)
+            {
+                if (!headTrackingState.isTrackingActive)
+                {
+                    libInterface.startHeadTracking();
+                }
+                else
+                {
+                    libInterface.stopHeadTracking();
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to toggle head tracking status: " + e.Message);
         }
     }
 }
