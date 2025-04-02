@@ -82,14 +82,12 @@ public class G3DCamera
         ITNewShaderParametersCallback,
         ITNewErrorMessageCallback
 {
-    [Header("Calibration and configuration files")]
     [Tooltip(
         "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
     )]
     public string calibrationPath = "";
 
     #region 3D Effect settings
-    [Header("3D Effect settings")]
     public G3DCameraMode mode = G3DCameraMode.DIORAMA;
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
@@ -109,7 +107,6 @@ public class G3DCamera
     #endregion
 
     #region Advanced settings
-    [Header("Advanced settings")]
     [Tooltip(
         "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
     )]
@@ -127,17 +124,15 @@ public class G3DCamera
     public bool overwriteDisplayViewCount = true;
 
     [Tooltip(
-        "The amount of used cameras. The maximum amount of cameras is 16. Two corresponds to a stereo setup."
+        "The amount of used cameras. The maximum amount of cameras is 19. Two corresponds to a stereo setup."
     )]
     [Range(1, 19)]
     public int overwriteViewCount = 2;
 
-    [Header("Device settings")]
     public bool useHimaxD2XXDevices = true;
     public bool useHimaxRP2040Devices = true;
     public bool usePmdFlexxDevices = true;
 
-    [Header("Debugging")]
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
     public bool showTestFrame = false;
@@ -751,6 +746,7 @@ public class G3DCamera
 
             if (adaptRenderResolutionToViews)
             {
+                // TODO: This is a temporary fix for the resolution scaling issue. Use an actually correct formula here.
                 width = width / internalCameraCount;
             }
             else
