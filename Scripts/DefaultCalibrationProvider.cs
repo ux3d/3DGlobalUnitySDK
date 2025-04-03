@@ -135,9 +135,7 @@ public class DefaultCalibrationProvider
     /// <summary>
     /// Returns the value of key from the ini file, or defaultValue if the key is not found or an error occurs.
     /// </summary>
-    /// <param name="reader"></param>
     /// <param name="key"></param>
-    /// <param name="section"></param>
     /// <param name="defaultValue"></param>
     /// <returns></returns>
     private int readOrDefault(string key, int defaultValue)
@@ -181,5 +179,90 @@ public class DefaultCalibrationProvider
             Debug.LogWarning(e.Message);
             return defaultValue;
         }
+    }
+
+    public int getInt(string key)
+    {
+        if (iniData == null)
+        {
+            throw new System.Exception("iniData is null");
+        }
+
+        string value;
+        iniData.TryGetKey("MonitorConfiguration." + key, out value);
+
+        if (value == null)
+        {
+            throw new System.Exception("Key not found: " + key);
+        }
+        int number;
+        if (int.TryParse(value, out number))
+        {
+            return number;
+        }
+        throw new System.Exception("Error reading ini file. Value is not an int: " + value);
+    }
+
+    public float getFloat(string key)
+    {
+        if (iniData == null)
+        {
+            throw new System.Exception("iniData is null");
+        }
+
+        string value;
+        iniData.TryGetKey("MonitorConfiguration." + key, out value);
+
+        if (value == null)
+        {
+            throw new System.Exception("Key not found: " + key);
+        }
+        float number;
+        if (float.TryParse(value, out number))
+        {
+            return number;
+        }
+
+        throw new System.Exception("Error reading ini file. Value is not a float: " + value);
+    }
+
+    public string getString(string key)
+    {
+        if (iniData == null)
+        {
+            throw new System.Exception("iniData is null");
+        }
+
+        string value;
+        iniData.TryGetKey("MonitorConfiguration." + key, out value);
+
+        if (value == null)
+        {
+            throw new System.Exception("Key not found: " + key);
+        }
+
+        return value;
+    }
+
+    public bool getBool(string key)
+    {
+        if (iniData == null)
+        {
+            throw new System.Exception("iniData is null");
+        }
+
+        string value = null;
+        iniData.TryGetKey("MonitorConfiguration." + key, out value);
+
+        if (value == null)
+        {
+            throw new System.Exception("Key not found: " + key);
+        }
+        bool boolValue;
+        if (bool.TryParse(value, out boolValue))
+        {
+            return boolValue;
+        }
+        throw new System.Exception("Error reading ini file. Value is not a bool: " + value);
     }
 }

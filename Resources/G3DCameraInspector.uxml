@@ -1,4 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <uie:PropertyField name="calibrationFile" binding-path="calibrationFile" />
     <uie:PropertyField name="CalibrationPath" binding-path="calibrationPath" />
     <uie:PropertyField name="sceneScaleFactor" binding-path="sceneScaleFactor" />
     <uie:PropertyField name="mirrorViews" binding-path="mirrorViews" />

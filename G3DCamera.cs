@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
@@ -12,6 +13,7 @@ using UnityEngine.Rendering.HighDefinition;
 
 #if G3D_URP
 using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
 #endif
 
 public struct HeadPosition
@@ -82,6 +84,9 @@ public class G3DCamera
         ITNewShaderParametersCallback,
         ITNewErrorMessageCallback
 {
+    [Tooltip("Drop the calibration file for the display you want to use here.")]
+    public TextAsset calibrationFile;
+
     [Tooltip(
         "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
     )]
@@ -153,13 +158,13 @@ public class G3DCamera
     private LibInterface libInterface;
 
     // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
-    private float eyeSeparation = 0.065f;
+    public float eyeSeparation = 0.065f;
 
     /// <summary>
     /// The distance between the camera and the focus plane in meters. Default is 70 cm.
     /// Is read from calibration file at startup
     /// </summary>
-    private float focusDistance = 0.7f;
+    public float focusDistance = 0.7f;
 
     private const int MAX_CAMERAS = 19; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
     private int internalCameraCount = 2;
@@ -207,7 +212,7 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
-        eyeSeparation = eyeSeparation * sceneScaleFactor;
+        loadCameraClibrationFromDisplayCalibration();
 
         mainCamera = GetComponent<Camera>();
 
@@ -333,6 +338,87 @@ public class G3DCamera
     void OnApplicationQuit()
     {
         deinitLibrary();
+    }
+
+    /// <summary>
+    /// this variable is onle here to track changes made to the public calibration file from the editor.
+    /// </summary>
+    private TextAsset previousCalibrationFile = null;
+
+    /// <summary>
+    /// OnValidate gets called every time the script is changed in the editor.
+    /// This is used to react to changes made to the parameters.
+    /// </summary>
+    void OnValidate()
+    {
+        if (calibrationFile != previousCalibrationFile)
+        {
+            previousCalibrationFile = calibrationFile;
+            loadCameraClibrationFromDisplayCalibration();
+        }
+    }
+
+    private void loadCameraClibrationFromDisplayCalibration()
+    {
+        if (calibrationFile == null)
+        {
+            Debug.LogError(
+                "No calibration file set. Please set a calibration file. Using default values."
+            );
+            mainCamera.fieldOfView = 16.0f;
+            focusDistance = 0.7f;
+            eyeSeparation = 0.065f;
+            if (mode == G3DCameraMode.MULTIVIEW)
+            {
+                eyeSeparation = 0.031f;
+            }
+            return;
+        }
+
+        DefaultCalibrationProvider calibration = DefaultCalibrationProvider.getFromString(
+            calibrationFile.text
+        );
+        int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
+        float PhysicalSizeInch = calibration.getFloat("PhysicalSizeInch");
+        int ZoneWidthAtMinWorkingDistanceMM = calibration.getInt("ZoneWidthAtMinWorkingDistance");
+        int MinWorkingDistanceMM = calibration.getInt("MinWorkingDistanceMM");
+        int NativeViewcount = calibration.getInt("NativeViewcount");
+        int HorizontalResolution = calibration.getInt("HorizontalResolution");
+        int VerticalResolution = calibration.getInt("VerticalResolution");
+
+        float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
+        float MinWorkingDistanceMeter = MinWorkingDistanceMM / 1000.0f;
+        float physicalSizeInMeter = PhysicalSizeInch * 0.0254f;
+        float ZoneWidthAtMinWorkingDistanceMeter = ZoneWidthAtMinWorkingDistanceMM / 1000.0f;
+        float aspectRatio = (float)HorizontalResolution / (float)VerticalResolution;
+
+        // set focus distance
+        focusDistance = (float)BasicWorkingDistanceMeter * sceneScaleFactor;
+
+        // set camera fov
+        float FOV =
+            2 * Mathf.Atan(physicalSizeInMeter / 2.0f / BasicWorkingDistanceMeter) * Mathf.Rad2Deg;
+        ;
+        if (mainCamera == null)
+        {
+            mainCamera = GetComponent<Camera>();
+        }
+        mainCamera.fieldOfView = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
+
+        // calculate eye separation/ view separation
+        float halfZoneOpeningAngleRad = Mathf.Atan(
+            ZoneWidthAtMinWorkingDistanceMeter / 2.0f / MinWorkingDistanceMeter
+        );
+        float halfWidthZoneAtbasicDistance =
+            Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            eyeSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
+        }
+        else
+        {
+            eyeSeparation = 0.065f * sceneScaleFactor;
+        }
     }
 
     private void initLibrary()
