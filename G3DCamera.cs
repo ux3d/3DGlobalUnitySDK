@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
@@ -270,9 +271,8 @@ public class G3DCamera
 
         lock (shaderLock)
         {
-            // TODO insert path to calibration file
             DefaultCalibrationProvider defaultCalibrationProvider =
-                DefaultCalibrationProvider.getFromConfigFile(null);
+                DefaultCalibrationProvider.getFromConfigFile(calibrationFile.text);
             shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
         }
         updateShaderParameters();
@@ -329,6 +329,7 @@ public class G3DCamera
     /// this variable is onle here to track changes made to the public calibration file from the editor.
     /// </summary>
     private TextAsset previousCalibrationFile = null;
+    private G3DCameraMode previousMode = G3DCameraMode.DIORAMA;
 
     /// <summary>
     /// OnValidate gets called every time the script is changed in the editor.
@@ -340,6 +341,19 @@ public class G3DCamera
         {
             previousCalibrationFile = calibrationFile;
             loadCameraClibrationFromDisplayCalibration();
+        }
+
+        if (previousMode != mode)
+        {
+            previousMode = mode;
+            if (mode == G3DCameraMode.MULTIVIEW)
+            {
+                internalCameraCount = getCameraCountFromCalibrationFile();
+            }
+            else
+            {
+                internalCameraCount = 2;
+            }
         }
     }
 
@@ -399,11 +413,30 @@ public class G3DCamera
         if (mode == G3DCameraMode.MULTIVIEW)
         {
             eyeSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
+            internalCameraCount = NativeViewcount;
         }
         else
         {
             eyeSeparation = 0.065f * sceneScaleFactor;
+            internalCameraCount = 2;
         }
+    }
+
+    private int getCameraCountFromCalibrationFile()
+    {
+        if (calibrationFile == null)
+        {
+            Debug.LogError(
+                "No calibration file set. Please set a calibration file. Using default values."
+            );
+            return 2;
+        }
+
+        DefaultCalibrationProvider calibration = DefaultCalibrationProvider.getFromString(
+            calibrationFile.text
+        );
+        int NativeViewcount = calibration.getInt("NativeViewcount");
+        return NativeViewcount;
     }
 
     private void initLibrary()
@@ -549,11 +582,14 @@ public class G3DCamera
     #region Updates
     void Update()
     {
-        // update the shader parameters
-        libInterface.calculateShaderParameters(latencyCorrectionMode);
-        lock (shaderLock)
+        // update the shader parameters (only in diorama mode)
+        if (mode == G3DCameraMode.DIORAMA)
         {
-            shaderParameters = libInterface.getCurrentShaderParameters();
+            libInterface.calculateShaderParameters(latencyCorrectionMode);
+            lock (shaderLock)
+            {
+                shaderParameters = libInterface.getCurrentShaderParameters();
+            }
         }
 
         bool cameraCountChanged = updateCameraCountBasedOnMode();
@@ -659,28 +695,6 @@ public class G3DCamera
         }
     }
 
-    private bool windowResized()
-    {
-        var window_dim = new Vector2Int(Screen.width, Screen.height);
-        if (cachedWindowSize != window_dim)
-        {
-            cachedWindowSize = window_dim;
-            return true;
-        }
-        return false;
-    }
-
-    private bool windowMoved()
-    {
-        var window_pos = new Vector2Int(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
-        if (cachedWindowPosition != window_pos)
-        {
-            cachedWindowPosition = window_pos;
-            return true;
-        }
-        return false;
-    }
-
     void updateCameras()
     {
         Vector3 defaultPostion = new Vector3(0, 0, -focusDistance);
@@ -723,7 +737,7 @@ public class G3DCamera
             cameraParent.transform.localPosition = defaultPostion;
         }
 
-        float currentFocusDistance = -cameraParent.transform.localPosition.z;
+        float currentFocusDistance = -cameraParent.transform.localPosition.z * sceneScaleFactor;
 
         mainCamera.fieldOfView =
             2 * Mathf.Atan(halfCameraWidthAtStart / currentFocusDistance) * Mathf.Rad2Deg;
@@ -749,16 +763,16 @@ public class G3DCamera
                 internalCameraCount
             );
 
-            // horizontal obliqueness
-            float horizontalObl = -(localCameraOffset + horizontalOffset) / currentFocusDistance;
-            float vertObl = -verticalOffset / currentFocusDistance;
-
-            // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
-            Matrix4x4 shearMatrix = Matrix4x4.identity;
-            shearMatrix[0, 2] = horizontalObl;
-            shearMatrix[1, 2] = vertObl;
             // apply new projection matrix
-            camera.projectionMatrix = camera.projectionMatrix * shearMatrix;
+            Matrix4x4 projMatrix = calculateCameraProjectionMatrix(
+                localCameraOffset,
+                horizontalOffset,
+                verticalOffset,
+                currentFocusDistance,
+                camera.projectionMatrix
+            );
+
+            camera.projectionMatrix = projMatrix;
 
             camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
 
@@ -838,6 +852,48 @@ public class G3DCamera
             cameras[i].targetTexture = renderTextures[i];
             material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
         }
+    }
+
+    private bool windowResized()
+    {
+        var window_dim = new Vector2Int(Screen.width, Screen.height);
+        if (cachedWindowSize != window_dim)
+        {
+            cachedWindowSize = window_dim;
+            return true;
+        }
+        return false;
+    }
+
+    private bool windowMoved()
+    {
+        var window_pos = new Vector2Int(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
+        if (cachedWindowPosition != window_pos)
+        {
+            cachedWindowPosition = window_pos;
+            return true;
+        }
+        return false;
+    }
+
+    private Matrix4x4 calculateCameraProjectionMatrix(
+        float localCameraOffset,
+        float horizontalOffset,
+        float verticalOffset,
+        float focusDistance,
+        Matrix4x4 mainCamProjectionMatrix
+    )
+    {
+        // horizontal obliqueness
+        float horizontalObl = -(localCameraOffset + horizontalOffset) / focusDistance;
+        float vertObl = -verticalOffset / focusDistance;
+
+        // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
+        Matrix4x4 shearMatrix = Matrix4x4.identity;
+        shearMatrix[0, 2] = horizontalObl;
+        shearMatrix[1, 2] = vertObl;
+        // apply new projection matrix
+        return mainCamProjectionMatrix * shearMatrix;
     }
 
     // This function only does something when you use the SRP render pipeline.
@@ -1046,21 +1102,70 @@ public class G3DCamera
             return;
         }
 
+        float scaledFocusDistance = focusDistance * sceneScaleFactor;
+
         Vector3 position;
         // draw eye separation
         Gizmos.color = new Color(0, 0, 1, 0.75F);
-        // TODO set internal camera count to the correct value based on mode and display calibration
+        Gizmos.matrix = transform.localToWorldMatrix;
+        // draw camera position spheres
         for (int i = 0; i < internalCameraCount; i++)
         {
-            float cameraOffset = calculateCameraOffset(i, eyeSeparation, internalCameraCount);
-            position = transform.position + transform.right * cameraOffset;
-            Gizmos.DrawSphere(position, 0.3f * gizmoSize * sceneScaleFactor);
+            float localCameraOffset = calculateCameraOffset(i, eyeSeparation, internalCameraCount);
+            Gizmos.DrawSphere(
+                new Vector3(1, 0, 0) * localCameraOffset,
+                0.3f * gizmoSize * sceneScaleFactor
+            );
         }
 
-        // draw focus distance
-        Gizmos.color = new Color(0, 1, 0, 0.75F);
-        position = transform.position + transform.forward * focusDistance;
-        Gizmos.DrawSphere(position, 0.5f * gizmoSize * sceneScaleFactor);
+        // draw camera frustums
+        Gizmos.color = new Color(0, 0, 1, 1); // set color to one wo improve visibility
+        for (int i = 0; i < internalCameraCount; i++)
+        {
+            float localCameraOffset = calculateCameraOffset(i, eyeSeparation, internalCameraCount);
+            position = transform.position + transform.right * localCameraOffset;
+
+            // apply new projection matrix
+            Matrix4x4 localProjectionMatrix = Matrix4x4.TRS(
+                position,
+                transform.rotation,
+                Vector3.one
+            );
+            Matrix4x4 projMatrix = calculateCameraProjectionMatrix(
+                localCameraOffset,
+                0,
+                0,
+                scaledFocusDistance,
+                localProjectionMatrix
+            );
+
+            Gizmos.matrix = projMatrix;
+
+            Gizmos.DrawFrustum(
+                Vector3.zero,
+                mainCamera.fieldOfView,
+                mainCamera.farClipPlane,
+                mainCamera.nearClipPlane,
+                mainCamera.aspect
+            );
+        }
+
+        Gizmos.matrix = transform.localToWorldMatrix;
+
+        // draw focus plane
+        Gizmos.color = new Color(0, 0, 1, 0.25F);
+        position = new Vector3(0, 0, 1) * scaledFocusDistance;
+        float frustumWidth =
+            Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * scaledFocusDistance * 2;
+        float frustumHeight =
+            Mathf.Tan(
+                Camera.VerticalToHorizontalFieldOfView(mainCamera.fieldOfView, mainCamera.aspect)
+                    * Mathf.Deg2Rad
+                    / 2
+            )
+            * scaledFocusDistance
+            * 2;
+        Gizmos.DrawCube(position, new Vector3(frustumHeight, frustumWidth, 0.001f));
     }
 #endif
     #endregion
