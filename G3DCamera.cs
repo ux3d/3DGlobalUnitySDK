@@ -123,21 +123,6 @@ public class G3DCamera
     public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
     public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
-    [Tooltip(
-        "If set to true, the amount of views will not automatically be the maximum amount the display is capable of. Instead the amount of views will be the amount set in the camera count."
-    )]
-    public bool overwriteDisplayViewCount = true;
-
-    [Tooltip(
-        "The amount of used cameras. The maximum amount of cameras is 19. Two corresponds to a stereo setup."
-    )]
-    [Range(1, 19)]
-    public int overwriteViewCount = 2;
-
-    public bool useHimaxD2XXDevices = true;
-    public bool useHimaxRP2040Devices = true;
-    public bool usePmdFlexxDevices = true;
-
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
     public bool showTestFrame = false;
@@ -436,6 +421,10 @@ public class G3DCamera
 
         try
         {
+            bool useHimaxD2XXDevices = true;
+            bool useHimaxRP2040Devices = true;
+            bool usePmdFlexxDevices = true;
+
             libInterface = LibInterface.Instance;
             libInterface.init(
                 calibrationPath,
