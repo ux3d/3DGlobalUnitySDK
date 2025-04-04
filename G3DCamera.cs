@@ -158,13 +158,13 @@ public class G3DCamera
     private LibInterface libInterface;
 
     // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
-    public float eyeSeparation = 0.065f;
+    private float eyeSeparation = 0.065f;
 
     /// <summary>
     /// The distance between the camera and the focus plane in meters. Default is 70 cm.
     /// Is read from calibration file at startup
     /// </summary>
-    public float focusDistance = 0.7f;
+    private float focusDistance = 0.7f;
 
     private const int MAX_CAMERAS = 19; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
     private int internalCameraCount = 2;

@@ -10,5 +10,8 @@
         <uie:PropertyField name="renderResolutionScale" binding-path="renderResolutionScale" />
         <uie:PropertyField name="adaptRenderResolutionToViews" binding-path="adaptRenderResolutionToViews" />
         <uie:PropertyField name="headPositionFilter" binding-path="headPositionFilter" />
+        <uie:PropertyField name="latencyCorrectionMode" binding-path="latencyCorrectionMode" />
+        <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
+        <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
     </ui:Foldout>
 </ui:UXML>
