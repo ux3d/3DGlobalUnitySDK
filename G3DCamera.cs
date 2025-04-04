@@ -198,8 +198,7 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
-        loadCameraClibrationFromDisplayCalibration();
-
+        loadCameraCalibrationFromDisplayCalibration();
         mainCamera = GetComponent<Camera>();
 
         // create a focus plane object at focus distance from camera.
@@ -272,7 +271,7 @@ public class G3DCamera
         lock (shaderLock)
         {
             DefaultCalibrationProvider defaultCalibrationProvider =
-                DefaultCalibrationProvider.getFromConfigFile(calibrationFile.text);
+                DefaultCalibrationProvider.getFromString(calibrationFile.text);
             shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
         }
         updateShaderParameters();
@@ -340,7 +339,7 @@ public class G3DCamera
         if (calibrationFile != previousCalibrationFile)
         {
             previousCalibrationFile = calibrationFile;
-            loadCameraClibrationFromDisplayCalibration();
+            loadCameraCalibrationFromDisplayCalibration();
         }
 
         if (previousMode != mode)
@@ -357,7 +356,7 @@ public class G3DCamera
         }
     }
 
-    private void loadCameraClibrationFromDisplayCalibration()
+    private void loadCameraCalibrationFromDisplayCalibration()
     {
         if (calibrationFile == null)
         {
@@ -654,7 +653,7 @@ public class G3DCamera
             );
             material?.SetInt(shaderHandles.screenWidth, shaderParameters.screenWidth);
             material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
-            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
+            material?.SetInt(shaderHandles.nativeViewCount, internalCameraCount);
             material?.SetInt(
                 shaderHandles.angleRatioNumerator,
                 shaderParameters.angleRatioNumerator
@@ -799,7 +798,7 @@ public class G3DCamera
         }
         else if (mode == G3DCameraMode.MULTIVIEW)
         {
-            internalCameraCount = shaderParameters.nativeViewCount;
+            internalCameraCount = getCameraCountFromCalibrationFile();
             if (internalCameraCount > MAX_CAMERAS)
             {
                 internalCameraCount = MAX_CAMERAS;
