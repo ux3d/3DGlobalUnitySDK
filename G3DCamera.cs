@@ -207,9 +207,19 @@ public class G3DCamera
     /// <summary>
     /// Focus distance scaled by scene scale factor.
     /// </summary>
-    private float scaledFocusDistance
+    public float scaledFocusDistance
     {
         get { return focusDistance * sceneScaleFactor; }
+    }
+
+    public float scaledFocusDistanceAndDolly
+    {
+        get
+        {
+            float dollyZoomFactor = scaledFocusDistance - scaledFocusDistance * dollyZoom;
+            float focusDistanceWithDollyZoom = scaledFocusDistance - dollyZoomFactor;
+            return focusDistanceWithDollyZoom;
+        }
     }
 
     private float scaledViewSeparation
