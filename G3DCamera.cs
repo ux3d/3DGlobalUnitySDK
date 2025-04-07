@@ -110,6 +110,13 @@ public class G3DCamera
     )]
     [Range(1, 100)]
     public int renderResolutionScale = 100;
+
+    [Tooltip(
+        "Set the dolly zoom effekt. 1 correponds to no dolly zoom. 0 is all the way zoomed in to the focus plane. 3 is all the way zoomed out."
+    )]
+    [Range(0, 3)]
+    public float dollyZoom = 1;
+
     #endregion
 
     #region Advanced settings
@@ -737,9 +744,11 @@ public class G3DCamera
         }
 
         float currentFocusDistance = -cameraParent.transform.localPosition.z * sceneScaleFactor;
+        float dollyZoomFactor = currentFocusDistance - currentFocusDistance * dollyZoom;
 
+        float focusDistanceWithDollyZoom = currentFocusDistance - dollyZoomFactor;
         mainCamera.fieldOfView =
-            2 * Mathf.Atan(halfCameraWidthAtStart / currentFocusDistance) * Mathf.Rad2Deg;
+            2 * Mathf.Atan(halfCameraWidthAtStart / focusDistanceWithDollyZoom) * Mathf.Rad2Deg;
 
         //calculate camera positions and matrices
         for (int i = 0; i < internalCameraCount; i++)
@@ -767,13 +776,13 @@ public class G3DCamera
                 localCameraOffset,
                 horizontalOffset,
                 verticalOffset,
-                currentFocusDistance,
+                focusDistanceWithDollyZoom,
                 camera.projectionMatrix
             );
 
             camera.projectionMatrix = projMatrix;
 
-            camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
+            camera.transform.localPosition = new Vector3(localCameraOffset, 0, dollyZoomFactor);
 
             camera.gameObject.SetActive(true);
         }
@@ -1102,6 +1111,14 @@ public class G3DCamera
         }
 
         float scaledFocusDistance = focusDistance * sceneScaleFactor;
+        float dollyZoomFactor = scaledFocusDistance - scaledFocusDistance * dollyZoom;
+
+        float tmpHalfCameraWidthAtStart =
+            Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * scaledFocusDistance;
+
+        float focusDistanceWithDollyZoom = scaledFocusDistance - dollyZoomFactor;
+        float tmpFieldOfView =
+            2 * Mathf.Atan(tmpHalfCameraWidthAtStart / focusDistanceWithDollyZoom) * Mathf.Rad2Deg;
 
         Vector3 position;
         // draw eye separation
@@ -1111,10 +1128,11 @@ public class G3DCamera
         for (int i = 0; i < internalCameraCount; i++)
         {
             float localCameraOffset = calculateCameraOffset(i, eyeSeparation, internalCameraCount);
-            Gizmos.DrawSphere(
-                new Vector3(1, 0, 0) * localCameraOffset,
-                0.3f * gizmoSize * sceneScaleFactor
-            );
+            localCameraOffset *= sceneScaleFactor;
+            Vector3 camPos = new Vector3(1, 0, 0) * localCameraOffset;
+            // TODO do not use transform.forward here, but the camera forward vector
+            camPos += new Vector3(0, 0, 1) * dollyZoomFactor; // apply dolly zoom
+            Gizmos.DrawSphere(camPos, 0.3f * gizmoSize * sceneScaleFactor);
         }
 
         // draw camera frustums
@@ -1122,7 +1140,9 @@ public class G3DCamera
         for (int i = 0; i < internalCameraCount; i++)
         {
             float localCameraOffset = calculateCameraOffset(i, eyeSeparation, internalCameraCount);
+            localCameraOffset *= sceneScaleFactor;
             position = transform.position + transform.right * localCameraOffset;
+            position += transform.forward * dollyZoomFactor; // apply dolly zoom
 
             // apply new projection matrix
             Matrix4x4 localProjectionMatrix = Matrix4x4.TRS(
@@ -1134,7 +1154,7 @@ public class G3DCamera
                 localCameraOffset,
                 0,
                 0,
-                scaledFocusDistance,
+                focusDistanceWithDollyZoom,
                 localProjectionMatrix
             );
 
@@ -1142,7 +1162,7 @@ public class G3DCamera
 
             Gizmos.DrawFrustum(
                 Vector3.zero,
-                mainCamera.fieldOfView,
+                tmpFieldOfView,
                 mainCamera.farClipPlane,
                 mainCamera.nearClipPlane,
                 mainCamera.aspect
