@@ -100,6 +100,7 @@ public class G3DCamera
     [Tooltip(
         "This value can be used to scale the real world values used to calibrate the extension. For example if your scene is 10 times larger than the real world, you can set this value to 10. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
+    [Min(0.000001f)]
     public float sceneScaleFactor = 1.0f;
 
     [Tooltip("If set to true, the views will be flipped horizontally.")]
@@ -114,7 +115,7 @@ public class G3DCamera
     [Tooltip(
         "Set the dolly zoom effekt. 1 correponds to no dolly zoom. 0 is all the way zoomed in to the focus plane. 3 is all the way zoomed out."
     )]
-    [Range(0, 3)]
+    [Range(0.001f, 3)]
     public float dollyZoom = 1;
 
     #endregion
@@ -151,7 +152,7 @@ public class G3DCamera
     private LibInterface libInterface;
 
     // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
-    private float eyeSeparation = 0.065f;
+    private float viewSeparation = 0.065f;
 
     /// <summary>
     /// The distance between the camera and the focus plane in meters. Default is 70 cm.
@@ -198,6 +199,29 @@ public class G3DCamera
 
     private Queue<string> headPositionLog;
 
+    /// <summary>
+    /// This calue is calculated based on the calibration file
+    /// </summary>
+    private float baseFieldOfView = 16.0f;
+
+    /// <summary>
+    /// Focus distance scaled by scene scale factor.
+    /// </summary>
+    private float scaledFocusDistance
+    {
+        get { return focusDistance * sceneScaleFactor; }
+    }
+
+    private float scaledViewSeparation
+    {
+        get { return viewSeparation * sceneScaleFactor; }
+    }
+
+    private float scaledHalfCameraWidthAtStart
+    {
+        get { return halfCameraWidthAtStart * sceneScaleFactor; }
+    }
+
     #endregion
 
     // TODO Handle viewport resizing/ moving
@@ -214,14 +238,14 @@ public class G3DCamera
 
         GameObject focusPlaneObject = new GameObject("focus plane center");
         focusPlaneObject.transform.parent = transform;
-        focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
+        focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
         focusPlaneObject.transform.localRotation = Quaternion.identity;
 
         //initialize cameras
 
         cameraParent = new GameObject("g3dcams");
         cameraParent.transform.parent = focusPlaneObject.transform;
-        cameraParent.transform.localPosition = new Vector3(0, 0, -focusDistance);
+        cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
         cameraParent.transform.localRotation = Quaternion.identity;
 
         cameras = new List<Camera>();
@@ -372,10 +396,10 @@ public class G3DCamera
             );
             mainCamera.fieldOfView = 16.0f;
             focusDistance = 0.7f;
-            eyeSeparation = 0.065f;
+            viewSeparation = 0.065f;
             if (mode == G3DCameraMode.MULTIVIEW)
             {
-                eyeSeparation = 0.031f;
+                viewSeparation = 0.031f;
             }
             return;
         }
@@ -398,7 +422,7 @@ public class G3DCamera
         float aspectRatio = (float)HorizontalResolution / (float)VerticalResolution;
 
         // set focus distance
-        focusDistance = (float)BasicWorkingDistanceMeter * sceneScaleFactor;
+        focusDistance = (float)BasicWorkingDistanceMeter;
 
         // set camera fov
         float FOV =
@@ -408,7 +432,8 @@ public class G3DCamera
         {
             mainCamera = GetComponent<Camera>();
         }
-        mainCamera.fieldOfView = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
+        baseFieldOfView = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
+        mainCamera.fieldOfView = baseFieldOfView;
 
         // calculate eye separation/ view separation
         float halfZoneOpeningAngleRad = Mathf.Atan(
@@ -418,12 +443,12 @@ public class G3DCamera
             Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
         if (mode == G3DCameraMode.MULTIVIEW)
         {
-            eyeSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
+            viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
             internalCameraCount = NativeViewcount;
         }
         else
         {
-            eyeSeparation = 0.065f * sceneScaleFactor;
+            viewSeparation = 0.065f * sceneScaleFactor;
             internalCameraCount = 2;
         }
     }
@@ -703,9 +728,9 @@ public class G3DCamera
 
     void updateCameras()
     {
-        Vector3 defaultPostion = new Vector3(0, 0, -focusDistance);
-        Vector3 targetPosition = defaultPostion; // position for the camera center (base position from which all other cameras are offset)
-        float targetEyeSeparation = 0.0f;
+        Vector3 targetPosition = new Vector3(0, 0, -scaledFocusDistance);
+        ; // position for the camera center (base position from which all other cameras are offset)
+        float targetViewSeparation = 0.0f;
 
         // calculate the camera center position and eye separation if head tracking and the diorama effect are enabled
         if (mode == G3DCameraMode.DIORAMA)
@@ -728,27 +753,35 @@ public class G3DCamera
                     (float)headPosition.worldPosZ
                 );
 
-                targetPosition = headPositionWorld;
-                targetEyeSeparation = eyeSeparation;
+                targetPosition = headPositionWorld * sceneScaleFactor;
+                targetViewSeparation = viewSeparation * sceneScaleFactor;
             }
+        }
+        else if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            targetViewSeparation = viewSeparation * sceneScaleFactor;
         }
 
         cameraParent.transform.localPosition = targetPosition;
+
         float horizontalOffset = targetPosition.x;
         float verticalOffset = targetPosition.y;
 
-        if (mode == G3DCameraMode.MULTIVIEW)
-        {
-            targetEyeSeparation = eyeSeparation;
-            cameraParent.transform.localPosition = defaultPostion;
-        }
+        float currentFocusDistance = -cameraParent.transform.localPosition.z;
+        float dollyZoomOffset = currentFocusDistance - currentFocusDistance * dollyZoom;
 
-        float currentFocusDistance = -cameraParent.transform.localPosition.z * sceneScaleFactor;
-        float dollyZoomFactor = currentFocusDistance - currentFocusDistance * dollyZoom;
-
-        float focusDistanceWithDollyZoom = currentFocusDistance - dollyZoomFactor;
+        float focusDistanceWithDollyZoom = currentFocusDistance - dollyZoomOffset;
         mainCamera.fieldOfView =
-            2 * Mathf.Atan(halfCameraWidthAtStart / focusDistanceWithDollyZoom) * Mathf.Rad2Deg;
+            2
+            * Mathf.Atan(scaledHalfCameraWidthAtStart / focusDistanceWithDollyZoom)
+            * Mathf.Rad2Deg;
+
+        // set the camera parent position to the focus distance
+        cameraParent.transform.localPosition = new Vector3(
+            horizontalOffset,
+            verticalOffset,
+            -focusDistanceWithDollyZoom
+        );
 
         //calculate camera positions and matrices
         for (int i = 0; i < internalCameraCount; i++)
@@ -759,7 +792,6 @@ public class G3DCamera
             camera.farClipPlane = mainCamera.farClipPlane;
             camera.nearClipPlane = mainCamera.nearClipPlane;
             camera.projectionMatrix = mainCamera.projectionMatrix;
-            camera.transform.localPosition = cameraParent.transform.localPosition;
             camera.transform.localRotation = cameraParent.transform.localRotation;
 #if G3D_URP
             camera.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
@@ -767,7 +799,7 @@ public class G3DCamera
 
             float localCameraOffset = calculateCameraOffset(
                 i,
-                targetEyeSeparation,
+                targetViewSeparation,
                 internalCameraCount
             );
 
@@ -782,7 +814,7 @@ public class G3DCamera
 
             camera.projectionMatrix = projMatrix;
 
-            camera.transform.localPosition = new Vector3(localCameraOffset, 0, dollyZoomFactor);
+            camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
 
             camera.gameObject.SetActive(true);
         }
@@ -884,6 +916,15 @@ public class G3DCamera
         return false;
     }
 
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="localCameraOffset">Offset (along the x axis) of this camera compared to zero position.</param>
+    /// <param name="horizontalOffset">general offset (x axis) of the "zero position" compared to start position due to head tracking.</param>
+    /// <param name="verticalOffset">general offset (y axis) of the "zero position" compared to start position due to head tracking.</param>
+    /// <param name="focusDistance">general offset (z axis) of the "zero position" compared to start position due to head tracking.</param>
+    /// <param name="mainCamProjectionMatrix"></param>
+    /// <returns></returns>
     private Matrix4x4 calculateCameraProjectionMatrix(
         float localCameraOffset,
         float horizontalOffset,
@@ -1110,15 +1151,18 @@ public class G3DCamera
             return;
         }
 
-        float scaledFocusDistance = focusDistance * sceneScaleFactor;
         float dollyZoomFactor = scaledFocusDistance - scaledFocusDistance * dollyZoom;
 
         float tmpHalfCameraWidthAtStart =
-            Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * scaledFocusDistance;
+            Mathf.Tan(baseFieldOfView * Mathf.Deg2Rad / 2) * scaledFocusDistance;
 
         float focusDistanceWithDollyZoom = scaledFocusDistance - dollyZoomFactor;
         float tmpFieldOfView =
             2 * Mathf.Atan(tmpHalfCameraWidthAtStart / focusDistanceWithDollyZoom) * Mathf.Rad2Deg;
+        float fieldOfViewWithoutDolly =
+            2 * Mathf.Atan(tmpHalfCameraWidthAtStart / scaledFocusDistance) * Mathf.Rad2Deg;
+
+        Vector3 basePosition = new Vector3(0, 0, scaledFocusDistance);
 
         Vector3 position;
         // draw eye separation
@@ -1127,11 +1171,13 @@ public class G3DCamera
         // draw camera position spheres
         for (int i = 0; i < internalCameraCount; i++)
         {
-            float localCameraOffset = calculateCameraOffset(i, eyeSeparation, internalCameraCount);
-            localCameraOffset *= sceneScaleFactor;
-            Vector3 camPos = new Vector3(1, 0, 0) * localCameraOffset;
-            // TODO do not use transform.forward here, but the camera forward vector
-            camPos += new Vector3(0, 0, 1) * dollyZoomFactor; // apply dolly zoom
+            float localCameraOffset = calculateCameraOffset(
+                i,
+                scaledViewSeparation,
+                internalCameraCount
+            );
+            Vector3 camPos = basePosition - new Vector3(0, 0, focusDistanceWithDollyZoom);
+            camPos += new Vector3(1, 0, 0) * localCameraOffset;
             Gizmos.DrawSphere(camPos, 0.3f * gizmoSize * sceneScaleFactor);
         }
 
@@ -1139,8 +1185,11 @@ public class G3DCamera
         Gizmos.color = new Color(0, 0, 1, 1); // set color to one wo improve visibility
         for (int i = 0; i < internalCameraCount; i++)
         {
-            float localCameraOffset = calculateCameraOffset(i, eyeSeparation, internalCameraCount);
-            localCameraOffset *= sceneScaleFactor;
+            float localCameraOffset = calculateCameraOffset(
+                i,
+                scaledViewSeparation,
+                internalCameraCount
+            );
             position = transform.position + transform.right * localCameraOffset;
             position += transform.forward * dollyZoomFactor; // apply dolly zoom
 
@@ -1175,10 +1224,10 @@ public class G3DCamera
         Gizmos.color = new Color(0, 0, 1, 0.25F);
         position = new Vector3(0, 0, 1) * scaledFocusDistance;
         float frustumWidth =
-            Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * scaledFocusDistance * 2;
+            Mathf.Tan(fieldOfViewWithoutDolly * Mathf.Deg2Rad / 2) * scaledFocusDistance * 2;
         float frustumHeight =
             Mathf.Tan(
-                Camera.VerticalToHorizontalFieldOfView(mainCamera.fieldOfView, mainCamera.aspect)
+                Camera.VerticalToHorizontalFieldOfView(fieldOfViewWithoutDolly, mainCamera.aspect)
                     * Mathf.Deg2Rad
                     / 2
             )
