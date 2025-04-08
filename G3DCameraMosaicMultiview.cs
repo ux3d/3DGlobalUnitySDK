@@ -26,31 +26,24 @@ using UnityEngine.Rendering.Universal;
 public class G3DCameraMosaicMultiview : MonoBehaviour
 {
     #region Calibration
+    [Tooltip("Drop the calibration file for the display you want to use here.")]
+    public TextAsset calibrationFile;
 
-    [Tooltip(
-        "If not null the initial set of shader parameters will be based on this calibration file. If null the default shader parameters from the library will be used."
-    )]
-    public string customDefaultCalibrationFilePath = null;
+    [Min(1)]
+    public int mosaicRowCount = 3;
+
+    [Min(1)]
+    public int mosaicColumnCount = 3;
     #endregion
 
     public RenderTexture mosaicTexture;
 
     #region 3D Effect settings
     [Header("3D Effect settings")]
-    [Tooltip(
-        "If set to true, the amount of cameras will be limited by the amount of native views the display supports."
-    )]
-    public bool lockCameraCountToDisplay = false;
-
     [Tooltip("If set to true, the views will be flipped horizontally.")]
     public bool mirrorViews = false;
     #endregion
 
-    #region Debugging
-    [Header("Debugging")]
-    public bool showTestFrame = false;
-
-    #endregion
 
     #region Private variables
 
@@ -68,12 +61,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     private Vector2Int cachedWindowPosition;
     private Vector2Int cachedWindowSize;
-
-    [Min(1)]
-    public int mosaicRowCount = 3;
-
-    [Min(1)]
-    public int mosaicColumnCount = 3;
 
     #endregion
 
@@ -96,7 +83,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             angleRatioDenominator = Shader.PropertyToID("nwinkel"),
             leftLensOrientation = Shader.PropertyToID("isleft"),
             BGRPixelLayout = Shader.PropertyToID("isBGR"),
-            showTestFrame = Shader.PropertyToID("test"),
             hqViewCount = Shader.PropertyToID("hqview"),
         };
 
@@ -125,7 +111,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         // Dot his last to ensure custom passes are already set up
         DefaultCalibrationProvider defaultCalibrationProvider =
-            DefaultCalibrationProvider.getFromConfigFile(customDefaultCalibrationFilePath);
+            DefaultCalibrationProvider.getFromString(calibrationFile.text);
         shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
         reinitializeShader();
     }
@@ -210,13 +196,13 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             shaderParameters.angleRatioDenominator
         );
         material?.SetInt(shaderHandles.leftLensOrientation, shaderParameters.leftLensOrientation);
-        material?.SetInt(shaderHandles.showTestFrame, shaderParameters.showTestFrame);
+        material?.SetInt(shaderHandles.showTestFrame, 0);
         material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
         material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
 
         int cameraCount = mosaicColumnCount * mosaicRowCount;
         int shaderMaxCount = shaderParameters.nativeViewCount;
-        if (cameraCount > shaderMaxCount && lockCameraCountToDisplay)
+        if (cameraCount > shaderMaxCount)
         {
             cameraCount = shaderMaxCount;
         }
