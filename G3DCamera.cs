@@ -397,7 +397,7 @@ public class G3DCamera
         }
     }
 
-    private void loadCameraCalibrationFromDisplayCalibration()
+    public void loadCameraCalibrationFromDisplayCalibration()
     {
         if (calibrationFile == null)
         {
@@ -419,16 +419,21 @@ public class G3DCamera
         );
         int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
         float PhysicalSizeInch = calibration.getFloat("PhysicalSizeInch");
-        int ZoneWidthAtMinWorkingDistanceMM = calibration.getInt("ZoneWidthAtMinWorkingDistance");
-        int MinWorkingDistanceMM = calibration.getInt("MinWorkingDistanceMM");
         int NativeViewcount = calibration.getInt("NativeViewcount");
         int HorizontalResolution = calibration.getInt("HorizontalResolution");
         int VerticalResolution = calibration.getInt("VerticalResolution");
+        float ApertureAngle = 22.0f;
+        try
+        {
+            ApertureAngle = calibration.getFloat("ApertureAngle");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning(e.Message);
+        }
 
         float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
-        float MinWorkingDistanceMeter = MinWorkingDistanceMM / 1000.0f;
         float physicalSizeInMeter = PhysicalSizeInch * 0.0254f;
-        float ZoneWidthAtMinWorkingDistanceMeter = ZoneWidthAtMinWorkingDistanceMM / 1000.0f;
         float aspectRatio = (float)HorizontalResolution / (float)VerticalResolution;
 
         // set focus distance
@@ -446,9 +451,7 @@ public class G3DCamera
         mainCamera.fieldOfView = baseFieldOfView;
 
         // calculate eye separation/ view separation
-        float halfZoneOpeningAngleRad = Mathf.Atan(
-            ZoneWidthAtMinWorkingDistanceMeter / 2.0f / MinWorkingDistanceMeter
-        );
+        float halfZoneOpeningAngleRad = ApertureAngle * Mathf.Deg2Rad / 2.0f;
         float halfWidthZoneAtbasicDistance =
             Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
         if (mode == G3DCameraMode.MULTIVIEW)
