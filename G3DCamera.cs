@@ -305,7 +305,10 @@ public class G3DCamera
             zCompensationValue = Shader.PropertyToID("zkom"),
         };
 
-        initLibrary();
+        if (mode == G3DCameraMode.DIORAMA)
+        {
+            initLibrary();
+        }
         reinitializeShader();
         updateScreenViewportProperties();
 
@@ -317,13 +320,16 @@ public class G3DCamera
         }
         updateShaderParameters();
 
-        try
+        if (mode == G3DCameraMode.DIORAMA)
         {
-            libInterface.startHeadTracking();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to start head tracking: " + e.Message);
+            try
+            {
+                libInterface.startHeadTracking();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to start head tracking: " + e.Message);
+            }
         }
 
 #if G3D_HDRP
@@ -481,6 +487,24 @@ public class G3DCamera
         );
         int NativeViewcount = calibration.getInt("NativeViewcount");
         return NativeViewcount;
+    }
+
+    private Vector2Int getDisplayResolutionFromCalibrationFile()
+    {
+        if (calibrationFile == null)
+        {
+            Debug.LogError(
+                "No calibration file set. Please set a calibration file. Using default values."
+            );
+            return new Vector2Int(1920, 1080);
+        }
+
+        DefaultCalibrationProvider calibration = DefaultCalibrationProvider.getFromString(
+            calibrationFile.text
+        );
+        int HorizontalResolution = calibration.getInt("HorizontalResolution");
+        int VerticalResolution = calibration.getInt("VerticalResolution");
+        return new Vector2Int(HorizontalResolution, VerticalResolution);
     }
 
     private void initLibrary()
@@ -659,25 +683,36 @@ public class G3DCamera
 
     private void updateScreenViewportProperties()
     {
-        try
+        Vector2Int displayResolution = getDisplayResolutionFromCalibrationFile();
+        if (mode == G3DCameraMode.MULTIVIEW)
         {
-            // This is the size of the entire monitor screen
-            libInterface.setScreenSize(Screen.width, Screen.height);
-
-            // this refers to the window in which the 3D effect is rendered (including eg windows top window menu)
-            libInterface.setWindowSize(Screen.width, Screen.height);
-            libInterface.setWindowPosition(
-                Screen.mainWindowPosition.x,
-                Screen.mainWindowPosition.y
-            );
-
-            // This refers to the actual viewport in which the 3D effect is rendered
-            libInterface.setViewportSize(Screen.width, Screen.height);
-            libInterface.setViewportOffset(0, 0);
+            shaderParameters.screenWidth = displayResolution.x;
+            shaderParameters.screenHeight = displayResolution.y;
+            shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
+            shaderParameters.bottomViewportPosition = Screen.mainWindowPosition.y + Screen.height;
         }
-        catch (Exception e)
+        else
         {
-            Debug.LogError("Failed to update screen viewport properties: " + e.Message);
+            try
+            {
+                // This is the size of the entire monitor screen
+                libInterface.setScreenSize(displayResolution.x, displayResolution.y);
+
+                // this refers to the window in which the 3D effect is rendered (including eg windows top window menu)
+                libInterface.setWindowSize(Screen.width, Screen.height);
+                libInterface.setWindowPosition(
+                    Screen.mainWindowPosition.x,
+                    Screen.mainWindowPosition.y
+                );
+
+                // This refers to the actual viewport in which the 3D effect is rendered
+                libInterface.setViewportSize(Screen.width, Screen.height);
+                libInterface.setViewportOffset(0, 0);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to update screen viewport properties: " + e.Message);
+            }
         }
 
         // this parameter is used in the shader to invert the y axis
@@ -1397,6 +1432,10 @@ public class G3DCamera
 
     public void shiftViewToLeft()
     {
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            return;
+        }
         try
         {
             libInterface.shiftViewToLeft();
@@ -1409,6 +1448,10 @@ public class G3DCamera
 
     public void shiftViewToRight()
     {
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            return;
+        }
         try
         {
             libInterface.shiftViewToRight();
@@ -1421,6 +1464,10 @@ public class G3DCamera
 
     public void toggleHeadTracking()
     {
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            return;
+        }
         Debug.Log("Toggling head tracking status");
         if (libInterface == null || !libInterface.isInitialized())
         {
