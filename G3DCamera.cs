@@ -733,7 +733,7 @@ public class G3DCamera
             );
             material?.SetInt(shaderHandles.screenWidth, shaderParameters.screenWidth);
             material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
-            material?.SetInt(shaderHandles.nativeViewCount, internalCameraCount);
+            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
             material?.SetInt(
                 shaderHandles.angleRatioNumerator,
                 shaderParameters.angleRatioNumerator
