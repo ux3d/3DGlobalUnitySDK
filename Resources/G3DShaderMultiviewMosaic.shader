@@ -52,7 +52,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
 
     int3 getSubPixelViewIndices(float2 screenPos)
     {
-        int direction = 0 == 1 ? 1 : -1;
+        int direction = isleft == 1 ? 1 : -1;
         uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount) * direction) + float(nativeViewCount));
         int3 viewIndices = int3(view, view, view);
 
