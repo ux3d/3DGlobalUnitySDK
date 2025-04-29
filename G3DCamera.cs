@@ -1314,7 +1314,9 @@ public class G3DCamera
             return (offset + correctionTerm) * -1;
         }
 
-        return offset * -1;
+        int flip = mirrorViews ? 1 : -1;
+
+        return offset * flip;
     }
 
     /// <summary>
