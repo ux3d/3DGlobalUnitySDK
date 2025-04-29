@@ -802,12 +802,12 @@ public class G3DCamera
                 );
 
                 targetPosition = headPositionWorld * sceneScaleFactor;
-                targetViewSeparation = viewSeparation * sceneScaleFactor;
+                targetViewSeparation = scaledViewSeparation;
             }
         }
         else if (mode == G3DCameraMode.MULTIVIEW)
         {
-            targetViewSeparation = viewSeparation * sceneScaleFactor;
+            targetViewSeparation = scaledViewSeparation;
         }
 
         cameraParent.transform.localPosition = targetPosition;
