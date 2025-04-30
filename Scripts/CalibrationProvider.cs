@@ -7,11 +7,11 @@ using IniParser.Parser;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class DefaultCalibrationProvider
+public class CalibrationProvider
 {
     private IniData iniData;
 
-    private DefaultCalibrationProvider() { }
+    private CalibrationProvider() { }
 
     /// <summary>
     ///
@@ -19,12 +19,12 @@ public class DefaultCalibrationProvider
     /// <param name="uri"></param>
     /// <param name="callback">int return parameter can be ignored</param>
     /// <returns></returns>
-    public static DefaultCalibrationProvider getFromURI(
+    public static CalibrationProvider getFromURI(
         string uri,
-        Func<DefaultCalibrationProvider, int> callback
+        Func<CalibrationProvider, int> callback
     )
     {
-        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        CalibrationProvider provider = new CalibrationProvider();
         if (uri == null || uri.Length == 0)
         {
             return provider;
@@ -52,9 +52,9 @@ public class DefaultCalibrationProvider
         return provider;
     }
 
-    public static DefaultCalibrationProvider getFromConfigFile(string calibrationFile)
+    public static CalibrationProvider getFromConfigFile(string calibrationFile)
     {
-        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        CalibrationProvider provider = new CalibrationProvider();
         if (calibrationFile == null || !File.Exists(calibrationFile))
         {
             return provider;
@@ -64,9 +64,9 @@ public class DefaultCalibrationProvider
         return provider;
     }
 
-    public static DefaultCalibrationProvider getFromString(string calibrationData)
+    public static CalibrationProvider getFromString(string calibrationData)
     {
-        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        CalibrationProvider provider = new CalibrationProvider();
         if (calibrationData == null || calibrationData.Length == 0)
         {
             return provider;
@@ -76,7 +76,11 @@ public class DefaultCalibrationProvider
         return provider;
     }
 
-    public G3DShaderParameters getDefaultShaderParameters()
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public G3DShaderParameters getShaderParameters()
     {
         G3DShaderParameters parameters = new G3DShaderParameters();
 

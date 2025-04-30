@@ -312,12 +312,7 @@ public class G3DCamera
         reinitializeShader();
         updateScreenViewportProperties();
 
-        lock (shaderLock)
-        {
-            DefaultCalibrationProvider defaultCalibrationProvider =
-                DefaultCalibrationProvider.getFromString(calibrationFile.text);
-            shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
-        }
+        loadShaderParametersFromCalibrationFile();
         updateShaderParameters();
 
         if (mode == G3DCameraMode.DIORAMA)
@@ -403,6 +398,43 @@ public class G3DCamera
         }
     }
 
+    public void loadShaderParametersFromCalibrationFile()
+    {
+        if (calibrationFile == null)
+        {
+            Debug.LogError(
+                "No calibration file set. Please set a calibration file. Using default values."
+            );
+            return;
+        }
+
+        lock (shaderLock)
+        {
+            CalibrationProvider calibrationProvider = CalibrationProvider.getFromString(
+                calibrationFile.text
+            );
+            shaderParameters = calibrationProvider.getShaderParameters();
+        }
+    }
+
+    /// <summary>
+    /// Updates all camera parameters based on the calibration file (i.e. focus distance, fov, etc.).
+    /// Includes shader parameters (i.e. lense shear angle, camera count, etc.).
+    ///
+    /// Updates calibration file as well.
+    /// </summary>
+    public void loadCameraCalibrationFromDisplayCalibration(TextAsset calibrationFile)
+    {
+        this.calibrationFile = calibrationFile;
+        loadCameraCalibrationFromDisplayCalibration();
+    }
+
+    /// <summary>
+    /// Updates all camera parameters based on the calibration file (i.e. focus distance, fov, etc.).
+    /// Includes shader parameters (i.e. lense shear angle, camera count, etc.).
+    ///
+    /// Does not update calibration file.
+    /// </summary>
     public void loadCameraCalibrationFromDisplayCalibration()
     {
         if (calibrationFile == null)
@@ -420,9 +452,7 @@ public class G3DCamera
             return;
         }
 
-        DefaultCalibrationProvider calibration = DefaultCalibrationProvider.getFromString(
-            calibrationFile.text
-        );
+        CalibrationProvider calibration = CalibrationProvider.getFromString(calibrationFile.text);
         int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
         float PhysicalSizeInch = calibration.getFloat("PhysicalSizeInch");
         int NativeViewcount = calibration.getInt("NativeViewcount");
@@ -470,6 +500,8 @@ public class G3DCamera
             viewSeparation = 0.065f * sceneScaleFactor;
             internalCameraCount = 2;
         }
+
+        loadShaderParametersFromCalibrationFile();
     }
 
     private int getCameraCountFromCalibrationFile()
@@ -482,9 +514,7 @@ public class G3DCamera
             return 2;
         }
 
-        DefaultCalibrationProvider calibration = DefaultCalibrationProvider.getFromString(
-            calibrationFile.text
-        );
+        CalibrationProvider calibration = CalibrationProvider.getFromString(calibrationFile.text);
         int NativeViewcount = calibration.getInt("NativeViewcount");
         return NativeViewcount;
     }
@@ -499,9 +529,7 @@ public class G3DCamera
             return new Vector2Int(1920, 1080);
         }
 
-        DefaultCalibrationProvider calibration = DefaultCalibrationProvider.getFromString(
-            calibrationFile.text
-        );
+        CalibrationProvider calibration = CalibrationProvider.getFromString(calibrationFile.text);
         int HorizontalResolution = calibration.getInt("HorizontalResolution");
         int VerticalResolution = calibration.getInt("VerticalResolution");
         return new Vector2Int(HorizontalResolution, VerticalResolution);
@@ -1341,19 +1369,18 @@ public class G3DCamera
 
         try
         {
-            DefaultCalibrationProvider defaultCalibrationProvider =
-                DefaultCalibrationProvider.getFromURI(
-                    uri,
-                    (DefaultCalibrationProvider provider) =>
+            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromURI(
+                uri,
+                (CalibrationProvider provider) =>
+                {
+                    lock (shaderLock)
                     {
-                        lock (shaderLock)
-                        {
-                            shaderParameters = provider.getDefaultShaderParameters();
-                        }
-                        updateShaderParameters();
-                        return 0;
+                        shaderParameters = provider.getShaderParameters();
                     }
-                );
+                    updateShaderParameters();
+                    return 0;
+                }
+            );
         }
         catch (Exception e)
         {
@@ -1376,9 +1403,9 @@ public class G3DCamera
         {
             lock (shaderLock)
             {
-                DefaultCalibrationProvider defaultCalibrationProvider =
-                    DefaultCalibrationProvider.getFromConfigFile(filePath);
-                shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+                CalibrationProvider defaultCalibrationProvider =
+                    CalibrationProvider.getFromConfigFile(filePath);
+                shaderParameters = defaultCalibrationProvider.getShaderParameters();
             }
             updateShaderParameters();
         }
@@ -1403,9 +1430,10 @@ public class G3DCamera
         {
             lock (shaderLock)
             {
-                DefaultCalibrationProvider defaultCalibrationProvider =
-                    DefaultCalibrationProvider.getFromString(iniFile);
-                shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+                CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
+                    iniFile
+                );
+                shaderParameters = defaultCalibrationProvider.getShaderParameters();
             }
             updateShaderParameters();
         }

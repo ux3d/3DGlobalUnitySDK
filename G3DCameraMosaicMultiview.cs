@@ -110,9 +110,10 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 #endif
 
         // Dot his last to ensure custom passes are already set up
-        DefaultCalibrationProvider defaultCalibrationProvider =
-            DefaultCalibrationProvider.getFromString(calibrationFile.text);
-        shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+        CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
+            calibrationFile.text
+        );
+        shaderParameters = defaultCalibrationProvider.getShaderParameters();
         reinitializeShader();
     }
 
@@ -153,6 +154,45 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     #endregion
 
     #region Updates
+    private TextAsset previousCalibrationFile = null;
+    private G3DCameraMode previousMode = G3DCameraMode.DIORAMA;
+
+    /// <summary>
+    /// OnValidate gets called every time the script is changed in the editor.
+    /// This is used to react to changes made to the parameters.
+    /// </summary>
+    void OnValidate()
+    {
+        if (calibrationFile != previousCalibrationFile)
+        {
+            previousCalibrationFile = calibrationFile;
+            updateShaderFromCalibrationFile();
+        }
+    }
+
+    public void updateShaderFromCalibrationFile(TextAsset calibrationFile)
+    {
+        if (calibrationFile == null || calibrationFile.text == "")
+        {
+            return;
+        }
+        this.calibrationFile = calibrationFile;
+        updateShaderFromCalibrationFile();
+    }
+
+    public void updateShaderFromCalibrationFile()
+    {
+        if (calibrationFile == null || calibrationFile.text == "")
+        {
+            return;
+        }
+
+        CalibrationProvider calibrationProvider = CalibrationProvider.getFromString(
+            calibrationFile.text
+        );
+        shaderParameters = calibrationProvider.getShaderParameters();
+    }
+
     void Update()
     {
         updateShaderParameters();
@@ -268,16 +308,15 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         try
         {
-            DefaultCalibrationProvider defaultCalibrationProvider =
-                DefaultCalibrationProvider.getFromURI(
-                    uri,
-                    (DefaultCalibrationProvider provider) =>
-                    {
-                        shaderParameters = provider.getDefaultShaderParameters();
-                        updateShaderParameters();
-                        return 0;
-                    }
-                );
+            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromURI(
+                uri,
+                (CalibrationProvider provider) =>
+                {
+                    shaderParameters = provider.getShaderParameters();
+                    updateShaderParameters();
+                    return 0;
+                }
+            );
         }
         catch (Exception e)
         {
@@ -298,9 +337,10 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         try
         {
-            DefaultCalibrationProvider defaultCalibrationProvider =
-                DefaultCalibrationProvider.getFromConfigFile(filePath);
-            shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromConfigFile(
+                filePath
+            );
+            shaderParameters = defaultCalibrationProvider.getShaderParameters();
             updateShaderParameters();
         }
         catch (Exception e)
@@ -322,9 +362,10 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         try
         {
-            DefaultCalibrationProvider defaultCalibrationProvider =
-                DefaultCalibrationProvider.getFromString(iniFile);
-            shaderParameters = defaultCalibrationProvider.getDefaultShaderParameters();
+            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
+                iniFile
+            );
+            shaderParameters = defaultCalibrationProvider.getShaderParameters();
             updateShaderParameters();
         }
         catch (Exception e)

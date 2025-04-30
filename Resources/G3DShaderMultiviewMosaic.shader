@@ -74,11 +74,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
         
         
         float2 uvCoords = i.uv;
-        // mirror the image if necessary
-        if (mirror != 0) {
-            uvCoords.x = 1.0 - uvCoords.x;
-        }
-
+        
         //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
         int viewIndex = 0;
@@ -88,13 +84,21 @@ Shader "G3D/AutostereoMultiviewMosaic"
             } else {
                 viewIndex = viewIndices[channel];
             }
-
+            
             if (test != 0) {
                 if (viewIndex == 0) {
                     color[channel] = 1.0;
                 }
                 continue;
             }
+            
+            // mirror the image if necessary
+            if (mirror != 0) {
+                uvCoords.x = 1.0 - uvCoords.x;
+                // flip the view index
+                viewIndex = nativeViewCount - (viewIndex + 1);
+            }
+
 
             float2 mappedUVCoords = calculateUVForMosaic(viewIndex, uvCoords);
             float4 tmpColor = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
