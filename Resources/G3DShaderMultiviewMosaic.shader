@@ -10,6 +10,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
     int  isleft;         // links(1) oder rechts(0) geneigtes Lentikular
     int  test;           // Rot/Schwarz (1)ein, (0)aus
     int  hqview;         // hqhqViewCount
+    int  mstart;         // Viewshift permanent Offset
     
     
     int  s_height;       // screen height
@@ -53,7 +54,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
     int3 getSubPixelViewIndices(float2 screenPos)
     {
         int direction = isleft == 1 ? 1 : -1;
-        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount) * direction) + float(nativeViewCount));
+        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount) * direction) + float(nativeViewCount)) + mstart;
         int3 viewIndices = int3(view, view, view);
 
         viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));
@@ -72,14 +73,13 @@ Shader "G3D/AutostereoMultiviewMosaic"
         float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
         int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
         
-        
         float2 uvCoords = i.uv;
         // mirror the image if necessary
         if (mirror != 0) {
             uvCoords.x = 1.0 - uvCoords.x;
         }
         
-        //use indices to sample correct subpixels
+         //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
         int viewIndex = 0;
         for (int channel = 0; channel < 3; channel++) {
@@ -88,7 +88,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
             } else {
                 viewIndex = viewIndices[channel];
             }
-            
+
             if (test != 0) {
                 if (viewIndex == 0) {
                     color[channel] = 1.0;

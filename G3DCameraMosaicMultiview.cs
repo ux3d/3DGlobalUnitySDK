@@ -84,6 +84,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             leftLensOrientation = Shader.PropertyToID("isleft"),
             BGRPixelLayout = Shader.PropertyToID("isBGR"),
             hqViewCount = Shader.PropertyToID("hqview"),
+            mstart = Shader.PropertyToID("mstart"),
         };
 
         // This has to be done after the cameras are updated
@@ -239,6 +240,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         material?.SetInt(shaderHandles.showTestFrame, 0);
         material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
         material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
+        material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
 
         int cameraCount = mosaicColumnCount * mosaicRowCount;
         int shaderMaxCount = shaderParameters.nativeViewCount;
