@@ -74,6 +74,10 @@ Shader "G3D/AutostereoMultiviewMosaic"
         
         
         float2 uvCoords = i.uv;
+        // mirror the image if necessary
+        if (mirror != 0) {
+            uvCoords.x = 1.0 - uvCoords.x;
+        }
         
         //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
@@ -92,10 +96,8 @@ Shader "G3D/AutostereoMultiviewMosaic"
                 continue;
             }
             
-            // mirror the image if necessary
             if (mirror != 0) {
-                uvCoords.x = 1.0 - uvCoords.x;
-                // flip the view index
+                // flip the view index if mirror is active
                 viewIndex = nativeViewCount - (viewIndex + 1);
             }
 
