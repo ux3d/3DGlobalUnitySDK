@@ -322,9 +322,6 @@ public class G3DCamera
         mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
 #endif
 
-        halfCameraWidthAtStart =
-            Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;
-
         updateCameras();
         updateShaderRenderTextures();
 
@@ -483,6 +480,9 @@ public class G3DCamera
         // update focus plane distance
         focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
         cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+
+        halfCameraWidthAtStart =
+            Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;
 
         loadShaderParametersFromCalibrationFile();
     }
@@ -1279,7 +1279,7 @@ public class G3DCamera
             );
             Vector3 camPos = basePosition - new Vector3(0, 0, focusDistanceWithDollyZoom);
             camPos += new Vector3(1, 0, 0) * localCameraOffset;
-            Gizmos.DrawSphere(camPos, 0.3f * gizmoSize * sceneScaleFactor);
+            Gizmos.DrawSphere(camPos, 0.2f * gizmoSize * sceneScaleFactor);
         }
 
         // draw camera frustums
