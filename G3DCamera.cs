@@ -177,6 +177,7 @@ public class G3DCamera
 
     private Camera mainCamera;
     private List<Camera> cameras = null;
+    private GameObject focusPlaneObject = null;
     private GameObject cameraParent = null;
 
     private Material material;
@@ -239,36 +240,12 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
-        loadCameraCalibrationFromDisplayCalibration();
         mainCamera = GetComponent<Camera>();
+        setupCameras();
 
         // create a focus plane object at focus distance from camera.
         // then parent the camera parent to that object
         // this way we can place the camera parent relative to the focus plane
-
-        GameObject focusPlaneObject = new GameObject("focus plane center");
-        focusPlaneObject.transform.parent = transform;
-        focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
-        focusPlaneObject.transform.localRotation = Quaternion.identity;
-
-        //initialize cameras
-
-        cameraParent = new GameObject("g3dcams");
-        cameraParent.transform.parent = focusPlaneObject.transform;
-        cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
-        cameraParent.transform.localRotation = Quaternion.identity;
-
-        cameras = new List<Camera>();
-        for (int i = 0; i < MAX_CAMERAS; i++)
-        {
-            cameras.Add(new GameObject(CAMERA_NAME_PREFIX + i).AddComponent<Camera>());
-            cameras[i].transform.SetParent(cameraParent.transform, true);
-            cameras[i].gameObject.SetActive(false);
-            cameras[i].transform.localRotation = Quaternion.identity;
-            cameras[i].clearFlags = mainCamera.clearFlags;
-            cameras[i].backgroundColor = mainCamera.backgroundColor;
-            cameras[i].targetDisplay = mainCamera.targetDisplay;
-        }
 
         // disable rendering on main camera after other cameras have been created and settings have been copied over
         // otherwise the secondary cameras are initialized wrong
@@ -381,7 +358,7 @@ public class G3DCamera
         if (calibrationFile != previousCalibrationFile)
         {
             previousCalibrationFile = calibrationFile;
-            loadCameraCalibrationFromDisplayCalibration();
+            setupCameras();
         }
 
         if (previousMode != mode)
@@ -423,20 +400,25 @@ public class G3DCamera
     ///
     /// Updates calibration file as well.
     /// </summary>
-    public void loadCameraCalibrationFromDisplayCalibration(TextAsset calibrationFile)
+    public void setupCameras(TextAsset calibrationFile)
     {
         this.calibrationFile = calibrationFile;
-        loadCameraCalibrationFromDisplayCalibration();
+        setupCameras();
     }
 
     /// <summary>
-    /// Updates all camera parameters based on the calibration file (i.e. focus distance, fov, etc.).
+    /// Sets up all camera parameters based on the calibration file (i.e. focus distance, fov, etc.).
     /// Includes shader parameters (i.e. lense shear angle, camera count, etc.).
     ///
     /// Does not update calibration file.
     /// </summary>
-    public void loadCameraCalibrationFromDisplayCalibration()
+    public void setupCameras()
     {
+        if (mainCamera == null)
+        {
+            mainCamera = GetComponent<Camera>();
+        }
+        initCamerasAndParents();
         if (calibrationFile == null)
         {
             Debug.LogError(
@@ -449,9 +431,11 @@ public class G3DCamera
             {
                 viewSeparation = 0.031f;
             }
+            focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
             return;
         }
 
+        // load values from calibration file
         CalibrationProvider calibration = CalibrationProvider.getFromString(calibrationFile.text);
         int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
         float PhysicalSizeInch = calibration.getFloat("PhysicalSizeInch");
@@ -468,28 +452,23 @@ public class G3DCamera
             Debug.LogWarning(e.Message);
         }
 
+        // calculate intermediate values
         float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
         float physicalSizeInMeter = PhysicalSizeInch * 0.0254f;
         float aspectRatio = (float)HorizontalResolution / (float)VerticalResolution;
+        float halfZoneOpeningAngleRad = ApertureAngle * Mathf.Deg2Rad / 2.0f;
+        float halfWidthZoneAtbasicDistance =
+            Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
+        float FOV =
+            2 * Mathf.Atan(physicalSizeInMeter / 2.0f / BasicWorkingDistanceMeter) * Mathf.Rad2Deg;
 
         // set focus distance
         focusDistance = (float)BasicWorkingDistanceMeter;
 
         // set camera fov
-        float FOV =
-            2 * Mathf.Atan(physicalSizeInMeter / 2.0f / BasicWorkingDistanceMeter) * Mathf.Rad2Deg;
-        ;
-        if (mainCamera == null)
-        {
-            mainCamera = GetComponent<Camera>();
-        }
         baseFieldOfView = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
         mainCamera.fieldOfView = baseFieldOfView;
-
         // calculate eye separation/ view separation
-        float halfZoneOpeningAngleRad = ApertureAngle * Mathf.Deg2Rad / 2.0f;
-        float halfWidthZoneAtbasicDistance =
-            Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
         if (mode == G3DCameraMode.MULTIVIEW)
         {
             viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
@@ -501,7 +480,53 @@ public class G3DCamera
             internalCameraCount = 2;
         }
 
+        // update focus plane distance
+        focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+        cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+
         loadShaderParametersFromCalibrationFile();
+    }
+
+    /// <summary>
+    /// Initializes the cameras and their parents.
+    /// if cameras are already initialized, this function only returns the focus plane.
+    /// </summary>
+    /// <returns>
+    /// The focus plane game object.
+    /// </returns>
+    private void initCamerasAndParents()
+    {
+        if (focusPlaneObject == null)
+        {
+            focusPlaneObject = new GameObject("focus plane center");
+            focusPlaneObject.transform.parent = transform;
+            focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+            focusPlaneObject.transform.localRotation = Quaternion.identity;
+        }
+
+        //initialize cameras
+        if (cameraParent == null)
+        {
+            cameraParent = new GameObject("g3dcams");
+            cameraParent.transform.parent = focusPlaneObject.transform;
+            cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+            cameraParent.transform.localRotation = Quaternion.identity;
+        }
+
+        if (cameras == null)
+        {
+            cameras = new List<Camera>();
+            for (int i = 0; i < MAX_CAMERAS; i++)
+            {
+                cameras.Add(new GameObject(CAMERA_NAME_PREFIX + i).AddComponent<Camera>());
+                cameras[i].transform.SetParent(cameraParent.transform, true);
+                cameras[i].gameObject.SetActive(false);
+                cameras[i].transform.localRotation = Quaternion.identity;
+                cameras[i].clearFlags = mainCamera.clearFlags;
+                cameras[i].backgroundColor = mainCamera.backgroundColor;
+                cameras[i].targetDisplay = mainCamera.targetDisplay;
+            }
+        }
     }
 
     private int getCameraCountFromCalibrationFile()
