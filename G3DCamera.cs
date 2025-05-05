@@ -118,6 +118,11 @@ public class G3DCamera
     [Range(0.001f, 3)]
     public float dollyZoom = 1;
 
+    [Tooltip(
+        "Scale the view offset up or down. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance. This can be used to adjust the view offset down for very large scenes."
+    )]
+    [Range(0.0f, 5.0f)]
+    public float viewOffsetScale = 1.0f; // scale the view offset to the focus distance. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
     #endregion
 
     #region Advanced settings
@@ -225,7 +230,7 @@ public class G3DCamera
 
     private float scaledViewSeparation
     {
-        get { return viewSeparation * sceneScaleFactor; }
+        get { return viewSeparation * sceneScaleFactor * viewOffsetScale; }
     }
 
     private float scaledHalfCameraWidthAtStart
@@ -415,7 +420,11 @@ public class G3DCamera
         {
             mainCamera = GetComponent<Camera>();
         }
-        initCamerasAndParents();
+        if (Application.isPlaying)
+        {
+            // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
+            initCamerasAndParents();
+        }
         if (calibrationFile == null)
         {
             Debug.LogError(
@@ -477,9 +486,13 @@ public class G3DCamera
             internalCameraCount = 2;
         }
 
-        // update focus plane distance
-        focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
-        cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+        // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
+        if (Application.isPlaying)
+        {
+            // update focus plane distance
+            focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+            cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+        }
 
         halfCameraWidthAtStart =
             Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;

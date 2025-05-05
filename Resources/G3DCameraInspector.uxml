@@ -5,6 +5,7 @@
     <uie:PropertyField name="sceneScaleFactor" binding-path="sceneScaleFactor" />
     <uie:PropertyField name="mirrorViews" binding-path="mirrorViews" />
     <uie:PropertyField name="dollyZoom" binding-path="dollyZoom" />
+    <uie:PropertyField binding-path="viewOffsetScale" />
     <ui:GroupBox enabled="true" name="Multiview" />
     <ui:GroupBox enabled="true" name="Diorama" />
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings">
