@@ -43,8 +43,13 @@ Shader "G3D/AutostereoMultiviewMosaic"
     Texture2D mosaictexture;
     SamplerState samplermosaictexture;
 
-    float2 calculateUVForMosaic(int index, float2 startingUV) {
-        int2 moasicIndex = int2(index % mosaic_columns, index / mosaic_rows);
+    float2 calculateUVForMosaic(int viewIndex, float2 startingUV) {
+        int xAxis = viewIndex % mosaic_columns;
+        int yAxis = viewIndex / mosaic_columns;
+        // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
+        // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
+        yAxis = mosaic_rows - 1 - yAxis;
+        int2 moasicIndex = int2(xAxis, yAxis);
         float2 scaledUV = float2(startingUV.x / mosaic_columns, startingUV.y / mosaic_rows);
         float2 cellSize = float2(1.0 / mosaic_columns, 1.0 / mosaic_rows);
         return scaledUV + cellSize * moasicIndex;
