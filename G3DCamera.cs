@@ -123,6 +123,12 @@ public class G3DCamera
     )]
     [Range(0.0f, 5.0f)]
     public float viewOffsetScale = 1.0f; // scale the view offset to the focus distance. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
+
+    [Tooltip(
+        "Scales the strength of the head tracking effect. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance."
+    )]
+    [Min(0.0f)]
+    public float headTrackingScale = 1.0f; // scale the head tracking effect
     #endregion
 
     #region Advanced settings
@@ -1179,11 +1185,14 @@ public class G3DCamera
                 (float)-worldPosZ / millimeterToMeter
             );
 
-            headPosition.imagePosX = imagePosX / (int)millimeterToMeter * (int)sceneScaleFactor;
-            headPosition.imagePosY = imagePosY / (int)millimeterToMeter * (int)sceneScaleFactor;
-            headPosition.worldPosX = headPos.x * sceneScaleFactor;
-            headPosition.worldPosY = headPos.y * sceneScaleFactor;
-            headPosition.worldPosZ = headPos.z * sceneScaleFactor;
+            int scaleFactorInt = (int)sceneScaleFactor * (int)headTrackingScale;
+            float scaleFactor = sceneScaleFactor * headTrackingScale;
+
+            headPosition.imagePosX = imagePosX / (int)millimeterToMeter * scaleFactorInt;
+            headPosition.imagePosY = imagePosY / (int)millimeterToMeter * scaleFactorInt;
+            headPosition.worldPosX = headPos.x * scaleFactor;
+            headPosition.worldPosY = headPos.y * scaleFactor;
+            headPosition.worldPosZ = headPos.z * scaleFactor;
 
             if (usePositionFiltering())
             {
@@ -1205,11 +1214,11 @@ public class G3DCamera
                         );
 
                         filteredHeadPosition.worldPosX =
-                            -filteredPositionX / millimeterToMeter * sceneScaleFactor;
+                            -filteredPositionX / millimeterToMeter * scaleFactor;
                         filteredHeadPosition.worldPosY =
-                            filteredPositionY / millimeterToMeter * sceneScaleFactor;
+                            filteredPositionY / millimeterToMeter * scaleFactor;
                         filteredHeadPosition.worldPosZ =
-                            -filteredPositionZ / millimeterToMeter * sceneScaleFactor;
+                            -filteredPositionZ / millimeterToMeter * scaleFactor;
                     }
                     catch (Exception e)
                     {

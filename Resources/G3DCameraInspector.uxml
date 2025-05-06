@@ -9,6 +9,7 @@
     <ui:GroupBox enabled="true" name="Multiview" />
     <ui:GroupBox enabled="true" name="Diorama" />
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings">
+        <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" />
         <uie:PropertyField name="renderResolutionScale" binding-path="renderResolutionScale" />
         <uie:PropertyField name="adaptRenderResolutionToViews" binding-path="adaptRenderResolutionToViews" />
         <uie:PropertyField name="headPositionFilter" binding-path="headPositionFilter" />
