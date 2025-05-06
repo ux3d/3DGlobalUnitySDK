@@ -513,7 +513,7 @@ public class G3DCamera
         }
         else
         {
-            viewSeparation = 0.065f * sceneScaleFactor;
+            viewSeparation = 0.065f;
             internalCameraCount = 2;
         }
 
