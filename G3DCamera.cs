@@ -1192,7 +1192,7 @@ public class G3DCamera
             headPosition.imagePosY = imagePosY / (int)millimeterToMeter * scaleFactorInt;
             headPosition.worldPosX = headPos.x * scaleFactor;
             headPosition.worldPosY = headPos.y * scaleFactor;
-            headPosition.worldPosZ = headPos.z * scaleFactor;
+            headPosition.worldPosZ = headPos.z * sceneScaleFactor;
 
             if (usePositionFiltering())
             {
@@ -1218,7 +1218,7 @@ public class G3DCamera
                         filteredHeadPosition.worldPosY =
                             filteredPositionY / millimeterToMeter * scaleFactor;
                         filteredHeadPosition.worldPosZ =
-                            -filteredPositionZ / millimeterToMeter * scaleFactor;
+                            -filteredPositionZ / millimeterToMeter * sceneScaleFactor;
                     }
                     catch (Exception e)
                     {
