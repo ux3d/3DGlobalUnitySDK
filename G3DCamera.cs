@@ -350,6 +350,7 @@ public class G3DCamera
     /// </summary>
     private TextAsset previousCalibrationFile = null;
     private G3DCameraMode previousMode = G3DCameraMode.DIORAMA;
+    private float previousSceneScaleFactor = 1.0f;
 
     /// <summary>
     /// OnValidate gets called every time the script is changed in the editor.
@@ -368,12 +369,23 @@ public class G3DCamera
             previousMode = mode;
             if (mode == G3DCameraMode.MULTIVIEW)
             {
-                internalCameraCount = getCameraCountFromCalibrationFile();
+                CalibrationProvider calibration = CalibrationProvider.getFromString(
+                    calibrationFile.text
+                );
+                internalCameraCount = getCameraCountFromCalibrationFile(calibration);
+                loadMultiviewViewSeparationFromCalibration(calibration);
             }
             else
             {
                 internalCameraCount = 2;
+                viewSeparation = 0.065f;
             }
+        }
+
+        if (previousSceneScaleFactor != sceneScaleFactor)
+        {
+            previousSceneScaleFactor = sceneScaleFactor;
+            setupCameras();
         }
     }
 
@@ -393,6 +405,37 @@ public class G3DCamera
                 calibrationFile.text
             );
             shaderParameters = calibrationProvider.getShaderParameters();
+        }
+    }
+
+    private void loadMultiviewViewSeparationFromCalibration(CalibrationProvider calibration)
+    {
+        if (mode != G3DCameraMode.MULTIVIEW)
+        {
+            return;
+        }
+
+        int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
+        int NativeViewcount = calibration.getInt("NativeViewcount");
+        float ApertureAngle = 22.0f;
+        try
+        {
+            ApertureAngle = calibration.getFloat("ApertureAngle");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning(e.Message);
+        }
+
+        float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
+        float halfZoneOpeningAngleRad = ApertureAngle * Mathf.Deg2Rad / 2.0f;
+        float halfWidthZoneAtbasicDistance =
+            Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
+
+        // calculate eye separation/ view separation
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
         }
     }
 
@@ -448,23 +491,11 @@ public class G3DCamera
         int NativeViewcount = calibration.getInt("NativeViewcount");
         int HorizontalResolution = calibration.getInt("HorizontalResolution");
         int VerticalResolution = calibration.getInt("VerticalResolution");
-        float ApertureAngle = 22.0f;
-        try
-        {
-            ApertureAngle = calibration.getFloat("ApertureAngle");
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning(e.Message);
-        }
 
         // calculate intermediate values
         float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
         float physicalSizeInMeter = PhysicalSizeInch * 0.0254f;
         float aspectRatio = (float)HorizontalResolution / (float)VerticalResolution;
-        float halfZoneOpeningAngleRad = ApertureAngle * Mathf.Deg2Rad / 2.0f;
-        float halfWidthZoneAtbasicDistance =
-            Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
         float FOV =
             2 * Mathf.Atan(physicalSizeInMeter / 2.0f / BasicWorkingDistanceMeter) * Mathf.Rad2Deg;
 
@@ -477,7 +508,7 @@ public class G3DCamera
         // calculate eye separation/ view separation
         if (mode == G3DCameraMode.MULTIVIEW)
         {
-            viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
+            loadMultiviewViewSeparationFromCalibration(calibration);
             internalCameraCount = NativeViewcount;
         }
         else
@@ -553,6 +584,11 @@ public class G3DCamera
         }
 
         CalibrationProvider calibration = CalibrationProvider.getFromString(calibrationFile.text);
+        return getCameraCountFromCalibrationFile(calibration);
+    }
+
+    private int getCameraCountFromCalibrationFile(CalibrationProvider calibration)
+    {
         int NativeViewcount = calibration.getInt("NativeViewcount");
         return NativeViewcount;
     }
@@ -867,7 +903,7 @@ public class G3DCamera
                     (float)headPosition.worldPosZ
                 );
 
-                targetPosition = headPositionWorld * sceneScaleFactor;
+                targetPosition = headPositionWorld;
                 targetViewSeparation = scaledViewSeparation;
             }
         }
@@ -1364,7 +1400,7 @@ public class G3DCamera
             currentView += 1;
         }
 
-        float offset = currentView * targetEyeSeparation * sceneScaleFactor;
+        float offset = currentView * targetEyeSeparation;
 
         // when the camera count is even, one camera is placed half the eye separation to the right of the center
         // same for the other to the left
@@ -1372,7 +1408,7 @@ public class G3DCamera
         if (tmpCameraCount % 2 == 0)
         {
             // subtract half of the eye separation to get the correct offset
-            float correctionTerm = targetEyeSeparation * sceneScaleFactor / 2;
+            float correctionTerm = targetEyeSeparation / 2;
             if (currentView > 0)
             {
                 correctionTerm *= -1;
