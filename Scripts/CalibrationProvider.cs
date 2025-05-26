@@ -7,11 +7,11 @@ using IniParser.Parser;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class DefaultCalibrationProvider
+public class CalibrationProvider
 {
     private IniData iniData;
 
-    private DefaultCalibrationProvider() { }
+    private CalibrationProvider() { }
 
     /// <summary>
     ///
@@ -19,12 +19,12 @@ public class DefaultCalibrationProvider
     /// <param name="uri"></param>
     /// <param name="callback">int return parameter can be ignored</param>
     /// <returns></returns>
-    public static DefaultCalibrationProvider getFromURI(
+    public static CalibrationProvider getFromURI(
         string uri,
-        Func<DefaultCalibrationProvider, int> callback
+        Func<CalibrationProvider, int> callback
     )
     {
-        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        CalibrationProvider provider = new CalibrationProvider();
         if (uri == null || uri.Length == 0)
         {
             return provider;
@@ -52,9 +52,9 @@ public class DefaultCalibrationProvider
         return provider;
     }
 
-    public static DefaultCalibrationProvider getFromConfigFile(string calibrationFile)
+    public static CalibrationProvider getFromConfigFile(string calibrationFile)
     {
-        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        CalibrationProvider provider = new CalibrationProvider();
         if (calibrationFile == null || !File.Exists(calibrationFile))
         {
             return provider;
@@ -64,9 +64,9 @@ public class DefaultCalibrationProvider
         return provider;
     }
 
-    public static DefaultCalibrationProvider getFromString(string calibrationData)
+    public static CalibrationProvider getFromString(string calibrationData)
     {
-        DefaultCalibrationProvider provider = new DefaultCalibrationProvider();
+        CalibrationProvider provider = new CalibrationProvider();
         if (calibrationData == null || calibrationData.Length == 0)
         {
             return provider;
@@ -76,7 +76,11 @@ public class DefaultCalibrationProvider
         return provider;
     }
 
-    public G3DShaderParameters getDefaultShaderParameters()
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public G3DShaderParameters getShaderParameters()
     {
         G3DShaderParameters parameters = new G3DShaderParameters();
 
@@ -95,13 +99,13 @@ public class DefaultCalibrationProvider
 #endif
 
         // default values are those i got from the head tracking library when no camera was connected
-        parameters.nativeViewCount = readOrDefault("NativeViewcount", 5);
-        parameters.angleRatioNumerator = readOrDefault("AngleRatioNumerator", 5);
-        parameters.angleRatioDenominator = readOrDefault("AngleRatioDenominator", 7);
-        parameters.leftLensOrientation = readOrDefault("LeftLensOrientation", 1);
-        parameters.BGRPixelLayout = readOrDefault("isBGR", 0);
-        parameters.blackBorder = readOrDefault("BlackBorderDefault", 0);
-        parameters.blackSpace = readOrDefault("BlackSpaceDefault", 0);
+        parameters.nativeViewCount = getInt("NativeViewcount");
+        parameters.angleRatioNumerator = getInt("AngleRatioNumerator");
+        parameters.angleRatioDenominator = getInt("AngleRatioDenominator");
+        parameters.leftLensOrientation = getInt("LeftLensOrientation");
+        parameters.BGRPixelLayout = getBool("isBGR") ? 1 : 0;
+        parameters.blackBorder = getInt("BlackBorderDefault");
+        parameters.blackSpace = getInt("BlackSpaceDefault");
 
         parameters.showTestFrame = 0;
         parameters.showTestStripe = 0;
@@ -135,9 +139,7 @@ public class DefaultCalibrationProvider
     /// <summary>
     /// Returns the value of key from the ini file, or defaultValue if the key is not found or an error occurs.
     /// </summary>
-    /// <param name="reader"></param>
     /// <param name="key"></param>
-    /// <param name="section"></param>
     /// <param name="defaultValue"></param>
     /// <returns></returns>
     private int readOrDefault(string key, int defaultValue)
@@ -181,5 +183,90 @@ public class DefaultCalibrationProvider
             Debug.LogWarning(e.Message);
             return defaultValue;
         }
+    }
+
+    public int getInt(string key)
+    {
+        if (iniData == null)
+        {
+            throw new System.Exception("iniData is null");
+        }
+
+        string value;
+        iniData.TryGetKey("MonitorConfiguration." + key, out value);
+
+        if (value == null)
+        {
+            throw new System.Exception("Key not found: " + key);
+        }
+        int number;
+        if (int.TryParse(value, out number))
+        {
+            return number;
+        }
+        throw new System.Exception("Error reading ini file. Value is not an int: " + value);
+    }
+
+    public float getFloat(string key)
+    {
+        if (iniData == null)
+        {
+            throw new System.Exception("iniData is null");
+        }
+
+        string value;
+        iniData.TryGetKey("MonitorConfiguration." + key, out value);
+
+        if (value == null)
+        {
+            throw new System.Exception("Key not found: " + key);
+        }
+        float number;
+        if (float.TryParse(value, out number))
+        {
+            return number;
+        }
+
+        throw new System.Exception("Error reading ini file. Value is not a float: " + value);
+    }
+
+    public string getString(string key)
+    {
+        if (iniData == null)
+        {
+            throw new System.Exception("iniData is null");
+        }
+
+        string value;
+        iniData.TryGetKey("MonitorConfiguration." + key, out value);
+
+        if (value == null)
+        {
+            throw new System.Exception("Key not found: " + key);
+        }
+
+        return value;
+    }
+
+    public bool getBool(string key)
+    {
+        if (iniData == null)
+        {
+            throw new System.Exception("iniData is null");
+        }
+
+        string value = null;
+        iniData.TryGetKey("MonitorConfiguration." + key, out value);
+
+        if (value == null)
+        {
+            throw new System.Exception("Key not found: " + key);
+        }
+        bool boolValue;
+        if (bool.TryParse(value, out boolValue))
+        {
+            return boolValue;
+        }
+        throw new System.Exception("Error reading ini file. Value is not a bool: " + value);
     }
 }
