@@ -135,7 +135,7 @@ public class G3DCamera
     [Tooltip(
         "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
     )]
-    public bool adaptRenderResolutionToViews = true;
+    public bool adaptRenderResolutionToViews = false;
 
     [Tooltip(
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
@@ -364,13 +364,16 @@ public class G3DCamera
     /// </summary>
     void OnValidate()
     {
-        if (isActiveAndEnabled == false)
+        if (enabled == false)
         {
             // do not run this code if the script is not enabled
             return;
         }
 
-        if (calibrationFile != previousCalibrationFile)
+        if (
+            calibrationFile != previousCalibrationFile
+            || previousSceneScaleFactor != sceneScaleFactor
+        )
         {
             previousCalibrationFile = calibrationFile;
             setupCameras();
@@ -392,12 +395,6 @@ public class G3DCamera
                 internalCameraCount = 2;
                 viewSeparation = 0.065f;
             }
-        }
-
-        if (previousSceneScaleFactor != sceneScaleFactor)
-        {
-            previousSceneScaleFactor = sceneScaleFactor;
-            setupCameras();
         }
     }
 
@@ -942,7 +939,7 @@ public class G3DCamera
         cameraParent.transform.localPosition = new Vector3(
             horizontalOffset,
             verticalOffset,
-            -focusDistanceWithDollyZoom
+            -currentFocusDistance
         );
 
         //calculate camera positions and matrices
@@ -1316,6 +1313,24 @@ public class G3DCamera
             return;
         }
 
+        if (enabled == false)
+        {
+            // do not run this code if the script is not enabled
+            return;
+        }
+
+        if (mainCamera == null)
+        {
+            mainCamera = GetComponent<Camera>();
+            if (mainCamera == null)
+            {
+                Debug.LogError(
+                    "No main camera found. Please add a camera to the G3DCamera object."
+                );
+                return;
+            }
+        }
+
         float dollyZoomFactor = scaledFocusDistance - scaledFocusDistance * dollyZoom;
 
         float tmpHalfCameraWidthAtStart =
@@ -1327,7 +1342,7 @@ public class G3DCamera
         float fieldOfViewWithoutDolly =
             2 * Mathf.Atan(tmpHalfCameraWidthAtStart / scaledFocusDistance) * Mathf.Rad2Deg;
 
-        Vector3 basePosition = new Vector3(0, 0, scaledFocusDistance);
+        Vector3 basePosition = new Vector3(0, 0, focusDistanceWithDollyZoom);
 
         Vector3 position;
         // draw eye separation
@@ -1356,7 +1371,6 @@ public class G3DCamera
                 internalCameraCount
             );
             position = transform.position + transform.right * localCameraOffset;
-            position += transform.forward * dollyZoomFactor; // apply dolly zoom
 
             // apply new projection matrix
             Matrix4x4 localProjectionMatrix = Matrix4x4.TRS(
@@ -1387,7 +1401,7 @@ public class G3DCamera
 
         // draw focus plane
         Gizmos.color = new Color(0, 0, 1, 0.25F);
-        position = new Vector3(0, 0, 1) * scaledFocusDistance;
+        position = new Vector3(0, 0, 1) * focusDistanceWithDollyZoom;
         float frustumWidth =
             Mathf.Tan(fieldOfViewWithoutDolly * Mathf.Deg2Rad / 2) * scaledFocusDistance * 2;
         float frustumHeight =
