@@ -364,6 +364,12 @@ public class G3DCamera
     /// </summary>
     void OnValidate()
     {
+        if (isActiveAndEnabled == false)
+        {
+            // do not run this code if the script is not enabled
+            return;
+        }
+
         if (calibrationFile != previousCalibrationFile)
         {
             previousCalibrationFile = calibrationFile;
