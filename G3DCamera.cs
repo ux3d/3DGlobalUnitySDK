@@ -194,6 +194,9 @@ public class G3DCamera
     private Material material;
 #if G3D_HDRP
     private G3DHDRPCustomPass customPass;
+    private HDAdditionalCameraData.AntialiasingMode antialiasingMode = HDAdditionalCameraData
+        .AntialiasingMode
+        .None;
 #endif
 #if G3D_URP
     private G3DUrpScriptableRenderPass customPass;
@@ -325,6 +328,8 @@ public class G3DCamera
         customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
         customPass.fullscreenPassMaterial = material;
         customPass.materialPassName = "G3DFullScreen3D";
+
+        antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
 #endif
 
 #if G3D_URP
@@ -578,6 +583,10 @@ public class G3DCamera
                 cameras[i].clearFlags = mainCamera.clearFlags;
                 cameras[i].backgroundColor = mainCamera.backgroundColor;
                 cameras[i].targetDisplay = mainCamera.targetDisplay;
+
+#if G3D_HDRP
+                cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
+#endif
             }
         }
     }
@@ -954,6 +963,12 @@ public class G3DCamera
             camera.transform.localRotation = cameraParent.transform.localRotation;
 #if G3D_URP
             camera.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
+#endif
+#if G3D_HDRP
+            HDAdditionalCameraData hdAdditionalCameraData =
+                camera.gameObject.GetComponent<HDAdditionalCameraData>();
+            if (hdAdditionalCameraData != null)
+                hdAdditionalCameraData.antialiasing = antialiasingMode;
 #endif
 
             float localCameraOffset = calculateCameraOffset(
