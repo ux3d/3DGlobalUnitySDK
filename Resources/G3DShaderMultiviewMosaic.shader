@@ -114,12 +114,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
                 continue;
             }
             
-            if (mirror != 0) {
-                // flip the view index if mirror is active
-                viewIndex = nativeViewCount - (viewIndex + 1);
-            }
-
-
             float2 mappedUVCoords = calculateUVForMosaic(viewIndex, uvCoords);
             float4 tmpColor = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
 
