@@ -255,6 +255,7 @@ public class G3DCamera
     void Start()
     {
         mainCamera = GetComponent<Camera>();
+        oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
 
         // create a focus plane object at focus distance from camera.
@@ -797,6 +798,7 @@ public class G3DCamera
             || oldRenderResolutionScale != renderResolutionScale
         )
         {
+            oldRenderResolutionScale = renderResolutionScale;
             updateShaderRenderTextures();
         }
     }
