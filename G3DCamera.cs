@@ -432,7 +432,7 @@ public class G3DCamera
 
         int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
         int NativeViewcount = calibration.getInt("NativeViewcount");
-        float ApertureAngle = 22.0f;
+        float ApertureAngle = 14.0f;
         try
         {
             ApertureAngle = calibration.getFloat("ApertureAngle");
