@@ -135,13 +135,13 @@ public class G3DCamera
     [Tooltip(
         "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
     )]
-    public bool adaptRenderResolutionToViews = false;
+    private bool adaptRenderResolutionToViews = false;
 
     [Tooltip(
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
-    public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
-    public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
+    private Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
+    private LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
