@@ -5,24 +5,31 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-internal class G3DHDRPCustomPass : FullScreenCustomPass
+internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 {
-    public Material viewGenerationMaterial;
+    public RTHandle depthMapHandle;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
     {
         var camera = ctx.hdCamera.camera;
-        if (shouldPerformBlit(camera))
+        if (shouldPerformBlit(camera)) { }
+        else
         {
+            CustomPassUtils.Copy(ctx, ctx.cameraDepthBuffer, depthMapHandle);
+            // Blitter.BlitCameraTexture(ctx.cmd, ctx.cameraDepthBuffer, depthMapHandle);
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
-            CoreUtils.DrawFullScreen(
-                ctx.cmd,
-                fullscreenPassMaterial,
-                ctx.propertyBlock,
-                shaderPassId: 0
-            );
+
+            for (int i = 0; i < 1; i++)
+            {
+                CoreUtils.DrawFullScreen(
+                    ctx.cmd,
+                    fullscreenPassMaterial,
+                    ctx.propertyBlock,
+                    shaderPassId: 0
+                );
+            }
         }
     }
 

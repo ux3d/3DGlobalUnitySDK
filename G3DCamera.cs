@@ -194,6 +194,7 @@ public class G3DCamera
     private Material material;
 #if G3D_HDRP
     private G3DHDRPCustomPass customPass;
+    private G3DHDRPViewGenerationPass viewGenerationPass;
     private HDAdditionalCameraData.AntialiasingMode antialiasingMode = HDAdditionalCameraData
         .AntialiasingMode
         .None;
@@ -248,6 +249,8 @@ public class G3DCamera
     }
 
     #endregion
+
+    public bool generateViews = true;
 
     // TODO Handle viewport resizing/ moving
 
@@ -326,6 +329,28 @@ public class G3DCamera
         customPassVolume.isGlobal = true;
         // Make the volume invisible in the inspector
         customPassVolume.hideFlags = HideFlags.HideInInspector | HideFlags.DontSave;
+
+        // add multiview generation pass
+        viewGenerationPass =
+            customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationPass))
+            as G3DHDRPViewGenerationPass;
+        Material viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
+        RenderTexture depthMap = new RenderTexture(mainCamera.pixelWidth, mainCamera.pixelHeight, 0)
+        {
+            format = RenderTextureFormat.Depth,
+            depthStencilFormat = UnityEngine
+                .Experimental
+                .Rendering
+                .GraphicsFormat
+                .D32_SFloat_S8_UInt,
+        };
+        viewGenerationMaterial.SetTexture("DepthMap", depthMap, RenderTextureSubElement.Depth);
+        viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
+        viewGenerationPass.materialPassName = "G3DViewGeneration";
+        RTHandle rtHandle = RTHandles.Alloc(depthMap);
+        viewGenerationPass.depthMapHandle = rtHandle;
+
+        // add autostereo generation pass
         customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
         customPass.fullscreenPassMaterial = material;
         customPass.materialPassName = "G3DFullScreen3D";
@@ -1019,6 +1044,12 @@ public class G3DCamera
             if (internalCameraCount > MAX_CAMERAS)
             {
                 internalCameraCount = MAX_CAMERAS;
+            }
+
+            // TODO check if it is a good idea to simply set this to one. what if someone wants only one view?
+            if (generateViews)
+            {
+                internalCameraCount = 2;
             }
         }
 
