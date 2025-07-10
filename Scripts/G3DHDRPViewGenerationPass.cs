@@ -7,22 +7,26 @@ using UnityEngine.Rendering.HighDefinition;
 
 internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 {
-    public RTHandle depthMapHandle;
+    public RTHandle leftDepthMapHandle;
+    public RTHandle rightDepthMapHandle;
+
+    public RTHandle leftColorMapHandle;
+    public RTHandle rightColorMapHandle;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
     {
         var camera = ctx.hdCamera.camera;
-        if (shouldPerformBlit(camera)) { }
-        else
+        if (isMainG3DCamera(camera))
         {
-            CustomPassUtils.Copy(ctx, ctx.cameraDepthBuffer, depthMapHandle);
-            // Blitter.BlitCameraTexture(ctx.cmd, ctx.cameraDepthBuffer, depthMapHandle);
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
 
-            for (int i = 0; i < 1; i++)
+            for (int i = 0; i < 1024; i++)
             {
+                float layer = i / 1024.0f;
+                ctx.propertyBlock.SetFloat(Shader.PropertyToID("layer"), layer);
+
                 CoreUtils.DrawFullScreen(
                     ctx.cmd,
                     fullscreenPassMaterial,
@@ -30,7 +34,27 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                     shaderPassId: 0
                 );
             }
+
+            for (int i = 0; i < 1; i++) { }
         }
+        else if (isLeftCamera(camera))
+        {
+            CustomPassUtils.Copy(ctx, ctx.cameraDepthBuffer, leftDepthMapHandle);
+        }
+        else if (isRightCamera(camera))
+        {
+            CustomPassUtils.Copy(ctx, ctx.cameraDepthBuffer, rightDepthMapHandle);
+        }
+    }
+
+    bool isLeftCamera(Camera camera)
+    {
+        return camera.name == "g3dcam_1";
+    }
+
+    bool isRightCamera(Camera camera)
+    {
+        return camera.name == "g3dcam_0";
     }
 
     /// <summary>
@@ -39,7 +63,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     /// </summary>
     /// <param name="camera"></param>
     /// <returns></returns>
-    static bool shouldPerformBlit(Camera camera)
+    static bool isMainG3DCamera(Camera camera)
     {
         if (camera.cameraType != CameraType.Game)
             return false;

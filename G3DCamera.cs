@@ -251,6 +251,7 @@ public class G3DCamera
     #endregion
 
     public bool generateViews = true;
+    private Material viewGenerationMaterial;
 
     // TODO Handle viewport resizing/ moving
 
@@ -334,8 +335,12 @@ public class G3DCamera
         viewGenerationPass =
             customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationPass))
             as G3DHDRPViewGenerationPass;
-        Material viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
-        RenderTexture depthMap = new RenderTexture(mainCamera.pixelWidth, mainCamera.pixelHeight, 0)
+        viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
+        RenderTexture depthMapLeft = new RenderTexture(
+            mainCamera.pixelWidth,
+            mainCamera.pixelHeight,
+            0
+        )
         {
             format = RenderTextureFormat.Depth,
             depthStencilFormat = UnityEngine
@@ -344,16 +349,45 @@ public class G3DCamera
                 .GraphicsFormat
                 .D32_SFloat_S8_UInt,
         };
-        viewGenerationMaterial.SetTexture("DepthMap", depthMap, RenderTextureSubElement.Depth);
+        viewGenerationMaterial.SetTexture(
+            "DepthMapLeft",
+            depthMapLeft,
+            RenderTextureSubElement.Depth
+        );
+        RenderTexture depthMapRight = new RenderTexture(
+            mainCamera.pixelWidth,
+            mainCamera.pixelHeight,
+            0
+        )
+        {
+            format = RenderTextureFormat.Depth,
+            depthStencilFormat = UnityEngine
+                .Experimental
+                .Rendering
+                .GraphicsFormat
+                .D32_SFloat_S8_UInt,
+        };
+        viewGenerationMaterial.SetTexture(
+            "depthMapRight",
+            depthMapRight,
+            RenderTextureSubElement.Depth
+        );
+        viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 3);
+        viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 3);
+        viewGenerationMaterial.SetInt(Shader.PropertyToID("depth_layer_discretization"), 1024);
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("crop"), 0.01f);
+
         viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
         viewGenerationPass.materialPassName = "G3DViewGeneration";
-        RTHandle rtHandle = RTHandles.Alloc(depthMap);
-        viewGenerationPass.depthMapHandle = rtHandle;
+        RTHandle rtHandleDepthLeft = RTHandles.Alloc(depthMapLeft);
+        RTHandle rtHandleDepthRight = RTHandles.Alloc(depthMapRight);
+        viewGenerationPass.leftDepthMapHandle = rtHandleDepthLeft;
+        viewGenerationPass.rightDepthMapHandle = rtHandleDepthRight;
 
         // add autostereo generation pass
-        customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
-        customPass.fullscreenPassMaterial = material;
-        customPass.materialPassName = "G3DFullScreen3D";
+        // customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
+        // customPass.fullscreenPassMaterial = material;
+        // customPass.materialPassName = "G3DFullScreen3D";
 
         antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
 #endif
@@ -1098,6 +1132,11 @@ public class G3DCamera
             };
             cameras[i].targetTexture = renderTextures[i];
             material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
+            viewGenerationMaterial.SetTexture(
+                "texture" + i,
+                renderTextures[i],
+                RenderTextureSubElement.Color
+            );
         }
     }
 

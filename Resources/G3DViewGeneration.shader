@@ -31,6 +31,24 @@ Shader "G3D/ViewGeneration"
             Texture2D DepthMap;
             SamplerState samplerDepthMap;
 
+            Texture2D cameraImage;
+            SamplerState samplerCameraImage;
+            
+            float layer;  // range 0..1
+
+            int depth_layer_discretization; // max layer amount -> 1024
+
+            float disparity; // range 0..2
+            float crop;      // range 0..1 percentage of image to crop from each side
+            float normalization_min = 0; // scene min depth value
+            float normalization_max = 1; // scene max depth value
+
+            int debug_mode;
+            int grid_size_x;
+            int grid_size_y;
+
+            float focus_plane = 0.5; // range 0..1
+
             struct VertAttributes
             {
                 uint vertexID : SV_VertexID;
@@ -55,21 +73,123 @@ Shader "G3D/ViewGeneration"
 
             }
 
+            float linearNormalize(float value, float minV, float maxV) {
+                return clamp((value - minV) / (maxV - minV), 0.0, 1.0);
+            }
+
             float4 fragHDRP (v2f i) : SV_Target
             {
                 // float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
                 // float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
                 // int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
                 
-                float2 uvCoords = i.uv;
+                float2 texCoord = i.uv;
 
                 // // mirror the image if necessary
                 // if (mirror != 0) {
-                //     uvCoords.x = 1.0 - uvCoords.x;
+                //     texCoord.x = 1.0 - texCoord.x;
                 // }
                 
-                float4 depthMap = DepthMap.Sample(samplerDepthMap, uvCoords);
+                float4 depthMap = DepthMap.Sample(samplerDepthMap, texCoord);
                 return float4(depthMap.x, depthMap.x, depthMap.x, 1.f);
+                
+
+                //--------------------------------------------------
+                //--------------------------------------------------
+                //--------------------------------------------------
+                //--------------------------------------------------
+                float4 outputColor = float4(0.0, 0.0, 0.0, 1.0);
+
+                float focusPlane_ = focus_plane;
+                // float2 gridSize = float2(3,3);
+                float2 gridSize = float2(grid_size_x, grid_size_y);
+                int gridCount = (gridSize.x * gridSize.y);
+                float maxDisparity = disparity;
+                float disparityStep =
+                    maxDisparity / gridCount * (1.0); // flip (1.0) to invert view order
+              
+                float2 texCoordTransformed = float2(texCoord.x, 1.0 - texCoord.y);
+                texCoordTransformed = float2(texCoordTransformed.x * gridSize.x,
+                                           texCoordTransformed.y * gridSize.y);
+              
+                int viewIndex =
+                    int(texCoordTransformed.x) + gridSize.x * int(texCoordTransformed.y);
+              
+                texCoordTransformed.x =
+                    texCoordTransformed.x - float(int(texCoordTransformed.x));
+                texCoordTransformed.y =
+                    texCoordTransformed.y - float(int(texCoordTransformed.y));
+              
+                // Crop image to avoid image artefacts at border
+                texCoordTransformed *= (1.0 - crop);
+                texCoordTransformed += crop * 0.5;
+              
+                if (gridCount % 2 == 1 && viewIndex == gridCount / 2) { // CENTER VIEW
+              
+                  outputColor = cameraImage.Sample(samplerCameraImage, texCoordTransformed);
+              
+                  outputColor.a = 0.0;
+                  return outputColor;
+                }
+              
+                // Disparity calculation A:
+                // linear shift
+                //
+                float dynamicViewOffset =
+                    (float(viewIndex) - float(gridCount / 2) + 0.5) * disparityStep;
+              
+                float focusPlaneDistance = (focusPlane_ - (1.0 - layer));
+              
+                float2 texCoordShifted = texCoordTransformed;
+                texCoordShifted.x += focusPlaneDistance * dynamicViewOffset * 0.1;
+              
+                float texDepthOriginal = DepthMap.Sample(samplerDepthMap, texCoordTransformed).r;
+                texDepthOriginal =
+                    linearNormalize(texDepthOriginal, normalization_min, normalization_max);
+              
+                float texDepth = DepthMap.Sample(samplerDepthMap, texCoordShifted).r;
+                texDepth = linearNormalize(texDepth, normalization_min, normalization_max);
+                // layer 0 = back
+                // layer 1 = front
+              
+                // texDepth 0 = back
+              
+                if ((layer - texDepth) > (1.0 / float(depth_layer_discretization))) {
+                  // from back to front
+                  // discard fragments that are in front of current render
+                  // layer
+                  discard;
+                }
+              
+                float hole_marker = 0.0;
+                // FragColor.b >0.5 -> hole
+                if ((layer - texDepth) < -(1.0 / float(depth_layer_discretization))) {
+                  // from back to front
+                  // discard fragments that are in front of current render
+                  // layer
+                  hole_marker = 1.0;
+                  // discard;
+                }
+              
+                // float dx = linearNormalize(sobel_x(texCoordShifted), normalization_min,
+                //                            normalization_max);
+                // float dxy = linearNormalize(sobel(texCoordShifted), normalization_min,
+                //                             normalization_max);
+              
+                outputColor = cameraImage.Sample(samplerCameraImage, texCoordShifted);
+              
+                if (debug_mode == 4) {              // DEBUG OUTPUT
+                  outputColor.r = (1.0 - texDepth); // 0.0=front | 1.0=back
+                  outputColor.g = 0.0;
+                  outputColor.b = 0.0;
+                  outputColor.a = 1.0;
+                  return outputColor;
+                }
+              
+                
+                outputColor = clamp(outputColor, 0.0, 1.0);
+                // outputColor.a = (dxy + dx) * (0.5); // TODO: set this bias as parameter
+                return outputColor;
             }
             ENDHLSL
         }
