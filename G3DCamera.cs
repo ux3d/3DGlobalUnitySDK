@@ -193,7 +193,7 @@ public class G3DCamera
 
     private Material material;
 #if G3D_HDRP
-    private G3DHDRPCustomPass customPass;
+    private G3DHDRPViewGenerationMosaicPass customPass;
     private G3DHDRPViewGenerationPass viewGenerationPass;
     private HDAdditionalCameraData.AntialiasingMode antialiasingMode = HDAdditionalCameraData
         .AntialiasingMode
@@ -350,7 +350,7 @@ public class G3DCamera
                 .D32_SFloat_S8_UInt,
         };
         viewGenerationMaterial.SetTexture(
-            "DepthMapLeft",
+            "_depthMapLeft",
             depthMapLeft,
             RenderTextureSubElement.Depth
         );
@@ -368,7 +368,7 @@ public class G3DCamera
                 .D32_SFloat_S8_UInt,
         };
         viewGenerationMaterial.SetTexture(
-            "depthMapRight",
+            "_depthMapRight",
             depthMapRight,
             RenderTextureSubElement.Depth
         );
@@ -376,6 +376,10 @@ public class G3DCamera
         viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 3);
         viewGenerationMaterial.SetInt(Shader.PropertyToID("depth_layer_discretization"), 1024);
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("crop"), 0.01f);
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("disparity"), 1.9f);
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("focus_plane"), 0.1f);
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("normalization_min"), 0.0f);
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("normalization_max"), 10.0f);
 
         viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
         viewGenerationPass.materialPassName = "G3DViewGeneration";
@@ -385,9 +389,23 @@ public class G3DCamera
         viewGenerationPass.rightDepthMapHandle = rtHandleDepthRight;
 
         // add autostereo generation pass
-        // customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
-        // customPass.fullscreenPassMaterial = material;
-        // customPass.materialPassName = "G3DFullScreen3D";
+        customPass =
+            customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
+            as G3DHDRPViewGenerationMosaicPass;
+        RenderTexture mosaicTexture = new RenderTexture(
+            mainCamera.pixelWidth,
+            mainCamera.pixelHeight,
+            0
+        )
+        {
+            format = RenderTextureFormat.ARGB32,
+            depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
+        };
+        RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
+        material.SetTexture("mosaictexture", mosaicTexture, RenderTextureSubElement.Color);
+        customPass.fullscreenPassMaterial = material;
+        customPass.materialPassName = "G3DFullScreen3D";
+        customPass.mosaicImageHandle = rtHandleMosaic;
 
         antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
 #endif
@@ -791,7 +809,14 @@ public class G3DCamera
     {
         if (mode == G3DCameraMode.MULTIVIEW)
         {
-            material = new Material(Shader.Find("G3D/AutostereoMultiview"));
+            if (generateViews)
+            {
+                material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
+            }
+            else
+            {
+                material = new Material(Shader.Find("G3D/AutostereoMultiview"));
+            }
         }
         else
         {
@@ -957,8 +982,7 @@ public class G3DCamera
 
     void updateCameras()
     {
-        Vector3 targetPosition = new Vector3(0, 0, -scaledFocusDistance);
-        ; // position for the camera center (base position from which all other cameras are offset)
+        Vector3 targetPosition = new Vector3(0, 0, -scaledFocusDistance); // position for the camera center (base position from which all other cameras are offset)
         float targetViewSeparation = 0.0f;
 
         // calculate the camera center position and eye separation if head tracking and the diorama effect are enabled

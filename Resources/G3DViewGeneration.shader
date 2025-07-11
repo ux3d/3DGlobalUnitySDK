@@ -28,17 +28,28 @@ Shader "G3D/ViewGeneration"
             #pragma vertex vert
             #pragma fragment fragHDRP
 
-            Texture2D DepthMap;
-            SamplerState samplerDepthMap;
+            Texture2D _depthMapRight;
+            SamplerState sampler_depthMapRight;
+
+
+            Texture2D _depthMapLeft;
+            SamplerState sampler_depthMapLeft;
+
+
 
             Texture2D cameraImage;
             SamplerState samplerCameraImage;
+
+            Texture2D texture0;
+            SamplerState samplertexture0;
+            Texture2D texture1;
+            SamplerState samplertexture1;
             
             float layer;  // range 0..1
 
             int depth_layer_discretization; // max layer amount -> 1024
 
-            float disparity; // range 0..2
+            float disparity = 1.5f; // range 0..2
             float crop;      // range 0..1 percentage of image to crop from each side
             float normalization_min = 0; // scene min depth value
             float normalization_max = 1; // scene max depth value
@@ -47,7 +58,7 @@ Shader "G3D/ViewGeneration"
             int grid_size_x;
             int grid_size_y;
 
-            float focus_plane = 0.5; // range 0..1
+            float focus_plane = 0.5f; // range 0..1
 
             struct VertAttributes
             {
@@ -74,7 +85,7 @@ Shader "G3D/ViewGeneration"
             }
 
             float linearNormalize(float value, float minV, float maxV) {
-                return clamp((value - minV) / (maxV - minV), 0.0, 1.0);
+                return clamp((value - minV) / (maxV - minV), 0.0f, 1.0f);
             }
 
             float4 fragHDRP (v2f i) : SV_Target
@@ -84,31 +95,30 @@ Shader "G3D/ViewGeneration"
                 // int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
                 
                 float2 texCoord = i.uv;
+                texCoord.y = 1.0f - texCoord.y; // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
 
                 // // mirror the image if necessary
                 // if (mirror != 0) {
                 //     texCoord.x = 1.0 - texCoord.x;
                 // }
                 
-                float4 depthMap = DepthMap.Sample(samplerDepthMap, texCoord);
-                return float4(depthMap.x, depthMap.x, depthMap.x, 1.f);
                 
 
                 //--------------------------------------------------
                 //--------------------------------------------------
                 //--------------------------------------------------
                 //--------------------------------------------------
-                float4 outputColor = float4(0.0, 0.0, 0.0, 1.0);
+                float4 outputColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
 
                 float focusPlane_ = focus_plane;
                 // float2 gridSize = float2(3,3);
                 float2 gridSize = float2(grid_size_x, grid_size_y);
                 int gridCount = (gridSize.x * gridSize.y);
                 float maxDisparity = disparity;
-                float disparityStep =
-                    maxDisparity / gridCount * (1.0); // flip (1.0) to invert view order
+                float disparityStep = maxDisparity / gridCount * 1.0f; // flip (1.0) to invert view order
               
-                float2 texCoordTransformed = float2(texCoord.x, 1.0 - texCoord.y);
+                float2 texCoordTransformed = float2(texCoord.x, 1.0f - texCoord.y);
                 texCoordTransformed = float2(texCoordTransformed.x * gridSize.x,
                                            texCoordTransformed.y * gridSize.y);
               
@@ -121,14 +131,14 @@ Shader "G3D/ViewGeneration"
                     texCoordTransformed.y - float(int(texCoordTransformed.y));
               
                 // Crop image to avoid image artefacts at border
-                texCoordTransformed *= (1.0 - crop);
-                texCoordTransformed += crop * 0.5;
+                texCoordTransformed *= (1.0f - crop);
+                texCoordTransformed += crop * 0.5f;
               
                 if (gridCount % 2 == 1 && viewIndex == gridCount / 2) { // CENTER VIEW
               
-                  outputColor = cameraImage.Sample(samplerCameraImage, texCoordTransformed);
+                  outputColor = texture0.Sample(samplertexture0, texCoordTransformed);
               
-                  outputColor.a = 0.0;
+                  outputColor.a = 0.0f;
                   return outputColor;
                 }
               
@@ -136,38 +146,38 @@ Shader "G3D/ViewGeneration"
                 // linear shift
                 //
                 float dynamicViewOffset =
-                    (float(viewIndex) - float(gridCount / 2) + 0.5) * disparityStep;
+                    (float(viewIndex) - float(gridCount / 2) + 0.5f) * disparityStep;
               
-                float focusPlaneDistance = (focusPlane_ - (1.0 - layer));
+                float focusPlaneDistance = (focusPlane_ - (1.0f - layer));
               
                 float2 texCoordShifted = texCoordTransformed;
-                texCoordShifted.x += focusPlaneDistance * dynamicViewOffset * 0.1;
+                texCoordShifted.x += focusPlaneDistance * dynamicViewOffset * 0.1f;
               
-                float texDepthOriginal = DepthMap.Sample(samplerDepthMap, texCoordTransformed).r;
+                float texDepthOriginal = _depthMapLeft.Sample(sampler_depthMapLeft, texCoordTransformed).r;
                 texDepthOriginal =
                     linearNormalize(texDepthOriginal, normalization_min, normalization_max);
               
-                float texDepth = DepthMap.Sample(samplerDepthMap, texCoordShifted).r;
+                float texDepth = _depthMapLeft.Sample(sampler_depthMapLeft, texCoordShifted).r;
                 texDepth = linearNormalize(texDepth, normalization_min, normalization_max);
                 // layer 0 = back
                 // layer 1 = front
               
                 // texDepth 0 = back
               
-                if ((layer - texDepth) > (1.0 / float(depth_layer_discretization))) {
+                if ((layer - texDepth) > (1.0f / float(depth_layer_discretization))) {
                   // from back to front
                   // discard fragments that are in front of current render
                   // layer
                   discard;
                 }
               
-                float hole_marker = 0.0;
+                float hole_marker = 0.0f;
                 // FragColor.b >0.5 -> hole
-                if ((layer - texDepth) < -(1.0 / float(depth_layer_discretization))) {
+                if ((layer - texDepth) < -(1.0f / float(depth_layer_discretization))) {
                   // from back to front
                   // discard fragments that are in front of current render
                   // layer
-                  hole_marker = 1.0;
+                  hole_marker = 1.0f;
                   // discard;
                 }
               
@@ -176,18 +186,18 @@ Shader "G3D/ViewGeneration"
                 // float dxy = linearNormalize(sobel(texCoordShifted), normalization_min,
                 //                             normalization_max);
               
-                outputColor = cameraImage.Sample(samplerCameraImage, texCoordShifted);
+                outputColor = texture0.Sample(samplertexture0, texCoordShifted);
               
                 if (debug_mode == 4) {              // DEBUG OUTPUT
-                  outputColor.r = (1.0 - texDepth); // 0.0=front | 1.0=back
-                  outputColor.g = 0.0;
-                  outputColor.b = 0.0;
-                  outputColor.a = 1.0;
+                  outputColor.r = (1.0f - texDepth); // 0.0=front | 1.0=back
+                  outputColor.g = 0.0f;
+                  outputColor.b = 0.0f;
+                  outputColor.a = 1.0f;
                   return outputColor;
                 }
               
                 
-                outputColor = clamp(outputColor, 0.0, 1.0);
+                outputColor = clamp(outputColor, 0.0f, 1.0f);
                 // outputColor.a = (dxy + dx) * (0.5); // TODO: set this bias as parameter
                 return outputColor;
             }

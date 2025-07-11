@@ -7,8 +7,6 @@ using UnityEngine.Rendering.HighDefinition;
 
 internal class G3DHDRPCustomPass : FullScreenCustomPass
 {
-    public Material viewGenerationMaterial;
-
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
