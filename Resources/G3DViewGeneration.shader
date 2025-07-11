@@ -35,10 +35,7 @@ Shader "G3D/ViewGeneration"
             Texture2D _depthMapLeft;
             SamplerState sampler_depthMapLeft;
 
-
-
-            Texture2D cameraImage;
-            SamplerState samplerCameraImage;
+            int useLeftCamera = 1; // 0 = right, 1 = left
 
             Texture2D texture0;
             SamplerState samplertexture0;
@@ -49,16 +46,18 @@ Shader "G3D/ViewGeneration"
 
             int depth_layer_discretization; // max layer amount -> 1024
 
-            float disparity = 1.5f; // range 0..2
+            float layerDistance = 1.0f; // distance between layers in world space
+
+            float maxDisparity = 1.5f; // range 0..2 disparity between left and right camera
             float crop;      // range 0..1 percentage of image to crop from each side
-            float normalization_min = 0; // scene min depth value
-            float normalization_max = 1; // scene max depth value
+            float normalization_min = 0; // scene min depth value -> set to nearPlane
+            float normalization_max = 1; // scene max depth value -> set to farPlane
 
             int debug_mode;
             int grid_size_x;
             int grid_size_y;
 
-            float focus_plane = 0.5f; // range 0..1
+            float focus_plane = 0.5f; // range near to far plane
 
             struct VertAttributes
             {
@@ -87,84 +86,102 @@ Shader "G3D/ViewGeneration"
             float linearNormalize(float value, float minV, float maxV) {
                 return clamp((value - minV) / (maxV - minV), 0.0f, 1.0f);
             }
+            
+            // convert range back from 0..1 to minV..maxV
+            // normalized device coordinates -> pixel coords + depth
+            // normalized device coordinates times inverse projecion matrix
+            float4 sampleDepth(float2 texCoords) {
+                if(useLeftCamera == 1) {
+                    return _depthMapLeft.Sample(sampler_depthMapLeft, texCoords);
+                } else {
+                    return _depthMapRight.Sample(sampler_depthMapRight, texCoords);
+                }
+            }
 
+            float4 sampleTexture(float2 texCoords) {
+                if(useLeftCamera == 1) {
+                    return texture0.Sample(samplertexture0, texCoords);
+                } else {
+                    return texture1.Sample(samplertexture1, texCoords);
+                }
+            }
+            
+            /// <summary>
+            /// creates a grid of views with a given grid size.
+            /// each view is offset by a given disparity value.
+            /// the upper left corner is the left most camera.
+            /// the lower right corner is the right most camera.
+            /// </summary>
             float4 fragHDRP (v2f i) : SV_Target
             {
-                // float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
-                // float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
-                // int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
-                
                 float2 texCoord = i.uv;
-                texCoord.y = 1.0f - texCoord.y; // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
 
-                // // mirror the image if necessary
-                // if (mirror != 0) {
-                //     texCoord.x = 1.0 - texCoord.x;
-                // }
-                
-                
-
-                //--------------------------------------------------
-                //--------------------------------------------------
-                //--------------------------------------------------
-                //--------------------------------------------------
                 float4 outputColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 
 
-                float focusPlane_ = focus_plane;
-                // float2 gridSize = float2(3,3);
-                float2 gridSize = float2(grid_size_x, grid_size_y);
-                int gridCount = (gridSize.x * gridSize.y);
-                float maxDisparity = disparity;
+                int gridCount = grid_size_x * grid_size_y;
                 float disparityStep = maxDisparity / gridCount * 1.0f; // flip (1.0) to invert view order
+                
+
+                // the text coords of the original left and right view are from 0 - 1
+                // the tex coords of the texel we are currently rendering are also from 0 - 1
+                // but we want to create a grid of views, so we need to transform the tex coords
+                // to the grid size.
+                // basically we want to figure out in which grid cell the current texel is, then convert the texel coords to the grid cell coords.
+                // example assuming a grid size of 3x3:
+                // original tex coords: 0.8, 0.5
+                // step 1: transform the tex coords to the grid size by multiplying with grid size
+                //    -> e.g. original x coord 0.8 turns to 0.8 * 3 = 2.4
+                // step 2: figure out the grid cell by taking the integer part of the transformed tex coords
+                //    -> e.g. 2.4 turns to 2
+                // step 3: subtract the integer part from the transformed tex coords to get the texel coords in the grid cell
+                //   -> e.g. 2.4 - 2 = 0.4 -> final texel coords in the grid cell are 0.4, 0.5
+                float2 cellCoordinates = float2(texCoord.x, texCoord.y);
+                cellCoordinates = float2(cellCoordinates.x * grid_size_x, cellCoordinates.y * grid_size_y);
               
-                float2 texCoordTransformed = float2(texCoord.x, 1.0f - texCoord.y);
-                texCoordTransformed = float2(texCoordTransformed.x * gridSize.x,
-                                           texCoordTransformed.y * gridSize.y);
-              
-                int viewIndex =
-                    int(texCoordTransformed.x) + gridSize.x * int(texCoordTransformed.y);
-              
-                texCoordTransformed.x =
-                    texCoordTransformed.x - float(int(texCoordTransformed.x));
-                texCoordTransformed.y =
-                    texCoordTransformed.y - float(int(texCoordTransformed.y));
+                int viewIndex = int(cellCoordinates.x) + grid_size_x * int(cellCoordinates.y);
+                
+                // texcoords in this texcels coordinate system (from 0 - 1)
+                float2 actualTexCoords = float2(cellCoordinates.x - float(int(cellCoordinates.x)), cellCoordinates.y - float(int(cellCoordinates.y)));
               
                 // Crop image to avoid image artefacts at border
-                texCoordTransformed *= (1.0f - crop);
-                texCoordTransformed += crop * 0.5f;
-              
+                // actualTexCoords *= (1.0f - crop);
+                // actualTexCoords += crop * 0.5f;
+                
+
+                // first and last image in the grid are the left and right camera
                 if (gridCount % 2 == 1 && viewIndex == gridCount / 2) { // CENTER VIEW
               
-                  outputColor = texture0.Sample(samplertexture0, texCoordTransformed);
+                  outputColor = sampleTexture(actualTexCoords);
               
                   outputColor.a = 0.0f;
                   return outputColor;
                 }
+
+                // disparity has to be calculated based on the formula in https://medium.com/analytics-vidhya/distance-estimation-cf2f2fd709d8
+                // Z is the depth we get from the depthmap
+                // D is the disparity we want to calculate
+                // D = ((f/d) * T) / Z
               
                 // Disparity calculation A:
                 // linear shift
                 //
-                float dynamicViewOffset =
-                    (float(viewIndex) - float(gridCount / 2) + 0.5f) * disparityStep;
+                float dynamicViewOffset = viewIndex * disparityStep;
+                
+                // distance to the focus plane
+                float focusPlaneDistance = (focus_plane - (normalization_max - layer));
               
-                float focusPlaneDistance = (focusPlane_ - (1.0f - layer));
-              
-                float2 texCoordShifted = texCoordTransformed;
+                float2 texCoordShifted = actualTexCoords;
                 texCoordShifted.x += focusPlaneDistance * dynamicViewOffset * 0.1f;
               
-                float texDepthOriginal = _depthMapLeft.Sample(sampler_depthMapLeft, texCoordTransformed).r;
-                texDepthOriginal =
-                    linearNormalize(texDepthOriginal, normalization_min, normalization_max);
-              
-                float texDepth = _depthMapLeft.Sample(sampler_depthMapLeft, texCoordShifted).r;
-                texDepth = linearNormalize(texDepth, normalization_min, normalization_max);
+                float texDepth = sampleDepth(texCoordShifted).r;
                 // layer 0 = back
                 // layer 1 = front
               
                 // texDepth 0 = back
-              
-                if ((layer - texDepth) > (1.0f / float(depth_layer_discretization))) {
+                
+                // discard fragments with a depth smaller than the depth of the layer we are currently rendering
+                if ((layer - texDepth) > layerDistance) {
                   // from back to front
                   // discard fragments that are in front of current render
                   // layer
@@ -173,12 +190,12 @@ Shader "G3D/ViewGeneration"
               
                 float hole_marker = 0.0f;
                 // FragColor.b >0.5 -> hole
-                if ((layer - texDepth) < -(1.0f / float(depth_layer_discretization))) {
+                if ((layer - texDepth) < -layerDistance) {
                   // from back to front
                   // discard fragments that are in front of current render
                   // layer
-                  hole_marker = 1.0f;
-                  // discard;
+                    hole_marker = 1.0f;
+                   discard;
                 }
               
                 // float dx = linearNormalize(sobel_x(texCoordShifted), normalization_min,
@@ -186,7 +203,7 @@ Shader "G3D/ViewGeneration"
                 // float dxy = linearNormalize(sobel(texCoordShifted), normalization_min,
                 //                             normalization_max);
               
-                outputColor = texture0.Sample(samplertexture0, texCoordShifted);
+                outputColor = sampleTexture(texCoordShifted);
               
                 if (debug_mode == 4) {              // DEBUG OUTPUT
                   outputColor.r = (1.0f - texDepth); // 0.0=front | 1.0=back
@@ -205,232 +222,3 @@ Shader "G3D/ViewGeneration"
         }
     }
 }
-
-
-// Shader "G3D/ViewGeneration"
-// {
-//     HLSLINCLUDE
-//     #pragma target 4.5
-//     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch
-
-
-//     // #if defined (SHADER_API_GAMECORE)
-//     // #include "Packages/com.unity.render-pipelines.gamecore/ShaderLibrary/API/GameCore.hlsl"
-//     // #elif defined(SHADER_API_XBOXONE)
-//     // #include "Packages/com.unity.render-pipelines.xboxone/ShaderLibrary/API/XBoxOne.hlsl"
-//     // #elif defined(SHADER_API_PS4)
-//     // #include "Packages/com.unity.render-pipelines.ps4/ShaderLibrary/API/PSSL.hlsl"
-//     // #elif defined(SHADER_API_PS5)
-//     // #include "Packages/com.unity.render-pipelines.ps5/ShaderLibrary/API/PSSL.hlsl"
-//     // #elif defined(SHADER_API_D3D11)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/D3D11.hlsl"
-//     // #elif defined(SHADER_API_METAL)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/Metal.hlsl"
-//     // #elif defined(SHADER_API_VULKAN)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/Vulkan.hlsl"
-//     // #elif defined(SHADER_API_SWITCH)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/Switch.hlsl"
-//     // #elif defined(SHADER_API_GLCORE)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/GLCore.hlsl"
-//     // #elif defined(SHADER_API_GLES3)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/GLES3.hlsl"
-//     // #elif defined(SHADER_API_GLES)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/GLES2.hlsl"
-//     // #else
-//     // #error unsupported shader api
-//     // #endif
-
-//     // #if defined(SHADER_API_D3D11)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/D3D11.hlsl"
-//     // #elif defined(SHADER_API_METAL)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/Metal.hlsl"
-//     // #elif defined(SHADER_API_VULKAN)
-//     // #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/API/Vulkan.hlsl"
-//     // #else
-//     // #error unsupported shader api
-//     // #endif
-
-//     // #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/TextureXR.hlsl"
-
-    
-//     struct v2f
-//     {
-//         float2 uv : TEXCOORD0;
-//         float4 screenPos : SV_POSITION;
-//     };
-
-
-//     // Texture2D DepthMap;
-//     // SamplerState samplerDepthMap;
-
-//     // TEXTURE2D_X(_CameraDepthTexture);
-//     // SAMPLER(sampler_CameraDepthTexture);
-
-
-
-//     float4 frag (v2f i) : SV_Target
-//     {
-//         // float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
-//         // float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
-//         // int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
-        
-//         float2 uvCoords = i.uv;
-
-//         // // mirror the image if necessary
-//         // if (mirror != 0) {
-//         //     uvCoords.x = 1.0 - uvCoords.x;
-//         // }
-        
-//         // float4 depthMap = _CameraDepthTexture.Sample(sampler_CameraDepthTexture, uvCoords);
-//         // float depth = LOAD_TEXTURE2D_X_LOD(_CameraDepthTexture, uvCoords, 0).r;
-//         return float4(1, 0, 0, 1.f);
-//     }
-//     ENDHLSL
-
-//     // URP Shader
-//     SubShader
-//     {
-//         PackageRequirements
-//         {
-//             "com.unity.render-pipelines.universal": "unity=2021.3"
-//         }
-
-//         Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"}
-//         LOD 100
-//         Cull Off
-
-//         Pass
-//         {
-//             ZTest Always
-//             Blend Off
-//             Cull Off
-
-//             HLSLPROGRAM
-//                 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-
-//                 #pragma vertex vert
-//                 #pragma fragment frag
-
-//                 struct VertAttributes
-//                 {
-//                     uint vertexID : SV_VertexID;
-//                     UNITY_VERTEX_INPUT_INSTANCE_ID
-//                 };
-
-//                 v2f vert(VertAttributes input)
-//                 {
-//                     v2f output;
-//                     UNITY_SETUP_INSTANCE_ID(input);
-//                     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-//                     output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
-//                     output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
-
-//                     return output;
-
-//                 }
-//             ENDHLSL
-//         }
-//     }
-
-//     // HDRP Shader
-//     SubShader
-//     {
-//         PackageRequirements
-//         {
-//             "com.unity.render-pipelines.high-definition": "unity=2021.3"
-//         }
-
-//         Tags { "RenderType"="Opaque" "RenderPipeline" = "HDRenderPipeline"}
-
-//         Pass
-//         {
-//             Name "G3DFullScreen3D"
-
-//             ZTest Always
-//             Blend Off
-//             Cull Off
-
-//             HLSLPROGRAM
-//                 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
-//                 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
-
-//                 #pragma vertex vert
-//                 #pragma fragment fragHDRP
-
-//                 Texture2D DepthMap;
-//                 SamplerState samplerDepthMap;
-
-//                 struct VertAttributes
-//                 {
-//                     uint vertexID : SV_VertexID;
-//                     UNITY_VERTEX_INPUT_INSTANCE_ID
-//                 };
-
-//                 v2f vert(VertAttributes input)
-//                 {
-//                     v2f output;
-//                     UNITY_SETUP_INSTANCE_ID(input);
-//                     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-//                     output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
-//                     output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
-
-//                     return output;
-
-//                 }
-
-//                 float4 fragHDRP (v2f i) : SV_Target
-//                 {
-//                     // float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
-//                     // float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
-//                     // int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
-                    
-//                     float2 uvCoords = i.uv;
-
-//                     // // mirror the image if necessary
-//                     // if (mirror != 0) {
-//                     //     uvCoords.x = 1.0 - uvCoords.x;
-//                     // }
-                    
-//                     float4 depthMap = DepthMap.Sample(samplerDepthMap, uvCoords);
-//                     float depth = LoadCameraDepth(uvCoords);
-//                     return float4(depth, 0, 0, 1.f);
-//                 }
-//             ENDHLSL
-//         }
-//     }
-
-//     // Built-in Render Pipeline
-//     SubShader
-//     {
-//         // No culling or depth
-//         Cull Off ZTest Always
-
-//         Pass
-//         {
-//             HLSLPROGRAM
-//             #pragma vertex vert
-//             #pragma fragment fragSRP
-
-//             #include "UnityCG.cginc"
-
-//             v2f vert(float4 vertex : POSITION, float2 uv : TEXCOORD0)
-//             {
-//                 v2f o;
-//                 o.uv = uv;
-//                 o.screenPos = UnityObjectToClipPos(vertex);
-//                 return o;
-//             }
-
-
-//             float4 fragSRP(v2f i) : SV_Target
-//             {
-//                 // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
-//                 // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
-//                 // i.screenPos.y = viewportHeight - i.screenPos.y;
-//                 return frag(i);
-//             }
-
-//             ENDHLSL
-//         }
-//     }
-// }

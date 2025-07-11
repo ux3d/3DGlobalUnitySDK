@@ -372,14 +372,20 @@ public class G3DCamera
             depthMapRight,
             RenderTextureSubElement.Depth
         );
-        viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 3);
-        viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 3);
+        viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 4);
+        viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 4);
         viewGenerationMaterial.SetInt(Shader.PropertyToID("depth_layer_discretization"), 1024);
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("crop"), 0.01f);
-        viewGenerationMaterial.SetFloat(Shader.PropertyToID("disparity"), 1.9f);
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("maxDisparity"), 1.9f);
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("focus_plane"), 0.1f);
-        viewGenerationMaterial.SetFloat(Shader.PropertyToID("normalization_min"), 0.0f);
-        viewGenerationMaterial.SetFloat(Shader.PropertyToID("normalization_max"), 10.0f);
+        viewGenerationMaterial.SetFloat(
+            Shader.PropertyToID("normalization_min"),
+            mainCamera.nearClipPlane
+        );
+        viewGenerationMaterial.SetFloat(
+            Shader.PropertyToID("normalization_max"),
+            mainCamera.farClipPlane
+        );
 
         viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
         viewGenerationPass.materialPassName = "G3DViewGeneration";
@@ -389,23 +395,23 @@ public class G3DCamera
         viewGenerationPass.rightDepthMapHandle = rtHandleDepthRight;
 
         // add autostereo generation pass
-        customPass =
-            customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
-            as G3DHDRPViewGenerationMosaicPass;
-        RenderTexture mosaicTexture = new RenderTexture(
-            mainCamera.pixelWidth,
-            mainCamera.pixelHeight,
-            0
-        )
-        {
-            format = RenderTextureFormat.ARGB32,
-            depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
-        };
-        RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
-        material.SetTexture("mosaictexture", mosaicTexture, RenderTextureSubElement.Color);
-        customPass.fullscreenPassMaterial = material;
-        customPass.materialPassName = "G3DFullScreen3D";
-        customPass.mosaicImageHandle = rtHandleMosaic;
+        // customPass =
+        //     customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
+        //     as G3DHDRPViewGenerationMosaicPass;
+        // RenderTexture mosaicTexture = new RenderTexture(
+        //     mainCamera.pixelWidth,
+        //     mainCamera.pixelHeight,
+        //     0
+        // )
+        // {
+        //     format = RenderTextureFormat.ARGB32,
+        //     depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
+        // };
+        // RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
+        // material.SetTexture("mosaictexture", mosaicTexture, RenderTextureSubElement.Color);
+        // customPass.fullscreenPassMaterial = material;
+        // customPass.materialPassName = "G3DFullScreen3D";
+        // customPass.mosaicImageHandle = rtHandleMosaic;
 
         antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
 #endif
@@ -1036,6 +1042,8 @@ public class G3DCamera
             -currentFocusDistance
         );
 
+        viewGenerationMaterial?.SetFloat(Shader.PropertyToID("focus_plane"), currentFocusDistance);
+
         //calculate camera positions and matrices
         for (int i = 0; i < internalCameraCount; i++)
         {
@@ -1540,7 +1548,9 @@ public class G3DCamera
             currentView += 1;
         }
 
-        float offset = currentView * targetEyeSeparation;
+        // TODO remove the * 8 multiplier
+        // it is used to scale the offset to the ends for a mosaic texture where the middle textures are missing
+        float offset = currentView * 8 * targetEyeSeparation;
 
         // when the camera count is even, one camera is placed half the eye separation to the right of the center
         // same for the other to the left

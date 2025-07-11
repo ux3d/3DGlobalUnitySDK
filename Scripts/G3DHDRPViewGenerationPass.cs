@@ -22,11 +22,17 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         {
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
 
-            for (int i = 0; i < 10; i++)
-            {
-                float layer = i / 1024.0f;
-                ctx.propertyBlock.SetFloat(Shader.PropertyToID("layer"), i);
+            float viewDistance = camera.farClipPlane - camera.nearClipPlane;
+            float stepSize = viewDistance / 1024.0f;
 
+            for (int i = 1024; i > 0; i--)
+            {
+                float layer = i * stepSize + camera.nearClipPlane;
+                ctx.propertyBlock.SetFloat(Shader.PropertyToID("layer"), layer);
+                ctx.propertyBlock.SetFloat(Shader.PropertyToID("layerDistance"), stepSize);
+
+                // sample left camera
+                ctx.propertyBlock.SetFloat(Shader.PropertyToID("useLeftCamera"), 1);
                 CoreUtils.DrawFullScreen(
                     ctx.cmd,
                     fullscreenPassMaterial,
@@ -105,8 +111,8 @@ internal class G3DHDRPViewGenerationMosaicPass : FullScreenCustomPass
             CustomPassUtils.Copy(ctx, ctx.cameraColorBuffer, mosaicImageHandle);
 
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
-            ctx.propertyBlock.SetFloat(Shader.PropertyToID("mosaic_rows"), 3);
-            ctx.propertyBlock.SetFloat(Shader.PropertyToID("mosaic_columns"), 3);
+            ctx.propertyBlock.SetFloat(Shader.PropertyToID("mosaic_rows"), 4);
+            ctx.propertyBlock.SetFloat(Shader.PropertyToID("mosaic_columns"), 4);
             CoreUtils.DrawFullScreen(
                 ctx.cmd,
                 fullscreenPassMaterial,
