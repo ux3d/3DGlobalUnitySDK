@@ -27,7 +27,7 @@ In general it renders two or more camera views per frame and combines them into 
 
 ### Calibration files
 
-These files are used to calibrate the 3d effect for the connected display. It always has to be set for this plugin to work properly. It only accepts txt files. For this plugin to work properly you have the calibration file corresponding to your 3d Global display.
+These files are used to calibrate the 3d effect for the connected display. It always has to be set for this plugin to work properly. It only accepts txt files. For this plugin to work properly you have to use the calibration file corresponding to your 3d Global display.
 
 You can find calibration files in the "Multiview Display Calibrations" folder of this repository.
 
@@ -37,7 +37,7 @@ If you want to use the diorama mode you have to set the "Calibration Path" param
 
 The plugin is build to work in a 1:1 scale with the display. This value can be used to scale the plugin to fit larger scenes. It scales the camera position, the field of view of the cameras, etc.
 
-1:1 scale means at scene scale factor 1 the cameras are positioned at the same distance as the display is from the viewer and the focus plane has the same dimensions as the actual physical display.
+1:1 scale means at scene scale factor 1 the cameras are positioned at the same distance from the focus plane as the display is from the viewer and the focus plane has the same dimensions as the actual physical display.
 
 ### Dolly zoom
 
@@ -48,22 +48,22 @@ Mimics a dolly zoom effect by scaling the camera position and field of view. Thi
 | Name                    | Description                                                         |
 | ----------------------- | ------------------------------------------------------------------- |
 | Head tracking scale     | Scales the strength of head tracking.                               |
-| Render resolution scale | Size of the individual camera render textures.                      |
+| Render resolution scale | Size of the individual camera render textures in percent.           |
 | Show gizmos             | Render helper gizmos in scene.                                      |
 | Gizmo size              | Size of the gizmos.                                                 |
 | Debug messages          | Print debug messages from the head tracking library to the console. |
-| Show test frame         | Show a red/ green test frame.                                       |
+| Show test frame         | Show a red/ green test frame for diorama mode.                      |
 
 ### Render resolution scale
 
-100 corresponds to the native resolution of the display. i.e. each camera renders at the native resolution of the display.
+100% corresponds to the native resolution of the display. i.e. each camera renders at the native resolution of the display.
 
-This value can be used to increase performance by reducing the resolution of the individual camera render textures. You can go as low as 20 - 40 without losing too much quality. It does not affect the resolution of the final image displayed on the 3D Global autostereo display.
+This value can be used to increase performance by reducing the resolution of the individual camera render textures. You can go as low as 20% - 40% without losing too much quality. It does not affect the resolution of the final image displayed on the 3D Global autostereo display.
 
 # Functionality
 
 The plugin renders the scene from newly created cameras (usually one for each eye; except when multiview is enabled) and combines the images into one final image.
-The camera the script is attached to is used as the main camera, displays the final image, but does not render anything itself.
+The camera the script is attached to is used as the main camera and displays the final image, but does not render anything itself.
 The new cameras are created as children of the main camera at runtime.
 
 # Switching render pipelines
@@ -79,6 +79,6 @@ Reimporting this package also updates the "Scripting define symbols" automatical
 
 # Known issues
 
-If you have more than one render pipeline installed this plugin cant know which one is the active one and will not work correctly. Removing the unused render pipeline package resolves this issue. Currently the plugin only checks the installed render pipeline after installation. So if you switch the render pipeline you have to remove the plugin and reimport it.
+If you have more than one render pipeline installed this plugin cant know which one is the active one and might not work correctly. Removing the unused render pipeline package resolves this issue. Currently the plugin only checks the installed render pipeline after installation. So if you switch the render pipeline you have to remove the plugin and reimport it.
 
 Switching mode during playback (multiview to diorama and vice versa) is currently not supported. You have to stop the playback and start it again to switch between modes.
