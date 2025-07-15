@@ -13,6 +13,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public RTHandle leftColorMapHandle;
     public RTHandle rightColorMapHandle;
 
+    public float focusDistance = 1.0f;
+
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
@@ -22,17 +24,16 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         {
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
 
-            float viewDistance = camera.farClipPlane - camera.nearClipPlane;
-            float stepSize = viewDistance / 1024.0f;
+            float viewRange = camera.farClipPlane - camera.nearClipPlane;
+            float stepSize = viewRange / 1024.0f;
 
             for (int i = 1024; i > 0; i--)
             {
                 float layer = i * stepSize + camera.nearClipPlane;
                 ctx.propertyBlock.SetFloat(Shader.PropertyToID("layer"), layer);
-                ctx.propertyBlock.SetFloat(Shader.PropertyToID("layerDistance"), stepSize);
+                ctx.propertyBlock.SetFloat(Shader.PropertyToID("focusDistance"), focusDistance);
 
                 // sample left camera
-                ctx.propertyBlock.SetFloat(Shader.PropertyToID("useLeftCamera"), 1);
                 CoreUtils.DrawFullScreen(
                     ctx.cmd,
                     fullscreenPassMaterial,
@@ -40,8 +41,6 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                     shaderPassId: 0
                 );
             }
-
-            for (int i = 0; i < 1; i++) { }
         }
         else if (isLeftCamera(camera))
         {

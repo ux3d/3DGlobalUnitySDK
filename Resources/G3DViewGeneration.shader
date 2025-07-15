@@ -35,14 +35,21 @@ Shader "G3D/ViewGeneration"
             Texture2D _depthMapLeft;
             SamplerState sampler_depthMapLeft;
 
+            float4x4 rightProjMatrix;
+            float4x4 inverseRightProjMatrix;
+            float4x4 leftProjMatrix;
+            float4x4 inverseLeftProjMatrix;
+
             int useLeftCamera = 1; // 0 = right, 1 = left
 
+            // 0 = right camera, 1 = left camera
             Texture2D texture0;
             SamplerState samplertexture0;
             Texture2D texture1;
             SamplerState samplertexture1;
             
             float layer;  // range 0..1
+            float focusDistance; // distance to focus plane in camera space
 
             int depth_layer_discretization; // max layer amount -> 1024
 
@@ -50,14 +57,17 @@ Shader "G3D/ViewGeneration"
 
             float maxDisparity = 1.5f; // range 0..2 disparity between left and right camera
             float crop;      // range 0..1 percentage of image to crop from each side
-            float normalization_min = 0; // scene min depth value -> set to nearPlane
-            float normalization_max = 1; // scene max depth value -> set to farPlane
+            float nearPlane = 0; // scene min depth value -> set to nearPlane
+            float farPlane = 1; // scene max depth value -> set to farPlane
 
             int debug_mode;
             int grid_size_x;
             int grid_size_y;
 
-            float focus_plane = 0.5f; // range near to far plane
+            float focalLengthInPixel = 600;
+
+            int cameraPixelWidth = 1920;
+
 
             struct VertAttributes
             {
@@ -86,26 +96,38 @@ Shader "G3D/ViewGeneration"
             float linearNormalize(float value, float minV, float maxV) {
                 return clamp((value - minV) / (maxV - minV), 0.0f, 1.0f);
             }
+
+            float map(float x, float in_min, float in_max, float out_min, float out_max)
+            {
+                // Convert the current value to a percentage
+                // 0% - min1, 100% - max1
+                float perc = (x - in_min) / (in_max - in_min);
+
+                // Do the same operation backwards with min2 and max2
+                float value = perc * (out_max - out_min) + out_min;
+                return value;
+            }
             
-            // convert range back from 0..1 to minV..maxV
-            // normalized device coordinates -> pixel coords + depth
-            // normalized device coordinates times inverse projecion matrix
-            float4 sampleDepth(float2 texCoords) {
-                if(useLeftCamera == 1) {
-                    return _depthMapLeft.Sample(sampler_depthMapLeft, texCoords);
-                } else {
-                    return _depthMapRight.Sample(sampler_depthMapRight, texCoords);
-                }
+            float sampleLeftDepth(float2 uv) {
+                float4 depthSample = _depthMapLeft.Sample(sampler_depthMapLeft, uv);
+                float depth = Linear01Depth(depthSample.r, _ZBufferParams); // convert depth from logarithmic scale to linear scale
+                float x = uv.x * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
+                float y = uv.y * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
+                float4 NDC = float4(x, y, depth, 1.0f);
+                NDC = mul(inverseLeftProjMatrix, NDC); // apply inverse projection matrix to get clip space coordinates
+                return -NDC.z / NDC.w; // devide by w to get depth in view space
             }
 
-            float4 sampleTexture(float2 texCoords) {
-                if(useLeftCamera == 1) {
-                    return texture0.Sample(samplertexture0, texCoords);
-                } else {
-                    return texture1.Sample(samplertexture1, texCoords);
-                }
+            float sampleRightDepth(float2 uv) {
+                float4 depthSample = _depthMapRight.Sample(sampler_depthMapRight, uv);
+                float depth = Linear01Depth(depthSample.r, _ZBufferParams); // convert depth from logarithmic scale to linear scale
+                float x = uv.x * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
+                float y = uv.y * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
+                float4 NDC = float4(x, y, depth, 1.0f);
+                NDC = mul(inverseRightProjMatrix, NDC); // apply inverse projection matrix to get clip space coordinates
+                return -NDC.z / NDC.w; // devide by w to get depth in view space
             }
-            
+
             /// <summary>
             /// creates a grid of views with a given grid size.
             /// each view is offset by a given disparity value.
@@ -114,15 +136,11 @@ Shader "G3D/ViewGeneration"
             /// </summary>
             float4 fragHDRP (v2f i) : SV_Target
             {
-                float2 texCoord = i.uv;
+                // float depth = sampleLeftDepth(i.uv);
+                // depth = map(depth, nearPlane, farPlane, 0, 1);
+                // return float4(depth, depth, depth, 1.0f); // return depth value in world space
 
-                float4 outputColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
-
-
-                int gridCount = grid_size_x * grid_size_y;
-                float disparityStep = maxDisparity / gridCount * 1.0f; // flip (1.0) to invert view order
                 
-
                 // the text coords of the original left and right view are from 0 - 1
                 // the tex coords of the texel we are currently rendering are also from 0 - 1
                 // but we want to create a grid of views, so we need to transform the tex coords
@@ -136,87 +154,85 @@ Shader "G3D/ViewGeneration"
                 //    -> e.g. 2.4 turns to 2
                 // step 3: subtract the integer part from the transformed tex coords to get the texel coords in the grid cell
                 //   -> e.g. 2.4 - 2 = 0.4 -> final texel coords in the grid cell are 0.4, 0.5
-                float2 cellCoordinates = float2(texCoord.x, texCoord.y);
+                float2 cellCoordinates = float2(i.uv.x, 1.0 - i.uv.y); // flip y coordiate to have cell index 0 in upper left corner
                 cellCoordinates = float2(cellCoordinates.x * grid_size_x, cellCoordinates.y * grid_size_y);
-              
-                int viewIndex = int(cellCoordinates.x) + grid_size_x * int(cellCoordinates.y);
-                
+                uint viewIndex = uint(cellCoordinates.x) + grid_size_x * uint(cellCoordinates.y);
                 // texcoords in this texcels coordinate system (from 0 - 1)
                 float2 actualTexCoords = float2(cellCoordinates.x - float(int(cellCoordinates.x)), cellCoordinates.y - float(int(cellCoordinates.y)));
-              
+                actualTexCoords.y = 1.0 - actualTexCoords.y; // flip y coordinate to match original tex coords
+
                 // Crop image to avoid image artefacts at border
                 // actualTexCoords *= (1.0f - crop);
                 // actualTexCoords += crop * 0.5f;
                 
-
+                
+                uint gridCount = grid_size_x * grid_size_y;
                 // first and last image in the grid are the left and right camera
-                if (gridCount % 2 == 1 && viewIndex == gridCount / 2) { // CENTER VIEW
-              
-                  outputColor = sampleTexture(actualTexCoords);
-              
-                  outputColor.a = 0.0f;
-                  return outputColor;
+                if (viewIndex == 0) {
+                    return texture1.Sample(samplertexture1, actualTexCoords); // sample the left camera texture
                 }
+                if (viewIndex == gridCount - 1) {
+                    return texture0.Sample(samplertexture0, actualTexCoords); // sample the right camera texture
+                }
+                
+                float disparityStep = maxDisparity / gridCount;
 
-                // disparity has to be calculated based on the formula in https://medium.com/analytics-vidhya/distance-estimation-cf2f2fd709d8
-                // Z is the depth we get from the depthmap
-                // D is the disparity we want to calculate
-                // D = ((f/d) * T) / Z
-              
-                // Disparity calculation A:
-                // linear shift
-                //
-                float dynamicViewOffset = viewIndex * disparityStep;
+                float distLayerFocus = layer - focusDistance; // distance of current layer to focus plane
                 
-                // distance to the focus plane
-                float focusPlaneDistance = (focus_plane - (normalization_max - layer));
-              
-                float2 texCoordShifted = actualTexCoords;
-                texCoordShifted.x += focusPlaneDistance * dynamicViewOffset * 0.1f;
-              
-                float texDepth = sampleDepth(texCoordShifted).r;
-                // layer 0 = back
-                // layer 1 = front
-              
-                // texDepth 0 = back
+                float leftOffset = viewIndex * disparityStep; // distance between the original left camera and the current view
+                float left = 1.f / layer;
+                float right = 1.f / distLayerFocus;
+                float DLeft = (focalLengthInPixel * 1.0f) * (left - right); // calculate offset of layer in pixel
+                DLeft = DLeft / cameraPixelWidth; //map(DLeft, 0.0f, cameraPixelWidth, 0.0f, 1.0f); // convert to texture coordinates
+                // float rightOffset = (gridCount - 1 - viewIndex) * disparityStep; // distance between the original left camera and the current view
+                // float DRight = (focalLengthInPixel * rightOffset) / distLayerFocus; // calculate offset of layer in pixel
+                // DRight = map(DRight, 0.0f, cameraPixelWidth, 0.0f, 1.0f); // convert to texture coordinates
                 
-                // discard fragments with a depth smaller than the depth of the layer we are currently rendering
-                if ((layer - texDepth) > layerDistance) {
-                  // from back to front
-                  // discard fragments that are in front of current render
-                  // layer
-                  discard;
-                }
-              
-                float hole_marker = 0.0f;
-                // FragColor.b >0.5 -> hole
-                if ((layer - texDepth) < -layerDistance) {
-                  // from back to front
-                  // discard fragments that are in front of current render
-                  // layer
-                    hole_marker = 1.0f;
-                   discard;
-                }
-              
-                // float dx = linearNormalize(sobel_x(texCoordShifted), normalization_min,
-                //                            normalization_max);
-                // float dxy = linearNormalize(sobel(texCoordShifted), normalization_min,
-                //                             normalization_max);
-              
-                outputColor = sampleTexture(texCoordShifted);
-              
-                if (debug_mode == 4) {              // DEBUG OUTPUT
-                  outputColor.r = (1.0f - texDepth); // 0.0=front | 1.0=back
-                  outputColor.g = 0.0f;
-                  outputColor.b = 0.0f;
-                  outputColor.a = 1.0f;
-                  return outputColor;
-                }
-              
                 
-                outputColor = clamp(outputColor, 0.0f, 1.0f);
-                // outputColor.a = (dxy + dx) * (0.5); // TODO: set this bias as parameter
-                return outputColor;
+                float2 texCoordShiftedLeft = actualTexCoords;
+                texCoordShiftedLeft.x += DLeft;
+                float shiftedLeftDepth = sampleLeftDepth(texCoordShiftedLeft);
+                // float2 texCoordShiftedRight = actualTexCoords;
+                // texCoordShiftedRight.x -= DRight;
+                // float shiftedRightDepth = sampleRightDepth(texCoordShiftedRight);
+                
+                if ((layer - shiftedLeftDepth) > layerDistance) {
+                    // from back to front
+                    // discard fragments that are in front of current render
+                    // layer
+
+                    // if ((layer - shiftedRightDepth) > layerDistance) {
+                    //     discard;
+                    // }
+                    
+                    // if ((layer - shiftedRightDepth) < -layerDistance) {
+                    //     discard;
+                    // }
+                    // return texture0.Sample(samplertexture0, texCoordShiftedRight);
+                    discard;
+                }
+                
+                if ((layer - shiftedLeftDepth) < -layerDistance) {
+                    // from back to front
+                    // discard fragments that are in front of current render
+                    // layer
+                    // if ((layer - shiftedRightDepth) > layerDistance) {
+                    //     discard;
+                    // }
+                    
+                    // if ((layer - shiftedRightDepth) < -layerDistance) {
+                    //     discard;
+                    // }
+                    // return texture0.Sample(samplertexture0, texCoordShiftedRight);
+                    discard;
+                }
+                
+                if (DLeft < 0.0f) {
+                    return float4(0.0f, -DLeft, 0.0f, 1.0f); // return black if the offset is negative
+                }
+                return float4(DLeft, 0.0f, 0.0f, 1.0f); // return the offset for debugging purposes
+                
+                return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
             }
             ENDHLSL
         }

@@ -377,14 +377,37 @@ public class G3DCamera
         viewGenerationMaterial.SetInt(Shader.PropertyToID("depth_layer_discretization"), 1024);
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("crop"), 0.01f);
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("maxDisparity"), 1.9f);
-        viewGenerationMaterial.SetFloat(Shader.PropertyToID("focus_plane"), 0.1f);
+        float focalLengthInPixel =
+            mainCamera.pixelWidth
+            / (2.0f * Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2.0f) * Mathf.Rad2Deg);
         viewGenerationMaterial.SetFloat(
-            Shader.PropertyToID("normalization_min"),
-            mainCamera.nearClipPlane
+            Shader.PropertyToID("focalLengthInPixel"),
+            focalLengthInPixel
         );
-        viewGenerationMaterial.SetFloat(
-            Shader.PropertyToID("normalization_max"),
-            mainCamera.farClipPlane
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("nearPlane"), mainCamera.nearClipPlane);
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("farPlane"), mainCamera.farClipPlane);
+        float viewRange = mainCamera.farClipPlane - mainCamera.nearClipPlane;
+        float stepSize = viewRange / 1024.0f;
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("layerDistance"), stepSize);
+        viewGenerationMaterial.SetInteger(
+            Shader.PropertyToID("cameraPixelWidth"),
+            mainCamera.pixelWidth
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("inverseLeftProjMatrix"),
+            cameras[1].projectionMatrix.inverse
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("inverseRightProjMatrix"),
+            cameras[0].projectionMatrix.inverse
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("leftProjMatrix"),
+            cameras[1].projectionMatrix
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("rightProjMatrix"),
+            cameras[0].projectionMatrix
         );
 
         viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
@@ -433,6 +456,8 @@ public class G3DCamera
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
         headPositionLog = new Queue<string>(10000);
+
+        viewGenerationPass.focusDistance = scaledFocusDistanceAndDolly;
     }
 
     void OnApplicationQuit()
@@ -1041,8 +1066,6 @@ public class G3DCamera
             verticalOffset,
             -currentFocusDistance
         );
-
-        viewGenerationMaterial?.SetFloat(Shader.PropertyToID("focus_plane"), currentFocusDistance);
 
         //calculate camera positions and matrices
         for (int i = 0; i < internalCameraCount; i++)
