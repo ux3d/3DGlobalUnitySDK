@@ -1,6 +1,4 @@
 #if G3D_HDRP
-using Codice.Client.BaseCommands;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
