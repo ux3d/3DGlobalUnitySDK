@@ -40,8 +40,6 @@ Shader "G3D/ViewGeneration"
             float4x4 leftProjMatrix;
             float4x4 inverseLeftProjMatrix;
 
-            int useLeftCamera = 1; // 0 = right, 1 = left
-
             // 0 = right camera, 1 = left camera
             Texture2D texture0;
             SamplerState samplertexture0;
@@ -56,11 +54,9 @@ Shader "G3D/ViewGeneration"
             float layerDistance = 1.0f; // distance between layers in world space
 
             float maxDisparity = 1.5f; // range 0..2 disparity between left and right camera
-            float crop;      // range 0..1 percentage of image to crop from each side
             float nearPlane = 0; // scene min depth value -> set to nearPlane
             float farPlane = 1; // scene max depth value -> set to farPlane
 
-            int debug_mode;
             int grid_size_x;
             int grid_size_y;
 
@@ -93,10 +89,6 @@ Shader "G3D/ViewGeneration"
 
             }
 
-            float linearNormalize(float value, float minV, float maxV) {
-                return clamp((value - minV) / (maxV - minV), 0.0f, 1.0f);
-            }
-
             float map(float x, float in_min, float in_max, float out_min, float out_max)
             {
                 // Convert the current value to a percentage
@@ -111,21 +103,22 @@ Shader "G3D/ViewGeneration"
             float sampleLeftDepth(float2 uv) {
                 float4 depthSample = _depthMapLeft.Sample(sampler_depthMapLeft, uv);
                 float depth = Linear01Depth(depthSample.r, _ZBufferParams); // convert depth from logarithmic scale to linear scale
-                float x = uv.x * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
-                float y = uv.y * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
-                float4 NDC = float4(x, y, depth, 1.0f);
-                NDC = mul(inverseLeftProjMatrix, NDC); // apply inverse projection matrix to get clip space coordinates
-                return -NDC.z / NDC.w; // devide by w to get depth in view space
+                depth = map(depth, 0.0f, 1.0f, 0, farPlane);
+                return depth;
             }
 
             float sampleRightDepth(float2 uv) {
                 float4 depthSample = _depthMapRight.Sample(sampler_depthMapRight, uv);
                 float depth = Linear01Depth(depthSample.r, _ZBufferParams); // convert depth from logarithmic scale to linear scale
-                float x = uv.x * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
-                float y = uv.y * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
-                float4 NDC = float4(x, y, depth, 1.0f);
-                NDC = mul(inverseRightProjMatrix, NDC); // apply inverse projection matrix to get clip space coordinates
-                return -NDC.z / NDC.w; // devide by w to get depth in view space
+                depth = map(depth, 0.0f, 1.0f, 0, farPlane);
+                return depth;
+            }
+
+            float computeClipSpaceOffset(float cameraDistance, float focusDist, float distLayerFocusPlane, float4x4 projectionMatrix) {
+                float y = (cameraDistance / focusDist) * distLayerFocusPlane;
+                float4 offsetClipSpace = float4(y, 0.0f, 0.0f, 1.0f); // offset in clip space
+                offsetClipSpace = mul(offsetClipSpace, projectionMatrix); // apply projection matrix to get clip space coordinates
+                return offsetClipSpace.x;
             }
 
             /// <summary>
@@ -137,7 +130,7 @@ Shader "G3D/ViewGeneration"
             float4 fragHDRP (v2f i) : SV_Target
             {
                 // float depth = sampleLeftDepth(i.uv);
-                // depth = map(depth, nearPlane, farPlane, 0, 1);
+                // depth = map(depth, 0, farPlane, 0, 1);
                 // return float4(depth, depth, depth, 1.0f); // return depth value in world space
 
                 
@@ -161,11 +154,6 @@ Shader "G3D/ViewGeneration"
                 float2 actualTexCoords = float2(cellCoordinates.x - float(int(cellCoordinates.x)), cellCoordinates.y - float(int(cellCoordinates.y)));
                 actualTexCoords.y = 1.0 - actualTexCoords.y; // flip y coordinate to match original tex coords
 
-                // Crop image to avoid image artefacts at border
-                // actualTexCoords *= (1.0f - crop);
-                // actualTexCoords += crop * 0.5f;
-                
-                
                 uint gridCount = grid_size_x * grid_size_y;
                 // first and last image in the grid are the left and right camera
                 if (viewIndex == 0) {
@@ -176,63 +164,61 @@ Shader "G3D/ViewGeneration"
                 }
                 
                 float disparityStep = maxDisparity / gridCount;
-
-                float distLayerFocus = layer - focusDistance; // distance of current layer to focus plane
                 
+                float distLayerFocusPlane = -(layer - focusDistance); // distance between the layer and the focus plane
                 float leftOffset = viewIndex * disparityStep; // distance between the original left camera and the current view
-                float left = 1.f / layer;
-                float right = 1.f / distLayerFocus;
-                float DLeft = (focalLengthInPixel * 1.0f) * (left - right); // calculate offset of layer in pixel
-                DLeft = DLeft / cameraPixelWidth; //map(DLeft, 0.0f, cameraPixelWidth, 0.0f, 1.0f); // convert to texture coordinates
-                // float rightOffset = (gridCount - 1 - viewIndex) * disparityStep; // distance between the original left camera and the current view
-                // float DRight = (focalLengthInPixel * rightOffset) / distLayerFocus; // calculate offset of layer in pixel
-                // DRight = map(DRight, 0.0f, cameraPixelWidth, 0.0f, 1.0f); // convert to texture coordinates
+                float DLeft = computeClipSpaceOffset(leftOffset, focusDistance, distLayerFocusPlane, leftProjMatrix); // calculate offset of layer in pixel
+                
+                float rightOffset = (gridCount - 1 - viewIndex) * disparityStep; // distance between the original left camera and the current view
+                float DRight = computeClipSpaceOffset(rightOffset, focusDistance, distLayerFocusPlane, rightProjMatrix); // calculate offset of layer in pixel
                 
                 
                 float2 texCoordShiftedLeft = actualTexCoords;
                 texCoordShiftedLeft.x += DLeft;
                 float shiftedLeftDepth = sampleLeftDepth(texCoordShiftedLeft);
-                // float2 texCoordShiftedRight = actualTexCoords;
-                // texCoordShiftedRight.x -= DRight;
-                // float shiftedRightDepth = sampleRightDepth(texCoordShiftedRight);
                 
-                if ((layer - shiftedLeftDepth) > layerDistance) {
-                    // from back to front
-                    // discard fragments that are in front of current render
-                    // layer
+                float2 texCoordShiftedRight = actualTexCoords;
+                texCoordShiftedRight.x -= DRight;
+                float shiftedRightDepth = sampleRightDepth(texCoordShiftedRight);
+                
+                int leftFills = 1;
+                if(texCoordShiftedLeft.x < 0 || texCoordShiftedLeft.x > 1.0f) {
+                    leftFills = 0; // discard if the tex coord is out of bounds
+                }
+                if (abs((layer - shiftedLeftDepth)) > layerDistance) {
+                    leftFills = 0; // discard if the layer is too far away from the shifted left depth
+                }
 
-                    // if ((layer - shiftedRightDepth) > layerDistance) {
-                    //     discard;
-                    // }
-                    
-                    // if ((layer - shiftedRightDepth) < -layerDistance) {
-                    //     discard;
-                    // }
-                    // return texture0.Sample(samplertexture0, texCoordShiftedRight);
-                    discard;
+
+                int rightFills = 0;
+                if(texCoordShiftedRight.x < 0 || texCoordShiftedRight.x > 1.0f) {
+                    rightFills = 0; // discard if the tex coord is out of bounds
                 }
-                
-                if ((layer - shiftedLeftDepth) < -layerDistance) {
-                    // from back to front
-                    // discard fragments that are in front of current render
-                    // layer
-                    // if ((layer - shiftedRightDepth) > layerDistance) {
-                    //     discard;
-                    // }
-                    
-                    // if ((layer - shiftedRightDepth) < -layerDistance) {
-                    //     discard;
-                    // }
-                    // return texture0.Sample(samplertexture0, texCoordShiftedRight);
-                    discard;
+                if (abs((layer - shiftedRightDepth)) > layerDistance) {
+                    rightFills = 0; // discard if the layer is too far away from the shifted right depth
                 }
-                
-                if (DLeft < 0.0f) {
-                    return float4(0.0f, -DLeft, 0.0f, 1.0f); // return black if the offset is negative
+
+                if (leftFills == 0 && rightFills == 0) {
+                    discard; // discard if both left and right camera do not fill the layer
                 }
-                return float4(DLeft, 0.0f, 0.0f, 1.0f); // return the offset for debugging purposes
+                if (leftFills == 1 && rightFills == 0) {
+                    return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
+                }
+                if (leftFills == 0 && rightFills == 1) {
+                    return texture0.Sample(samplertexture0, texCoordShiftedRight); // sample the right camera texture
+                }
+
+                if(shiftedLeftDepth < shiftedRightDepth) {
+                    return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
+                }
+
+                return texture0.Sample(samplertexture0, texCoordShiftedRight); // sample the right camera texture
                 
-                return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
+                
+                // if (DLeft < 0.0f) {
+                //     return float4(0.0f, -DLeft, 0.0f, 1.0f);
+                // }
+                // return float4(DLeft, 0.0f, 0.0f, 1.0f);
             }
             ENDHLSL
         }

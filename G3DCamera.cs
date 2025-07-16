@@ -376,10 +376,10 @@ public class G3DCamera
         viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 4);
         viewGenerationMaterial.SetInt(Shader.PropertyToID("depth_layer_discretization"), 1024);
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("crop"), 0.01f);
-        viewGenerationMaterial.SetFloat(Shader.PropertyToID("maxDisparity"), 1.9f);
+        viewGenerationMaterial.SetFloat(Shader.PropertyToID("maxDisparity"), viewSeparation * 15); // TODO do not hardcode this value
         float focalLengthInPixel =
-            mainCamera.pixelWidth
-            / (2.0f * Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2.0f) * Mathf.Rad2Deg);
+            (mainCamera.pixelHeight / 2)
+            / (Mathf.Tan(mainCamera.fieldOfView / 2 * Mathf.Deg2Rad) * Mathf.Rad2Deg);
         viewGenerationMaterial.SetFloat(
             Shader.PropertyToID("focalLengthInPixel"),
             focalLengthInPixel
