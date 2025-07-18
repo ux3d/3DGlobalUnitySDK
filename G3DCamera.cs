@@ -916,6 +916,35 @@ public class G3DCamera
             oldRenderResolutionScale = renderResolutionScale;
             updateShaderRenderTextures();
         }
+
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("inverseLeftProjMatrix"),
+            cameras[1].projectionMatrix.inverse
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("inverseRightProjMatrix"),
+            cameras[0].projectionMatrix.inverse
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("leftViewMatrix"),
+            cameras[1].worldToCameraMatrix.inverse
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("leftProjMatrix"),
+            cameras[1].projectionMatrix
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("rightProjMatrix"),
+            cameras[0].projectionMatrix
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("mainCameraProjectionMatrix"),
+            mainCamera.projectionMatrix
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("inverseMainCameraViewMatrix"),
+            mainCamera.worldToCameraMatrix.inverse
+        );
     }
 
     private void updateScreenViewportProperties()
