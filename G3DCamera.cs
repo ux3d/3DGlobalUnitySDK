@@ -374,41 +374,9 @@ public class G3DCamera
         );
         viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 4);
         viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 4);
-        viewGenerationMaterial.SetInt(Shader.PropertyToID("depth_layer_discretization"), 1024);
-        viewGenerationMaterial.SetFloat(Shader.PropertyToID("crop"), 0.01f);
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("maxDisparity"), viewSeparation * 15); // TODO do not hardcode this value
-        float focalLengthInPixel =
-            (mainCamera.pixelHeight / 2)
-            / (Mathf.Tan(mainCamera.fieldOfView / 2 * Mathf.Deg2Rad) * Mathf.Rad2Deg);
-        viewGenerationMaterial.SetFloat(
-            Shader.PropertyToID("focalLengthInPixel"),
-            focalLengthInPixel
-        );
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("nearPlane"), mainCamera.nearClipPlane);
         viewGenerationMaterial.SetFloat(Shader.PropertyToID("farPlane"), mainCamera.farClipPlane);
-        float viewRange = mainCamera.farClipPlane - mainCamera.nearClipPlane;
-        float stepSize = viewRange / 1024.0f;
-        viewGenerationMaterial.SetFloat(Shader.PropertyToID("layerDistance"), stepSize);
-        viewGenerationMaterial.SetInteger(
-            Shader.PropertyToID("cameraPixelWidth"),
-            mainCamera.pixelWidth
-        );
-        viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("inverseLeftProjMatrix"),
-            cameras[1].projectionMatrix.inverse
-        );
-        viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("inverseRightProjMatrix"),
-            cameras[0].projectionMatrix.inverse
-        );
-        viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("leftProjMatrix"),
-            cameras[1].projectionMatrix
-        );
-        viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("rightProjMatrix"),
-            cameras[0].projectionMatrix
-        );
 
         viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
         viewGenerationPass.materialPassName = "G3DViewGeneration";
@@ -416,25 +384,8 @@ public class G3DCamera
         RTHandle rtHandleDepthRight = RTHandles.Alloc(depthMapRight);
         viewGenerationPass.leftDepthMapHandle = rtHandleDepthLeft;
         viewGenerationPass.rightDepthMapHandle = rtHandleDepthRight;
-
-        // add autostereo generation pass
-        // customPass =
-        //     customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
-        //     as G3DHDRPViewGenerationMosaicPass;
-        // RenderTexture mosaicTexture = new RenderTexture(
-        //     mainCamera.pixelWidth,
-        //     mainCamera.pixelHeight,
-        //     0
-        // )
-        // {
-        //     format = RenderTextureFormat.ARGB32,
-        //     depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
-        // };
-        // RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
-        // material.SetTexture("mosaictexture", mosaicTexture, RenderTextureSubElement.Color);
-        // customPass.fullscreenPassMaterial = material;
-        // customPass.materialPassName = "G3DFullScreen3D";
-        // customPass.mosaicImageHandle = rtHandleMosaic;
+        viewGenerationPass.cameras = cameras;
+        viewGenerationPass.internalCameraCount = internalCameraCount;
 
         antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
 #endif
@@ -501,7 +452,9 @@ public class G3DCamera
                 CalibrationProvider calibration = CalibrationProvider.getFromString(
                     calibrationFile.text
                 );
-                internalCameraCount = getCameraCountFromCalibrationFile(calibration);
+                // internalCameraCount = getCameraCountFromCalibrationFile(calibration);
+                // TODO DO NOT HARD CODE THIS VALUE!
+                internalCameraCount = 16;
                 loadMultiviewViewSeparationFromCalibration(calibration);
             }
             else
@@ -632,7 +585,9 @@ public class G3DCamera
         if (mode == G3DCameraMode.MULTIVIEW)
         {
             loadMultiviewViewSeparationFromCalibration(calibration);
-            internalCameraCount = NativeViewcount;
+            // TODO DO NOT HARD CODE THIS VALUE!
+            internalCameraCount = 16; // default value for multiview mode
+            // internalCameraCount = NativeViewcount;
         }
         else
         {
@@ -918,32 +873,25 @@ public class G3DCamera
         }
 
         viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("inverseLeftProjMatrix"),
-            cameras[1].projectionMatrix.inverse
-        );
-        viewGenerationMaterial.SetMatrix(
             Shader.PropertyToID("inverseRightProjMatrix"),
             cameras[0].projectionMatrix.inverse
-        );
-        viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("leftViewMatrix"),
-            cameras[1].worldToCameraMatrix.inverse
-        );
-        viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("leftProjMatrix"),
-            cameras[1].projectionMatrix
         );
         viewGenerationMaterial.SetMatrix(
             Shader.PropertyToID("rightProjMatrix"),
             cameras[0].projectionMatrix
         );
+
         viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("mainCameraProjectionMatrix"),
-            mainCamera.projectionMatrix
+            Shader.PropertyToID("leftViewMatrix"),
+            cameras[internalCameraCount - 1].worldToCameraMatrix
         );
         viewGenerationMaterial.SetMatrix(
-            Shader.PropertyToID("inverseMainCameraViewMatrix"),
-            mainCamera.worldToCameraMatrix.inverse
+            Shader.PropertyToID("leftProjMatrix"),
+            cameras[internalCameraCount - 1].projectionMatrix
+        );
+        viewGenerationMaterial.SetMatrix(
+            Shader.PropertyToID("inverseLeftProjMatrix"),
+            cameras[internalCameraCount - 1].projectionMatrix.inverse
         );
     }
 
@@ -1135,7 +1083,23 @@ public class G3DCamera
 
             camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
 
-            camera.gameObject.SetActive(true);
+            // if generate views only enable the leftmost and rightmost camera
+            if (generateViews)
+            {
+                if (i == 0 || i == internalCameraCount - 1)
+                {
+                    camera.gameObject.SetActive(true);
+                }
+                else
+                {
+                    camera.gameObject.SetActive(false);
+                }
+            }
+            else
+            {
+                // enable all cameras
+                camera.gameObject.SetActive(true);
+            }
         }
 
         //disable all the other cameras, we are not using them with this cameracount
@@ -1158,16 +1122,12 @@ public class G3DCamera
         }
         else if (mode == G3DCameraMode.MULTIVIEW)
         {
-            internalCameraCount = getCameraCountFromCalibrationFile();
+            // internalCameraCount = getCameraCountFromCalibrationFile();
+            // TODO DO NOT HARD CODE THIS VALUE!
+            internalCameraCount = 16;
             if (internalCameraCount > MAX_CAMERAS)
             {
                 internalCameraCount = MAX_CAMERAS;
-            }
-
-            // TODO check if it is a good idea to simply set this to one. what if someone wants only one view?
-            if (generateViews)
-            {
-                internalCameraCount = 2;
             }
         }
 
@@ -1177,6 +1137,44 @@ public class G3DCamera
         }
 
         return false;
+    }
+
+    private void addRenderTextureToCamera(
+        RenderTexture[] renderTextures,
+        int renderTextureIndex,
+        int cameraIndex
+    )
+    {
+        int width = Screen.width;
+        int height = Screen.height;
+
+        if (adaptRenderResolutionToViews)
+        {
+            // TODO: This is a temporary fix for the resolution scaling issue. Use an actually correct formula here.
+            width = width / internalCameraCount;
+        }
+        else
+        {
+            width = (int)(width * ((float)renderResolutionScale / 100f));
+            height = (int)(height * ((float)renderResolutionScale / 100f));
+        }
+
+        renderTextures[renderTextureIndex] = new RenderTexture(width, height, 0)
+        {
+            format = RenderTextureFormat.ARGB32,
+            depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
+        };
+        cameras[cameraIndex].targetTexture = renderTextures[renderTextureIndex];
+        material.SetTexture(
+            "texture" + renderTextureIndex,
+            renderTextures[renderTextureIndex],
+            RenderTextureSubElement.Color
+        );
+        viewGenerationMaterial.SetTexture(
+            "texture" + renderTextureIndex,
+            renderTextures[renderTextureIndex],
+            RenderTextureSubElement.Color
+        );
     }
 
     public void updateShaderRenderTextures()
@@ -1192,35 +1190,18 @@ public class G3DCamera
 
         RenderTexture[] renderTextures = new RenderTexture[internalCameraCount];
 
-        //set only those we need
-        for (int i = 0; i < internalCameraCount; i++)
+        if (generateViews)
         {
-            int width = Screen.width;
-            int height = Screen.height;
-
-            if (adaptRenderResolutionToViews)
+            addRenderTextureToCamera(renderTextures, 0, 0); // right camera
+            addRenderTextureToCamera(renderTextures, 1, internalCameraCount - 1); // left camera
+        }
+        else
+        {
+            //set only those we need
+            for (int i = 0; i < internalCameraCount; i++)
             {
-                // TODO: This is a temporary fix for the resolution scaling issue. Use an actually correct formula here.
-                width = width / internalCameraCount;
+                addRenderTextureToCamera(renderTextures, i, i);
             }
-            else
-            {
-                width = (int)(width * ((float)renderResolutionScale / 100f));
-                height = (int)(height * ((float)renderResolutionScale / 100f));
-            }
-
-            renderTextures[i] = new RenderTexture(width, height, 0)
-            {
-                format = RenderTextureFormat.ARGB32,
-                depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
-            };
-            cameras[i].targetTexture = renderTextures[i];
-            material.SetTexture("texture" + i, renderTextures[i], RenderTextureSubElement.Color);
-            viewGenerationMaterial.SetTexture(
-                "texture" + i,
-                renderTextures[i],
-                RenderTextureSubElement.Color
-            );
         }
     }
 
@@ -1600,9 +1581,8 @@ public class G3DCamera
             currentView += 1;
         }
 
-        // TODO remove the * 8 multiplier
         // it is used to scale the offset to the ends for a mosaic texture where the middle textures are missing
-        float offset = currentView * 8 * targetEyeSeparation;
+        float offset = currentView * targetEyeSeparation;
 
         // when the camera count is even, one camera is placed half the eye separation to the right of the center
         // same for the other to the left

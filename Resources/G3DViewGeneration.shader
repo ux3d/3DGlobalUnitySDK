@@ -1,9 +1,5 @@
 Shader "G3D/ViewGeneration"
 {
-    Properties
-    {
-        DepthMap ("Texture", 2D) = "green" {}
-    }
     SubShader
     {
         PackageRequirements
@@ -28,20 +24,78 @@ Shader "G3D/ViewGeneration"
             #pragma vertex vert
             #pragma fragment fragHDRP
 
+            #pragma require 2darray
+
+            Texture2DArray _DepthMaps;
+            SamplerState sampler_DepthMaps;
+
             Texture2D _depthMapRight;
             SamplerState sampler_depthMapRight;
+
+
+            Texture2D _depthMap0;
+            SamplerState sampler_depthMap0;
+            Texture2D _depthMap1;
+            SamplerState sampler_depthMap1;
+            Texture2D _depthMap2;
+            SamplerState sampler_depthMap2;
+            Texture2D _depthMap3;
+            SamplerState sampler_depthMap3;
+            Texture2D _depthMap4;
+            SamplerState sampler_depthMap4;
+            Texture2D _depthMap5;
+            SamplerState sampler_depthMap5;
+            Texture2D _depthMap6;
+            SamplerState sampler_depthMap6;
+            Texture2D _depthMap7;
+            SamplerState sampler_depthMap7;
+            Texture2D _depthMap8;
+            SamplerState sampler_depthMap8;
+            Texture2D _depthMap9;
+            SamplerState sampler_depthMap9;
 
 
             Texture2D _depthMapLeft;
             SamplerState sampler_depthMapLeft;
 
-            float4x4 rightProjMatrix;
             float4x4 inverseRightProjMatrix;
-            float4x4 leftProjMatrix;
+            float4x4 rightProjMatrix;
+
             float4x4 inverseLeftProjMatrix;
-            float4x4 mainCameraProjectionMatrix;
-            float4x4 inverseMainCameraViewMatrix;
             float4x4 leftViewMatrix;
+            float4x4 leftProjMatrix;
+
+            float4x4 inverseProjMatrix1;
+            float4x4 inverseViewMatrix1;
+            float4x4 inverseProjMatrix2;
+            float4x4 inverseViewMatrix2;
+            float4x4 inverseProjMatrix3;
+            float4x4 inverseViewMatrix3;
+            float4x4 inverseProjMatrix4;
+            float4x4 inverseViewMatrix4;
+            float4x4 inverseProjMatrix5;
+            float4x4 inverseViewMatrix5;
+            float4x4 inverseProjMatrix6;
+            float4x4 inverseViewMatrix6;
+            float4x4 inverseProjMatrix7;
+            float4x4 inverseViewMatrix7;
+            float4x4 inverseProjMatrix8;
+            float4x4 inverseViewMatrix8;
+            float4x4 inverseProjMatrix9;
+            float4x4 inverseViewMatrix9;
+            float4x4 inverseProjMatrix10;
+            float4x4 inverseViewMatrix10;
+            float4x4 inverseProjMatrix11;
+            float4x4 inverseViewMatrix11;
+            float4x4 inverseProjMatrix12;
+            float4x4 inverseViewMatrix12;
+            float4x4 inverseProjMatrix13;
+            float4x4 inverseViewMatrix13;
+            float4x4 inverseProjMatrix14;
+            float4x4 inverseViewMatrix14;
+            float4x4 inverseProjMatrix15;
+            float4x4 inverseViewMatrix15;
+
 
             // 0 = right camera, 1 = left camera
             Texture2D texture0;
@@ -49,25 +103,12 @@ Shader "G3D/ViewGeneration"
             Texture2D texture1;
             SamplerState samplertexture1;
             
-            float layer;  // range 0..1
-            float focusDistance; // distance to focus plane in camera space
-
-            int depth_layer_discretization; // max layer amount -> 1024
-
-            float layerDistance = 1.0f; // distance between layers in world space
-
             float maxDisparity = 1.5f; // range 0..2 disparity between left and right camera
             float nearPlane = 0; // scene min depth value -> set to nearPlane
             float farPlane = 1; // scene max depth value -> set to farPlane
 
             int grid_size_x;
             int grid_size_y;
-
-            float focalLengthInPixel = 600;
-
-            int cameraPixelWidth = 1920;
-
-
 
             struct VertAttributes
             {
@@ -115,109 +156,129 @@ Shader "G3D/ViewGeneration"
                 return -NDC.z / NDC.w; // devide by w to get depth in view space
             }
 
-            float computeClipSpaceOffset(float cameraDistance, float focusDist, float distLayerFocusPlane, float4x4 projectionMatrix) {
-                float y = (cameraDistance / focusDist) * distLayerFocusPlane;
-                float4 offsetClipSpace = float4(y, 0.0f, 0.0f, 1.0f); // offset in clip space
-                offsetClipSpace = mul(offsetClipSpace, projectionMatrix); // apply projection matrix to get clip space coordinates
-                return offsetClipSpace.x;
-            }
-
-
-            float sampleLeftDepthProjection(float2 uv) {
+            float sampleLeftDepth(float2 uv) {
                 float4 depthSample = _depthMapLeft.Sample(sampler_depthMapLeft, uv);
-                float depth = Linear01Depth(depthSample.r, _ZBufferParams); // convert depth from logarithmic scale to linear scale
-                float x = uv.x * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
-                float y = uv.y * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
-                float4 NDC = float4(x, y, depth, 1.0f);
-                NDC = mul(inverseLeftProjMatrix, NDC); // apply inverse projection matrix to get clip space coordinates
-                return -NDC.z / NDC.w; // devide by w to get depth in view space
+                float test = -1.0f + farPlane / nearPlane;
+                float4 myZBufferParams = float4(test, 1.0f, test / farPlane, 1.0f / farPlane);
+                float depth = LinearEyeDepth(depthSample.r, myZBufferParams); // convert depth from logarithmic scale to linear scale
+                // float centerDepth = depth * 2.0f - 1.0f; 
+                // float x = uv.x * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
+                // float y = uv.y * 2.0f - 1.0f; // convert from [0,1] to [-1,1] to get NDC coordinates
+                // float4 NDC = float4(x, y, centerDepth, 1.0f);
+                // NDC = mul(inverseLeftProjMatrix, NDC); // apply inverse projection matrix to get clip space coordinates
+
+                // float finalDepth = abs(NDC.z / NDC.w); // devide by w to get depth in view space
+                return depth; // devide by w to get depth in view space
             }
 
-            float4x4 getIdentityMatrix() {
-                return float4x4(
-                    1.0f, 0.0f, 0.0f, 0.0f,
-                    0.0f, 1.0f, 0.0f, 0.0f,
-                    0.0f, 0.0f, 1.0f, 0.0f,
-                    0.0f, 0.0f, 0.0f, 1.0f
-                );
+            float4x4 getInverseProjectionMatrix(int cameraIndex) {
+                switch (cameraIndex) {
+                    case 1: return inverseProjMatrix1;
+                    case 2: return inverseProjMatrix2;
+                    case 3: return inverseProjMatrix3;
+                    case 4: return inverseProjMatrix4;
+                    case 5: return inverseProjMatrix5;
+                    case 6: return inverseProjMatrix6;
+                    case 7: return inverseProjMatrix7;
+                    case 8: return inverseProjMatrix8;
+                    case 9: return inverseProjMatrix9;
+                    case 10: return inverseProjMatrix10;
+                    case 11: return inverseProjMatrix11;
+                    case 12: return inverseProjMatrix12;
+                    case 13: return inverseProjMatrix13;
+                    case 14: return inverseProjMatrix14;
+                    case 15: return inverseProjMatrix15;
+                    default: return float4x4(1.0f, 1.0f, 1.0f, 1.0f,
+                                             1.0f, 1.0f, 1.0f, 1.0f,
+                                             1.0f, 1.0f, 1.0f, 1.0f,
+                                             1.0f, 1.0f, 1.0f, 1.0f);
+                }
             }
-            float4x4 inverse(float4x4 m) {
-                float n11 = m[0][0], n12 = m[1][0], n13 = m[2][0], n14 = m[3][0];
-                float n21 = m[0][1], n22 = m[1][1], n23 = m[2][1], n24 = m[3][1];
-                float n31 = m[0][2], n32 = m[1][2], n33 = m[2][2], n34 = m[3][2];
-                float n41 = m[0][3], n42 = m[1][3], n43 = m[2][3], n44 = m[3][3];
-            
-                float t11 = n23 * n34 * n42 - n24 * n33 * n42 + n24 * n32 * n43 - n22 * n34 * n43 - n23 * n32 * n44 + n22 * n33 * n44;
-                float t12 = n14 * n33 * n42 - n13 * n34 * n42 - n14 * n32 * n43 + n12 * n34 * n43 + n13 * n32 * n44 - n12 * n33 * n44;
-                float t13 = n13 * n24 * n42 - n14 * n23 * n42 + n14 * n22 * n43 - n12 * n24 * n43 - n13 * n22 * n44 + n12 * n23 * n44;
-                float t14 = n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34;
-            
-                float det = n11 * t11 + n21 * t12 + n31 * t13 + n41 * t14;
-                float idet = 1.0f / det;
-            
-                float4x4 ret;
-            
-                ret[0][0] = t11 * idet;
-                ret[0][1] = (n24 * n33 * n41 - n23 * n34 * n41 - n24 * n31 * n43 + n21 * n34 * n43 + n23 * n31 * n44 - n21 * n33 * n44) * idet;
-                ret[0][2] = (n22 * n34 * n41 - n24 * n32 * n41 + n24 * n31 * n42 - n21 * n34 * n42 - n22 * n31 * n44 + n21 * n32 * n44) * idet;
-                ret[0][3] = (n23 * n32 * n41 - n22 * n33 * n41 - n23 * n31 * n42 + n21 * n33 * n42 + n22 * n31 * n43 - n21 * n32 * n43) * idet;
-            
-                ret[1][0] = t12 * idet;
-                ret[1][1] = (n13 * n34 * n41 - n14 * n33 * n41 + n14 * n31 * n43 - n11 * n34 * n43 - n13 * n31 * n44 + n11 * n33 * n44) * idet;
-                ret[1][2] = (n14 * n32 * n41 - n12 * n34 * n41 - n14 * n31 * n42 + n11 * n34 * n42 + n12 * n31 * n44 - n11 * n32 * n44) * idet;
-                ret[1][3] = (n12 * n33 * n41 - n13 * n32 * n41 + n13 * n31 * n42 - n11 * n33 * n42 - n12 * n31 * n43 + n11 * n32 * n43) * idet;
-            
-                ret[2][0] = t13 * idet;
-                ret[2][1] = (n14 * n23 * n41 - n13 * n24 * n41 - n14 * n21 * n43 + n11 * n24 * n43 + n13 * n21 * n44 - n11 * n23 * n44) * idet;
-                ret[2][2] = (n12 * n24 * n41 - n14 * n22 * n41 + n14 * n21 * n42 - n11 * n24 * n42 - n12 * n21 * n44 + n11 * n22 * n44) * idet;
-                ret[2][3] = (n13 * n22 * n41 - n12 * n23 * n41 - n13 * n21 * n42 + n11 * n23 * n42 + n12 * n21 * n43 - n11 * n22 * n43) * idet;
-            
-                ret[3][0] = t14 * idet;
-                ret[3][1] = (n13 * n24 * n31 - n14 * n23 * n31 + n14 * n21 * n33 - n11 * n24 * n33 - n13 * n21 * n34 + n11 * n23 * n34) * idet;
-                ret[3][2] = (n14 * n22 * n31 - n12 * n24 * n31 - n14 * n21 * n32 + n11 * n24 * n32 + n12 * n21 * n34 - n11 * n22 * n34) * idet;
-                ret[3][3] = (n12 * n23 * n31 - n13 * n22 * n31 + n13 * n21 * n32 - n11 * n23 * n32 - n12 * n21 * n33 + n11 * n22 * n33) * idet;
-            
-                return ret;
-            }
-
-            float4x4 calculateProjectionMatrix(float localCameraOffset) {
-                // horizontal obliqueness
-                float horizontalObl = -localCameraOffset / focusDistance;
-
-                // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
-                float4x4 shearMatrix = getIdentityMatrix();
-                shearMatrix[0, 2] = horizontalObl;
-                // apply new projection matrix
-                return mul(mainCameraProjectionMatrix, shearMatrix);
+            float4x4 getInverseViewMatrix(int cameraIndex) {
+                switch (cameraIndex) {
+                    case 1: return inverseViewMatrix1;
+                    case 2: return inverseViewMatrix2;
+                    case 3: return inverseViewMatrix3;
+                    case 4: return inverseViewMatrix4;
+                    case 5: return inverseViewMatrix5;
+                    case 6: return inverseViewMatrix6;
+                    case 7: return inverseViewMatrix7;
+                    case 8: return inverseViewMatrix8;
+                    case 9: return inverseViewMatrix9;
+                    case 10: return inverseViewMatrix10;
+                    case 11: return inverseViewMatrix11;
+                    case 12: return inverseViewMatrix12;
+                    case 13: return inverseViewMatrix13;
+                    case 14: return inverseViewMatrix14;
+                    case 15: return inverseViewMatrix15;
+                    default: return float4x4(1.0f, 1.0f, 1.0f, 1.0f,
+                                            1.0f, 1.0f, 1.0f, 1.0f,
+                                            1.0f, 1.0f, 1.0f, 1.0f,
+                                            1.0f, 1.0f, 1.0f, 1.0f);
+                    }
             }
 
-            float calculateOffset(float layerDist, float cameraOffset, float2 uv) {
-                // erst punkt in clip space berechnen
-                // dann mit inverse projection matrix in view space umwandeln
-                // dann mit inverse view matrix in world space umwandeln
-                // dann mit view matrix der linken kamera in view space umwandeln
-                // dann mit projection matrix der linken kamera in clip space umwandeln
-                // dann die x koordinaten der beiden punkte vergleichen und den unterschied nehmen
+            // Set the texture array as a shader input
+            float getCameraDepth(float2 uv, int cameraIndex) {
+                float zIndex = 1.0f/ 16.0f * cameraIndex; // calculate the z index for the texture array
+                
+                float4 depthSample;
+                switch(cameraIndex) {
+                    case 0:
+                        depthSample =  _depthMap0.Sample( sampler_depthMap0, uv);
+                        break;
+                    case 1:
+                        depthSample =  _depthMap1.Sample( sampler_depthMap1, uv);
+                        break;
+                    case 2:
+                        depthSample =  _depthMap2.Sample( sampler_depthMap2, uv);
+                        break;
+                    case 3:
+                        depthSample =  _depthMap3.Sample( sampler_depthMap3, uv);
+                        break;
+                    case 4: 
+                        depthSample =  _depthMap4.Sample( sampler_depthMap4, uv);
+                        break;
+                    case 5:
+                        depthSample =  _depthMap5.Sample( sampler_depthMap5, uv);
+                        break;
+                    case 6:
+                        depthSample =  _depthMap6.Sample( sampler_depthMap6, uv);
+                        break;
+                    case 7:
+                        depthSample =  _depthMap7.Sample( sampler_depthMap7, uv);
+                        break;
+                    case 8:
+                        depthSample =  _depthMap8.Sample( sampler_depthMap8, uv);
+                        break;
+                    case 9:
+                        depthSample =  _depthMap9.Sample( sampler_depthMap9, uv);  
+                        break;
+                    default:
+                        depthSample = _depthMapLeft.Sample(sampler_depthMapLeft, uv); // use left camera depth map as default
+                        break;
+                }
 
-                float tmp = map(layerDist, 0.0f, farPlane, 0.0f, 1.0f); // convert layer distance from [nearPlane, farPlane] to [0,1] 
-                float4 p = float4(0.0f, 0.0f, tmp, 1.0f); // point in view space
-                float4x4 cameraProjectionMatrix = calculateProjectionMatrix(cameraOffset);
-                float4x4 inverseCameraProjectionMatrix = inverse(cameraProjectionMatrix); // inverse projection matrix to convert from clip space to view space
-                float4x4 inverseCameraViewMatrix = inverseMainCameraViewMatrix; // inverse view matrix to convert from view space to world space
-                // shift view inverse view matrix to the left
-                inverseMainCameraViewMatrix[0][3] += cameraOffset; // shift the view matrix to the left by the camera offset
-                p = mul(inverseCameraProjectionMatrix, p); // convert from clip space to view space
-                p = mul(inverseCameraViewMatrix, p); // convert from view space to world space
+                float test = -1.0f + farPlane / nearPlane;
+                float4 myZBufferParams = float4(test, 1.0f, test / farPlane, 1.0f / farPlane);
+                return LinearEyeDepth(depthSample.r, myZBufferParams); // convert depth from logarithmic scale to linear scale
+            }
+
+            float calculateOffset(float2 uv, int cameraIndex) {
+                float depth = getCameraDepth(uv, cameraIndex);
+
+                float4 p = float4(0.0f, 0.0f, depth, 1.0f); // point in view space
+                p = mul(getInverseProjectionMatrix(cameraIndex), p); // convert from clip space to view space
+                p *= depth; // multiply by layer depth to get correct depth value in view space (layer is the correct w component)
+                p = mul(getInverseViewMatrix(cameraIndex), p); // convert from view space to world space
 
                 // p now in world space
 
                 p = mul(leftViewMatrix, p); // apply left view matrix to get shifted point in view space
                 p = mul(leftProjMatrix, p); // apply main camera projection matrix to get clip space coordinates
 
-                float clipSpaceX = p.x / p.w; // convert to clip space by dividing by w
-                clipSpaceX = clipSpaceX * 0.5f + 0.5f; // convert from [-1,1] to [0,1] to get texture coordinates
-                // clipSpaceX = map(clipSpaceX, -1.0f, 1.0f, 0.0f, 1.0f); // convert from [-1,1] to [0,1] to get texture coordinates
-                
+                float clipSpaceX = -p.x / p.w; // convert to clip space by dividing by w
+                clipSpaceX = clipSpaceX / 2.0f; // devide by 2 to get from clip space [-1, 1] to texture coordinates [0, 1]
                 return clipSpaceX; // return the difference between the shifted and original x coordinate
             }
 
@@ -229,8 +290,10 @@ Shader "G3D/ViewGeneration"
             /// </summary>
             float4 fragHDRP (v2f i) : SV_Target
             {
-                // float depth = sampleLeftDepthProjection(i.uv);
-                // depth = map(depth, nearPlane, farPlane, 0, 1);
+                // float depth = sampleLeftDepth(i.uv);
+                // float depth = getCameraDepth(i.uv, 0);
+                // depth = depth/ 10.0f; // scale depth to a smaller range for visualization
+                // // depth = map(depth, 0, farPlane, 0, 1);
                 // return float4(depth, depth, depth, 1.0f); // return depth value in world space
 
                 {
@@ -264,6 +327,12 @@ Shader "G3D/ViewGeneration"
                     return texture0.Sample(samplertexture0, actualTexCoords); // sample the right camera texture
                 }
 
+                // float depth = getCameraDepth(actualTexCoords, viewIndex);
+                // depth = depth/ 10.0f; // scale depth to a smaller range for visualization
+                // // depth = map(depth, 0, farPlane, 0, 1);
+                // return float4(depth, depth, depth, 1.0f); // return depth value in world space
+
+
                 // -----------------------------------------------------------------------------------------------------------
                 // -----------------------------------------------------------------------------------------------------------
                 // -----------------------------------------------------------------------------------------------------------
@@ -271,63 +340,74 @@ Shader "G3D/ViewGeneration"
                 
                 float disparityStep = maxDisparity / gridCount;
 
-                float actualDepth = sampleLeftDepthProjection(actualTexCoords); // sample the depth of the current texel in the left camera
-                
-                float distLayerFocusPlane = -(layer - focusDistance); // distance between the layer and the focus plane
-                float leftOffset = viewIndex * disparityStep; // distance between the original left camera and the current view
-                float DLeft = calculateOffset(layer, leftOffset, actualTexCoords); // convert to pixel space
+                float DLeft = calculateOffset(actualTexCoords, viewIndex); // convert to pixel space
 
-                
                 float2 texCoordShiftedLeft = actualTexCoords;
-                texCoordShiftedLeft.x += DLeft;
-                float shiftedLeftDepth = sampleLeftDepthProjection(texCoordShiftedLeft);
-
-
+                texCoordShiftedLeft.x -= DLeft;
                 
-                float rightOffset = (gridCount - 1 - viewIndex) * disparityStep; // distance between the original left camera and the current view
-                float DRight = computeClipSpaceOffset(rightOffset, focusDistance, distLayerFocusPlane, rightProjMatrix); // calculate offset of layer in pixel
-                float2 texCoordShiftedRight = actualTexCoords;
-                texCoordShiftedRight.x -= DRight;
-                float shiftedRightDepth = sampleRightDepth(texCoordShiftedRight);
-                
-                int leftFills = 1;
-                if(texCoordShiftedLeft.x < 0 || texCoordShiftedLeft.x > 1.0f) {
-                    leftFills = 0; // discard if the tex coord is out of bounds
-                }
-                if (abs((layer - shiftedLeftDepth)) > layerDistance) {
-                    leftFills = 0; // discard if the layer is too far away from the shifted left depth
-                }
-
-
-                int rightFills = 0;
-                if(texCoordShiftedRight.x < 0 || texCoordShiftedRight.x > 1.0f) {
-                    rightFills = 0; // discard if the tex coord is out of bounds
-                }
-                if (abs((layer - shiftedRightDepth)) > layerDistance) {
-                    rightFills = 0; // discard if the layer is too far away from the shifted right depth
-                }
-
-                if (leftFills == 0 && rightFills == 0) {
-                    discard; // discard if both left and right camera do not fill the layer
-                }
-                if (leftFills == 1 && rightFills == 0) {
-                    return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
-                }
-                if (leftFills == 0 && rightFills == 1) {
-                    return texture0.Sample(samplertexture0, texCoordShiftedRight); // sample the right camera texture
-                }
-
-                if(shiftedLeftDepth < shiftedRightDepth) {
-                    return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
-                }
-
-                return texture0.Sample(samplertexture0, texCoordShiftedRight); // sample the right camera texture
-                
-                
-                // if (DLeft < 0.0f) {
-                //     return float4(0.0f, -DLeft, 0.0f, 1.0f);
+                // if(texCoordShiftedLeft.x < 0 || texCoordShiftedLeft.x > 1.0f) {
+                //     discard; // discard if the tex coord is out of bounds
                 // }
-                // return float4(DLeft, 0.0f, 0.0f, 1.0f);
+
+                float shiftedLeftDepth = sampleLeftDepth(texCoordShiftedLeft);
+                
+                float actualDepth = sampleLeftDepth(actualTexCoords); // get the actual depth of the current texel
+
+                // if(abs((actualDepth - shiftedLeftDepth)) > 0.1f) {
+                //     discard; // discard if the layer is too far away from the shifted left depth
+                // }
+                if( DLeft < 0.0f) {
+                    return float4(0.0f, -DLeft, 0.0f, 1.0f); // return a debug value if the offset is negative
+                }
+                else  {
+                    return float4(DLeft, 0.0f, 0.0f, 1.0f); // return a debug value if the offset is too large
+                }
+
+                return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
+
+                
+
+                // -----------------
+                // handle left and right cameras
+                // -----------------
+                // float rightOffset = (gridCount - 1 - viewIndex) * disparityStep; // distance between the original left camera and the current view
+                // float DRight = calculateOffset(rightOffset, focusDistance, distLayerFocusPlane, rightProjMatrix); // calculate offset of layer in pixel
+                // float2 texCoordShiftedRight = actualTexCoords;
+                // texCoordShiftedRight.x -= DRight;
+                // float shiftedRightDepth = sampleRightDepth(texCoordShiftedRight);
+                
+                // int leftFills = 1;
+                // if(texCoordShiftedLeft.x < 0 || texCoordShiftedLeft.x > 1.0f) {
+                //     leftFills = 0; // discard if the tex coord is out of bounds
+                // }
+                // if (abs((layer - shiftedLeftDepth)) > layerDistance) {
+                //     leftFills = 0; // discard if the layer is too far away from the shifted left depth
+                // }
+
+
+                // int rightFills = 0;
+                // if(texCoordShiftedRight.x < 0 || texCoordShiftedRight.x > 1.0f) {
+                //     rightFills = 0; // discard if the tex coord is out of bounds
+                // }
+                // if (abs((layer - shiftedRightDepth)) > layerDistance) {
+                //     rightFills = 0; // discard if the layer is too far away from the shifted right depth
+                // }
+
+                // if (leftFills == 0 && rightFills == 0) {
+                //     discard; // discard if both left and right camera do not fill the layer
+                // }
+                // if (leftFills == 1 && rightFills == 0) {
+                //     return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
+                // }
+                // if (leftFills == 0 && rightFills == 1) {
+                //     return texture0.Sample(samplertexture0, texCoordShiftedRight); // sample the right camera texture
+                // }
+
+                // if(shiftedLeftDepth < shiftedRightDepth) {
+                //     return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
+                // }
+
+                // return texture0.Sample(samplertexture0, texCoordShiftedRight); // sample the right camera texture
             }
             ENDHLSL
         }
