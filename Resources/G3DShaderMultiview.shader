@@ -142,11 +142,17 @@ Shader "G3D/AutostereoMultiview"
         viewIndices.y = viewIndices.y % nativeViewCount;
         viewIndices.z = viewIndices.z % nativeViewCount;
 
+        // invert view indices cause the camera order was inverted
+        viewIndices.x = nativeViewCount - viewIndices.x - 1;
+        viewIndices.y = nativeViewCount - viewIndices.y - 1;
+        viewIndices.z = nativeViewCount - viewIndices.z - 1;
         return viewIndices;
     }
 
     float4 frag (v2f i) : SV_Target
     {
+        return sampleFromView(nativeViewCount - 0 - 1, i.uv);
+
         float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
         
         float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);

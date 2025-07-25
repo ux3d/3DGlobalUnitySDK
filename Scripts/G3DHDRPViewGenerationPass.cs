@@ -6,90 +6,15 @@ using UnityEngine.Rendering.HighDefinition;
 
 internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 {
-    public RTHandle leftDepthMapHandle;
-    public RTHandle rightDepthMapHandle;
-
     public RTHandle leftColorMapHandle;
     public RTHandle rightColorMapHandle;
-
-    public float focusDistance = 1.0f;
 
     public List<Camera> cameras;
     public int internalCameraCount = 16;
 
-    RenderTexture depthTexturesArray;
+    public RTHandle mosaicImageHandle;
 
-    RenderTexture[] indivDepthTextures;
-
-    protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
-    {
-        // Initialize the depth textures
-        // depthTexturesArray = new RenderTexture(1024, 1024, 24, RenderTextureFormat.Depth);
-        // depthTexturesArray.dimension = TextureDimension.Tex2DArray;
-        // depthTexturesArray.volumeDepth = internalCameraCount;
-        // depthTexturesArray.Create();
-
-        // fullscreenPassMaterial.SetTexture(
-        //     "_DepthMaps",
-        //     depthTexturesArray,
-        //     RenderTextureSubElement.Depth
-        // );
-
-        indivDepthTextures = new RenderTexture[10];
-        for (int i = 0; i < 10; i++)
-        {
-            RenderTexture depthTexture = new RenderTexture(
-                1024,
-                1024,
-                24,
-                RenderTextureFormat.Depth
-            );
-            depthTexture.dimension = TextureDimension.Tex2D;
-            depthTexture.Create();
-            indivDepthTextures[i] = depthTexture;
-            fullscreenPassMaterial.SetTexture(
-                "_depthMap" + i,
-                depthTexture,
-                RenderTextureSubElement.Depth
-            );
-        }
-    }
-
-    float map(float x, float in_min, float in_max, float out_min, float out_max)
-    {
-        // Convert the current value to a percentage
-        // 0% - min1, 100% - max1
-        float perc = (x - in_min) / (in_max - in_min);
-
-        // Do the same operation backwards with min2 and max2
-        float value = perc * (out_max - out_min) + out_min;
-        return value;
-    }
-
-    private float layerOffset(float layer, float farPlane)
-    {
-        float tmp = map(layer, 0.0f, farPlane, 0, 1.0f); // convert layer distance from [nearPlane, farPlane] to [0,1]
-        Vector4 p = new Vector4(0.0f, 0.0f, tmp, layer); // point in view space
-        p = cameras[internalCameraCount - 2].projectionMatrix.inverse * p; // convert from clip space to view space
-        // p.x = p.x * layer; // convert from clip space to view space
-        // p.y = p.y * layer; // convert from clip space to view space
-        // p.z = p.z * layer; // convert from clip space to view space
-        p = cameras[internalCameraCount - 2].worldToCameraMatrix.inverse * p; // convert from view space to world space
-
-        // p now in world space
-
-        p = cameras[internalCameraCount - 1].worldToCameraMatrix * p; // apply left view matrix to get shifted point in view space
-        p = cameras[internalCameraCount - 1].projectionMatrix * p; // apply main camera projection matrix to get clip space coordinates
-
-        p.x = p.x / p.w; // convert from clip space to view space
-        p.y = p.y / p.w; // convert from clip space to view space
-        p.z = p.z / p.w; // convert from clip space to view space
-        float clipSpaceX = -p.x / p.w / 2.0f; // convert to clip space by dividing by w
-        // clipSpaceX = clipSpaceX * 0.5f + 0.5f; // convert from [-1,1] to [0,1] to get texture coordinates
-        // clipSpaceX = map(clipSpaceX, -1.0f, 1.0f, 0.0f, 1.0f); // convert from [-1,1] to [0,1] to get texture coordinates
-
-        return clipSpaceX;
-    }
+    protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
     {
@@ -98,62 +23,48 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         {
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
 
-            float viewRange = camera.farClipPlane - camera.nearClipPlane;
-            float stepSize = viewRange / 1024.0f;
-
-            // set the inverse projection matrix
-            ctx.propertyBlock.SetMatrix(
-                Shader.PropertyToID("inverseProjMatrix1"),
-                cameras[internalCameraCount - 2].projectionMatrix.inverse
-            );
-            ctx.propertyBlock.SetMatrix(
-                Shader.PropertyToID("inverseViewMatrix1"),
-                cameras[internalCameraCount - 2].cameraToWorldMatrix
-            );
-
-            for (int i = 0; i < 10; i++)
+            // upload all inv view projection matrices
+            for (int i = 0; i < internalCameraCount - 1; i++)
             {
-                Camera bakingCamera = cameras[15 - i];
-
-                // We need to be careful about the aspect ratio of render textures when doing the culling, otherwise it could result in objects poping:
-                bakingCamera.aspect = Mathf.Max(
-                    bakingCamera.aspect,
-                    indivDepthTextures[i].width / (float)indivDepthTextures[i].height
+                Matrix4x4 projectionMatrixInner = GL.GetGPUProjectionMatrix(
+                    cameras[i].projectionMatrix,
+                    false
                 );
-                bakingCamera.TryGetCullingParameters(out var cullingParams);
-                cullingParams.cullingOptions = CullingOptions.None;
+                Matrix4x4 viewMatrixInner = cameras[i].worldToCameraMatrix;
 
-                // Assign the custom culling result to the context
-                // so it'll be used for the following operations
-                ctx.cullingResults = ctx.renderContext.Cull(ref cullingParams);
-                var overrideDepthTest = new RenderStateBlock(RenderStateMask.Depth)
-                {
-                    depthState = new DepthState(true, CompareFunction.LessEqual)
-                };
-                CustomPassUtils.RenderDepthFromCamera(
-                    ctx,
-                    bakingCamera,
-                    indivDepthTextures[i],
-                    ClearFlag.Depth,
-                    bakingCamera.cullingMask,
-                    overrideRenderState: overrideDepthTest
+                Matrix4x4 viewProjectionMatrixInner = projectionMatrixInner * viewMatrixInner;
+                Matrix4x4 invGPUProjMatrix = viewProjectionMatrixInner.inverse;
+                ctx.propertyBlock.SetMatrix(
+                    Shader.PropertyToID("inverseProjMatrix" + i),
+                    invGPUProjMatrix
                 );
             }
 
-            for (int i = internalCameraCount - 2; i > 0; i--)
-            {
-                int idx = internalCameraCount - i - 1;
-                ctx.propertyBlock.SetMatrix(
-                    Shader.PropertyToID("inverseProjMatrix" + idx),
-                    cameras[i].projectionMatrix.inverse
-                );
-                ctx.propertyBlock.SetMatrix(
-                    Shader.PropertyToID("inverseViewMatrix" + idx),
-                    cameras[i].cameraToWorldMatrix
-                );
-            }
+            // upload left view projection matrix
+            Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(
+                cameras[0].projectionMatrix,
+                false
+            );
+            Matrix4x4 viewMatrix = cameras[0].worldToCameraMatrix;
+            Matrix4x4 viewProjectionMatrix = projectionMatrix * viewMatrix;
+            ctx.propertyBlock.SetMatrix(
+                Shader.PropertyToID("leftViewProjMatrix"),
+                viewProjectionMatrix
+            );
 
-            CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
+            // upload right view projection matrix
+            Matrix4x4 rightProjectionMatrix = GL.GetGPUProjectionMatrix(
+                cameras[internalCameraCount - 1].projectionMatrix,
+                false
+            );
+            Matrix4x4 rightViewMatrix = cameras[internalCameraCount - 1].worldToCameraMatrix;
+            Matrix4x4 rightViewProjectionMatrix = rightProjectionMatrix * rightViewMatrix;
+            ctx.propertyBlock.SetMatrix(
+                Shader.PropertyToID("rightViewProjMatrix"),
+                rightViewProjectionMatrix
+            );
+
+            CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
             CoreUtils.DrawFullScreen(
                 ctx.cmd,
                 fullscreenPassMaterial,
@@ -161,24 +72,6 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 shaderPassId: 0
             );
         }
-        else if (isLeftCamera(camera))
-        {
-            CustomPassUtils.Copy(ctx, ctx.cameraDepthBuffer, leftDepthMapHandle);
-        }
-        else if (isRightCamera(camera))
-        {
-            CustomPassUtils.Copy(ctx, ctx.cameraDepthBuffer, rightDepthMapHandle);
-        }
-    }
-
-    bool isLeftCamera(Camera camera)
-    {
-        return camera.name == "g3dcam_" + (internalCameraCount - 1).ToString();
-    }
-
-    bool isRightCamera(Camera camera)
-    {
-        return camera.name == "g3dcam_0";
     }
 
     /// <summary>
@@ -216,18 +109,13 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
 internal class G3DHDRPViewGenerationMosaicPass : FullScreenCustomPass
 {
-    public RTHandle mosaicImageHandle;
-
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
     {
         var camera = ctx.hdCamera.camera;
-        if (shouldPerformBlit(camera))
+        if (isMainG3DCamera(camera))
         {
-            CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
-            CustomPassUtils.Copy(ctx, ctx.cameraColorBuffer, mosaicImageHandle);
-
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
             ctx.propertyBlock.SetFloat(Shader.PropertyToID("mosaic_rows"), 4);
             ctx.propertyBlock.SetFloat(Shader.PropertyToID("mosaic_columns"), 4);
@@ -246,7 +134,7 @@ internal class G3DHDRPViewGenerationMosaicPass : FullScreenCustomPass
     /// </summary>
     /// <param name="camera"></param>
     /// <returns></returns>
-    static bool shouldPerformBlit(Camera camera)
+    static bool isMainG3DCamera(Camera camera)
     {
         if (camera.cameraType != CameraType.Game)
             return false;
