@@ -20,6 +20,7 @@ Shader "G3D/ViewGeneration"
             HLSLPROGRAM
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+            #include "G3DHLSLCommonFunctions.hlsl"
 
             #pragma vertex vert
             #pragma fragment fragHDRP
@@ -54,34 +55,27 @@ Shader "G3D/ViewGeneration"
             float4x4 inverseProjMatrix14;
             float4x4 inverseProjMatrix15;
 
+            float4x4 viewMatrix0;
+            float4x4 viewMatrix1;
+            float4x4 viewMatrix2;
+            float4x4 viewMatrix3;
+            float4x4 viewMatrix4;
+            float4x4 viewMatrix5;
+            float4x4 viewMatrix6;
+            float4x4 viewMatrix7;
+            float4x4 viewMatrix8;
+            float4x4 viewMatrix9;
+            float4x4 viewMatrix10;
+            float4x4 viewMatrix11;
+            float4x4 viewMatrix12;
+            float4x4 viewMatrix13;
+            float4x4 viewMatrix14;
+            float4x4 viewMatrix15;
+
+
 
             int grid_size_x;
             int grid_size_y;
-
-            struct VertAttributes
-            {
-                uint vertexID : SV_VertexID;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
-            };
-
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                float4 screenPos : SV_POSITION;
-            };
-
-            v2f vert(VertAttributes input)
-            {
-                v2f output;
-                UNITY_SETUP_INSTANCE_ID(input);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-                output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
-                output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
-
-                return output;
-
-            }
-
 
             float4x4 getInverseViewProjectionMatrix(int viewIndex) {
                 switch (viewIndex) {
@@ -108,26 +102,60 @@ Shader "G3D/ViewGeneration"
                 }
             }
 
-            float2 calculateUVForMosaic(int viewIndex, float2 fullScreenUV, int mosaic_rows = 4, int mosaic_columns = 4) {
-                if(viewIndex < 0 )
-                {
-                    viewIndex = 0;
+            float4x4 getViewMatrix(int viewIndex) {
+                switch (viewIndex) {
+                    case 0: return viewMatrix0;
+                    case 1: return viewMatrix1;
+                    case 2: return viewMatrix2;
+                    case 3: return viewMatrix3;
+                    case 4: return viewMatrix4;
+                    case 5: return viewMatrix5;
+                    case 6: return viewMatrix6;
+                    case 7: return viewMatrix7;
+                    case 8: return viewMatrix8;
+                    case 9: return viewMatrix9;
+                    case 10: return viewMatrix10;
+                    case 11: return viewMatrix11;
+                    case 12: return viewMatrix12;
+                    case 13: return viewMatrix13;
+                    case 14: return viewMatrix14;
+                    case 15: return viewMatrix15;
+                    default: return float4x4(1.0f, 0.0f, 0.0f, 0.0f,
+                                             0.0f, 1.0f, 0.0f, 0.0f,
+                                             0.0f, 0.0f, 1.0f, 0.0f,
+                                             0.0f, 0.0f, 0.0f, 1.0f);
                 }
-                int xAxis = viewIndex % mosaic_columns;
-                int yAxis = viewIndex / mosaic_columns;
-                // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
-                // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
-                yAxis = mosaic_rows - 1 - yAxis;
-                int2 moasicIndex = int2(xAxis, yAxis);
-                float2 scaledUV = float2(fullScreenUV.x / mosaic_columns, fullScreenUV.y / mosaic_rows);
-                float2 cellSize = float2(1.0 / mosaic_columns, 1.0 / mosaic_rows);
-                return scaledUV + cellSize * moasicIndex;
             }
 
             // Set the texture array as a shader input
             float getCameraLogDepth(float2 fullScreenUV, int viewIndex) {
-                float2 fragementUV = calculateUVForMosaic(viewIndex, fullScreenUV, grid_size_y, grid_size_x);
-                return _depthMosaic.Sample(sampler_depthMosaic, fragementUV).r;
+                float2 fragmentUV = calculateUVForMosaic(viewIndex, fullScreenUV, grid_size_y, grid_size_x);
+                return _depthMosaic.Sample(sampler_depthMosaic, fragmentUV).r;
+                
+                {
+
+                    // Test if bluring the depth map removes the banding artifacts
+                    // const float offset[] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+                    // const float weight[] = {0.191, 0.15, 0.092, 0.044, 0.017, 0.005, 0.001};
+                    // float4 FragmentColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                    // // 2619 x 1387
+                    // //(1.0, 0.0) -> horizontal blur
+                    // //(0.0, 1.0) -> vertical blur
+                    
+                    // float hstep = 1.0 / 2619;
+                    // float vstep = 1.0 / 1387;
+                    
+                    // for (int i = 1; i < 5; i++) {
+                    //     FragmentColor +=
+                    //     _depthMosaic.Sample(sampler_depthMosaic, fragmentUV + float2(hstep*offset[i], vstep*offset[i]))*weight[i] +
+                    //     _depthMosaic.Sample(sampler_depthMosaic, fragmentUV - float2(hstep*offset[i], vstep*offset[i]))*weight[i];      
+                    // }
+                    // float4 ppColour = _depthMosaic.Sample(sampler_depthMosaic, fragmentUV) * weight[0];
+                    // ppColour += FragmentColor;
+                    
+                    
+                    // return ppColour.r;//_depthMosaic.Sample(sampler_depthMosaic, fragmentUV).r;
+                }
             }
 
             // here UV is treated as a full screen UV coordinate
@@ -143,6 +171,16 @@ Shader "G3D/ViewGeneration"
                 
                 return float2(NDC.xy); // return the difference between the shifted and original x coordinate
             }
+            
+            float LinearEyeDepthViewBased(float2 uv, int viewIndex)
+            {
+                float logDepth = getCameraLogDepth(uv, viewIndex);
+                // Sample the depth from the Camera depth texture.
+                float deviceDepth = logDepth;
+                float3 worldPos = ComputeWorldSpacePosition(uv, deviceDepth, getInverseViewProjectionMatrix(viewIndex));
+                float eyeDepth = LinearEyeDepth(worldPos, getViewMatrix(viewIndex));
+                return eyeDepth;
+            }
 
             /// <summary>
             /// creates a grid of views with a given grid size.
@@ -152,54 +190,32 @@ Shader "G3D/ViewGeneration"
             /// </summary>
             float4 fragHDRP (v2f i) : SV_Target
             {
-                {
-                    // the text coords of the original left and right view are from 0 - 1
-                    // the tex coords of the texel we are currently rendering are also from 0 - 1
-                    // but we want to create a grid of views, so we need to transform the tex coords
-                    // to the grid size.
-                    // basically we want to figure out in which grid cell the current texel is, then convert the texel coords to the grid cell coords.
-                    // example assuming a grid size of 3x3:
-                    // original tex coords: 0.8, 0.5
-                    // step 1: transform the tex coords to the grid size by multiplying with grid size
-                    //    -> e.g. original x coord 0.8 turns to 0.8 * 3 = 2.4
-                    // step 2: figure out the grid cell by taking the integer part of the transformed tex coords
-                    //    -> e.g. 2.4 turns to 2
-                    // step 3: subtract the integer part from the transformed tex coords to get the texel coords in the grid cell
-                    //   -> e.g. 2.4 - 2 = 0.4 -> final texel coords in the grid cell are 0.4, 0.5
-                }
-                float2 cellCoordinates = float2(i.uv.x, 1.0 - i.uv.y); // flip y coordiate to have cell index 0 in upper left corner
-                cellCoordinates = float2(cellCoordinates.x * grid_size_x, cellCoordinates.y * grid_size_y);
-                uint viewIndex = uint(cellCoordinates.x) + grid_size_x * uint(cellCoordinates.y);
-                // texcoords in this texcels coordinate system (from 0 - 1)
-                float2 actualTexCoords = float2(cellCoordinates.x - float(int(cellCoordinates.x)), cellCoordinates.y - float(int(cellCoordinates.y)));
-                actualTexCoords.y = 1.0 - actualTexCoords.y; // flip y coordinate to match original tex coords
+                float2 cellCoordinates = getCellCoordinates(i.uv, grid_size_x, grid_size_y);
+                uint viewIndex = getViewIndex(cellCoordinates, grid_size_x, grid_size_y);
+                float2 cellTexCoords = getCellTexCoords(cellCoordinates);
 
                 // first and last image in the grid are the left and right camera
                 uint gridCount = grid_size_x * grid_size_y;
                 if (viewIndex == 0) {
-                    return texture0.Sample(samplertexture0, actualTexCoords); // sample the left camera texture
+                    return texture0.Sample(samplertexture0, cellTexCoords); // sample the left camera texture
                 }
                 if (viewIndex == gridCount - 1) {
-                    return texture1.Sample(samplertexture1, actualTexCoords); // sample the right camera texture
+                    return texture1.Sample(samplertexture1, cellTexCoords); // sample the right camera texture
                 }
 
                 // -----------------------------------------------------------------------------------------------------------
                 // -----------------------------------------------------------------------------------------------------------
                 
-                float2 shiftedLeftTexcoords = calculateProjectedFragmentPosition(actualTexCoords, viewIndex, leftViewProjMatrix); // convert to pixel space
-                float originalLeftDepth = getCameraLogDepth(shiftedLeftTexcoords, 0); // sample the depth of the original left camera
-                originalLeftDepth = LinearEyeDepth(originalLeftDepth, _ZBufferParams); // convert from log depth to linear depth
-                float leftDepth = getCameraLogDepth(actualTexCoords, viewIndex); // sample the depth of the shifted left camera
-                leftDepth = LinearEyeDepth(leftDepth, _ZBufferParams); // convert from log depth to linear depth
+                float2 shiftedLeftTexcoords = calculateProjectedFragmentPosition(cellTexCoords, viewIndex, leftViewProjMatrix); // convert to pixel space
+                float originalLeftDepth = LinearEyeDepthViewBased(shiftedLeftTexcoords, 0); // sample the depth of the original left camera
+                float actualDepth = LinearEyeDepthViewBased(cellTexCoords, viewIndex); // sample the depth of the shifted left camera
 
-                float2 shiftedRightTexcoords = calculateProjectedFragmentPosition(actualTexCoords, viewIndex, rightViewProjMatrix); // convert to pixel space
-                float originalRightDepth = getCameraLogDepth(shiftedRightTexcoords, gridCount - 1); // sample the depth of the original right camera
-                originalRightDepth = LinearEyeDepth(originalRightDepth, _ZBufferParams); // convert from log depth to linear depth
-                float rightDepth = getCameraLogDepth(actualTexCoords, viewIndex); // sample the depth of the shifted right camera
-                rightDepth = LinearEyeDepth(rightDepth, _ZBufferParams); // convert from log depth to linear depth
+                float2 shiftedRightTexcoords = calculateProjectedFragmentPosition(cellTexCoords, viewIndex, rightViewProjMatrix); // convert to pixel space
+                float originalRightDepth = LinearEyeDepthViewBased(shiftedRightTexcoords, gridCount - 1); // sample the depth of the original right camera
+
 
                 uint discardFragmentLeft = 0;
-                if(abs(originalLeftDepth - leftDepth) > 0.1) {
+                if(abs(originalLeftDepth - actualDepth) > 0.1) {
                     discardFragmentLeft = 1; // discard if the depth of the shifted left camera is too far away from the original left camera depth
                 }
 
@@ -209,14 +225,13 @@ Shader "G3D/ViewGeneration"
 
 
                 uint discardFragmentRight = 0;
-                if(abs(originalRightDepth - rightDepth) > 0.1) {
+                if(abs(originalRightDepth - actualDepth) > 0.1) {
                     discardFragmentRight = 1; // discard if the depth of the shifted right camera is too far away from the original right camera depth
                 }
 
                 if(shiftedRightTexcoords.x < 0 || shiftedRightTexcoords.x > 1.0f) {
                     discardFragmentRight = 1; // discard if the tex coord is out of bounds
                 }
-
 
                 if (discardFragmentLeft == 1 && discardFragmentRight == 1) {
                     discard;
@@ -227,55 +242,8 @@ Shader "G3D/ViewGeneration"
                 if (discardFragmentLeft == 0 && discardFragmentRight == 1) {
                     return texture0.Sample(samplertexture0, shiftedLeftTexcoords); // sample the left camera texture
                 }
-                if (leftDepth < rightDepth) {
-                    return texture0.Sample(samplertexture0, shiftedLeftTexcoords); // sample the left camera texture
-                }
-
 
                 return texture1.Sample(samplertexture1, shiftedRightTexcoords);
-                
-
-                // -----------------
-                // handle left and right cameras
-                // -----------------
-                // float rightOffset = (gridCount - 1 - viewIndex) * disparityStep; // distance between the original left camera and the current view
-                // float DRight = calculateOffset(rightOffset, focusDistance, distLayerFocusPlane, rightProjMatrix); // calculate offset of layer in pixel
-                // float2 texCoordShiftedRight = actualTexCoords;
-                // texCoordShiftedRight.x -= DRight;
-                // float shiftedRightDepth = sampleRightDepth(texCoordShiftedRight);
-                
-                // int leftFills = 1;
-                // if(texCoordShiftedLeft.x < 0 || texCoordShiftedLeft.x > 1.0f) {
-                //     leftFills = 0; // discard if the tex coord is out of bounds
-                // }
-                // if (abs((layer - shiftedLeftDepth)) > layerDistance) {
-                //     leftFills = 0; // discard if the layer is too far away from the shifted left depth
-                // }
-
-
-                // int rightFills = 0;
-                // if(texCoordShiftedRight.x < 0 || texCoordShiftedRight.x > 1.0f) {
-                //     rightFills = 0; // discard if the tex coord is out of bounds
-                // }
-                // if (abs((layer - shiftedRightDepth)) > layerDistance) {
-                //     rightFills = 0; // discard if the layer is too far away from the shifted right depth
-                // }
-
-                // if (leftFills == 0 && rightFills == 0) {
-                //     discard; // discard if both left and right camera do not fill the layer
-                // }
-                // if (leftFills == 1 && rightFills == 0) {
-                //     return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
-                // }
-                // if (leftFills == 0 && rightFills == 1) {
-                //     return texture0.Sample(samplertexture0, texCoordShiftedRight); // sample the right camera texture
-                // }
-
-                // if(shiftedLeftDepth < shiftedRightDepth) {
-                //     return texture1.Sample(samplertexture1, texCoordShiftedLeft); // sample the left camera texture
-                // }
-
-                // return texture0.Sample(samplertexture0, texCoordShiftedRight); // sample the right camera texture
             }
             ENDHLSL
         }

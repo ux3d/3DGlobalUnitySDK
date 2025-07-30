@@ -21,10 +21,9 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
             RenderTexture depthTexture = new RenderTexture(
                 cameras[0].pixelWidth,
                 cameras[0].pixelHeight,
-                24,
+                32,
                 RenderTextureFormat.Depth
             );
-            depthTexture.dimension = TextureDimension.Tex2D;
             depthTexture.Create();
             indivDepthTextures[i] = depthTexture;
             fullscreenPassMaterial.SetTexture(

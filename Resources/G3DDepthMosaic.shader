@@ -20,6 +20,7 @@ Shader "G3D/DepthMosaic"
             HLSLPROGRAM
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+            #include "G3DHLSLCommonFunctions.hlsl"
 
             #pragma vertex vert
             #pragma fragment fragHDRP
@@ -60,30 +61,6 @@ Shader "G3D/DepthMosaic"
 
             int grid_size_x;
             int grid_size_y;
-
-            struct VertAttributes
-            {
-                uint vertexID : SV_VertexID;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
-            };
-
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                float4 screenPos : SV_POSITION;
-            };
-
-            v2f vert(VertAttributes input)
-            {
-                v2f output;
-                UNITY_SETUP_INSTANCE_ID(input);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-                output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
-                output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
-
-                return output;
-
-            }
 
             // Set the texture array as a shader input
             float getCameraLogDepth(float2 uv, int cameraIndex) {
@@ -131,29 +108,11 @@ Shader "G3D/DepthMosaic"
             /// </summary>
             float4 fragHDRP (v2f i) : SV_Target
             {
-                {
-                    // the text coords of the original left and right view are from 0 - 1
-                    // the tex coords of the texel we are currently rendering are also from 0 - 1
-                    // but we want to create a grid of views, so we need to transform the tex coords
-                    // to the grid size.
-                    // basically we want to figure out in which grid cell the current texel is, then convert the texel coords to the grid cell coords.
-                    // example assuming a grid size of 3x3:
-                    // original tex coords: 0.8, 0.5
-                    // step 1: transform the tex coords to the grid size by multiplying with grid size
-                    //    -> e.g. original x coord 0.8 turns to 0.8 * 3 = 2.4
-                    // step 2: figure out the grid cell by taking the integer part of the transformed tex coords
-                    //    -> e.g. 2.4 turns to 2
-                    // step 3: subtract the integer part from the transformed tex coords to get the texel coords in the grid cell
-                    //   -> e.g. 2.4 - 2 = 0.4 -> final texel coords in the grid cell are 0.4, 0.5
-                }
-                float2 cellCoordinates = float2(i.uv.x, 1.0 - i.uv.y); // flip y coordiate to have cell index 0 in upper left corner
-                cellCoordinates = float2(cellCoordinates.x * grid_size_x, cellCoordinates.y * grid_size_y);
-                uint viewIndex = uint(cellCoordinates.x) + grid_size_x * uint(cellCoordinates.y);
-                // texcoords in this texcels coordinate system (from 0 - 1)
-                float2 actualTexCoords = float2(cellCoordinates.x - float(int(cellCoordinates.x)), cellCoordinates.y - float(int(cellCoordinates.y)));
-                actualTexCoords.y = 1.0 - actualTexCoords.y; // flip y coordinate to match original tex coords
+                float2 cellCoordinates = getCellCoordinates(i.uv, grid_size_x, grid_size_y);
+                uint viewIndex = getViewIndex(cellCoordinates, grid_size_x, grid_size_y);
+                float2 cellTexCoords = getCellTexCoords(cellCoordinates);
 
-                float depth = getCameraLogDepth(actualTexCoords, viewIndex);
+                float depth = getCameraLogDepth(cellTexCoords, viewIndex);
                 return float4(depth, depth, depth, 1.0f); // return the depth value as color
             }
             ENDHLSL

@@ -24,7 +24,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
 
             // upload all inv view projection matrices
-            for (int i = 0; i < internalCameraCount - 1; i++)
+            for (int i = 0; i < internalCameraCount; i++)
             {
                 Matrix4x4 projectionMatrixInner = GL.GetGPUProjectionMatrix(
                     cameras[i].projectionMatrix,
@@ -37,6 +37,11 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 ctx.propertyBlock.SetMatrix(
                     Shader.PropertyToID("inverseProjMatrix" + i),
                     invGPUProjMatrix
+                );
+
+                ctx.propertyBlock.SetMatrix(
+                    Shader.PropertyToID("viewMatrix" + i),
+                    cameras[i].worldToCameraMatrix
                 );
             }
 

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing.Drawing2D;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -375,8 +374,7 @@ public class G3DCamera
             RenderTexture depthMosaicTexture = new RenderTexture(
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
-                32,
-                RenderTextureFormat.Depth
+                0
             );
             depthMosaicTexture.Create();
             RTHandle depthMosaicHandle = RTHandles.Alloc(depthMosaicTexture);
