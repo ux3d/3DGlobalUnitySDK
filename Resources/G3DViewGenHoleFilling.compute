@@ -1,0 +1,262 @@
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+#include "G3DHLSLCommonFunctions.hlsl"
+
+#pragma kernel kernelFunction
+
+Texture2D _depthMosaic;
+SamplerState sampler_depthMosaic;
+Texture2D _colorMosaic;
+SamplerState sampler_colorMosaic;
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+
+
+float4x4 inverseProjMatrix0;
+float4x4 inverseProjMatrix1;
+float4x4 inverseProjMatrix2;
+float4x4 inverseProjMatrix3;
+float4x4 inverseProjMatrix4;
+float4x4 inverseProjMatrix5;
+float4x4 inverseProjMatrix6;
+float4x4 inverseProjMatrix7;
+float4x4 inverseProjMatrix8;
+float4x4 inverseProjMatrix9;
+float4x4 inverseProjMatrix10;
+float4x4 inverseProjMatrix11;
+float4x4 inverseProjMatrix12;
+float4x4 inverseProjMatrix13;
+float4x4 inverseProjMatrix14;
+float4x4 inverseProjMatrix15;
+
+float4x4 viewMatrix0;
+float4x4 viewMatrix1;
+float4x4 viewMatrix2;
+float4x4 viewMatrix3;
+float4x4 viewMatrix4;
+float4x4 viewMatrix5;
+float4x4 viewMatrix6;
+float4x4 viewMatrix7;
+float4x4 viewMatrix8;
+float4x4 viewMatrix9;
+float4x4 viewMatrix10;
+float4x4 viewMatrix11;
+float4x4 viewMatrix12;
+float4x4 viewMatrix13;
+float4x4 viewMatrix14;
+float4x4 viewMatrix15;
+
+
+
+int grid_size_x;
+int grid_size_y;
+int radius;
+float sigma;
+
+int imageWidth;
+int imageHeight;
+float xStepSize;
+float yStepSize;
+
+float4x4 getInverseViewProjectionMatrix(int viewIndex) {
+    switch (viewIndex) {
+        case 0: return inverseProjMatrix0;
+        case 1: return inverseProjMatrix1;
+        case 2: return inverseProjMatrix2;
+        case 3: return inverseProjMatrix3;
+        case 4: return inverseProjMatrix4;
+        case 5: return inverseProjMatrix5;
+        case 6: return inverseProjMatrix6;
+        case 7: return inverseProjMatrix7;
+        case 8: return inverseProjMatrix8;
+        case 9: return inverseProjMatrix9;
+        case 10: return inverseProjMatrix10;
+        case 11: return inverseProjMatrix11;
+        case 12: return inverseProjMatrix12;
+        case 13: return inverseProjMatrix13;
+        case 14: return inverseProjMatrix14;
+        case 15: return inverseProjMatrix15;
+        default: return float4x4(1.0f, 1.0f, 1.0f, 1.0f,
+                                    1.0f, 1.0f, 1.0f, 1.0f,
+                                    1.0f, 1.0f, 1.0f, 1.0f,
+                                    1.0f, 1.0f, 1.0f, 1.0f);
+    }
+}
+
+float4x4 getViewMatrix(int viewIndex) {
+    switch (viewIndex) {
+        case 0: return viewMatrix0;
+        case 1: return viewMatrix1;
+        case 2: return viewMatrix2;
+        case 3: return viewMatrix3;
+        case 4: return viewMatrix4;
+        case 5: return viewMatrix5;
+        case 6: return viewMatrix6;
+        case 7: return viewMatrix7;
+        case 8: return viewMatrix8;
+        case 9: return viewMatrix9;
+        case 10: return viewMatrix10;
+        case 11: return viewMatrix11;
+        case 12: return viewMatrix12;
+        case 13: return viewMatrix13;
+        case 14: return viewMatrix14;
+        case 15: return viewMatrix15;
+        default: return float4x4(1.0f, 0.0f, 0.0f, 0.0f,
+                                    0.0f, 1.0f, 0.0f, 0.0f,
+                                    0.0f, 0.0f, 1.0f, 0.0f,
+                                    0.0f, 0.0f, 0.0f, 1.0f);
+    }
+}
+
+float get_view_bias(uint viewIndex) {
+    int maxView = grid_size_x * grid_size_y;
+
+    if (viewIndex == 0) { // leftmost view
+        return 0.0;
+    }
+    float bias = float(viewIndex) / (maxView - 1);
+    return bias;
+}
+
+// Set the texture array as a shader input
+float getCameraLogDepth(float2 fullScreenUV, int viewIndex) {
+    float2 fragmentUV = calculateUVForMosaic(viewIndex, fullScreenUV, grid_size_y, grid_size_x);
+    return _depthMosaic.SampleLevel(sampler_depthMosaic, fragmentUV, 0).r;
+}
+
+// here UV is treated as a full screen UV coordinate
+float2 calculateProjectedFragmentPosition(float2 uv, int viewIndex, float4x4 viewProjectionMatrix) {
+    float logDepth = getCameraLogDepth(uv, viewIndex);
+    // Sample the depth from the Camera depth texture.
+    float deviceDepth = logDepth;
+
+    // Reconstruct the world space positions.
+    float3 worldPos = ComputeWorldSpacePosition(uv, deviceDepth, getInverseViewProjectionMatrix(viewIndex));
+
+    float3 NDC = ComputeNormalizedDeviceCoordinatesWithZ(worldPos, viewProjectionMatrix); // convert from clip space to NDC coordinates
+    
+    return float2(NDC.xy); // return the difference between the shifted and original x coordinate
+}
+
+float LinearEyeDepthViewBased(float2 uv, int viewIndex)
+{
+    float logDepth = getCameraLogDepth(uv, viewIndex);
+    // Sample the depth from the Camera depth texture.
+    float deviceDepth = logDepth;
+    float3 worldPos = ComputeWorldSpacePosition(uv, deviceDepth, getInverseViewProjectionMatrix(viewIndex));
+    float eyeDepth = LinearEyeDepth(worldPos, getViewMatrix(viewIndex));
+    return eyeDepth;
+}
+
+float4 getColorMosaic(float2 uv, int viewIndex) {
+    float2 fragmentUV = calculateUVForMosaic(viewIndex, uv, grid_size_y, grid_size_x);
+    return _colorMosaic.SampleLevel(sampler_colorMosaic, fragmentUV, 0);
+}
+
+float4 fragHDRP (float2 uv)
+{
+    float2 cellCoordinates = getCellCoordinates(uv, grid_size_x, grid_size_y);
+    uint viewIndex = getViewIndex(cellCoordinates, grid_size_x, grid_size_y);
+    float2 cellTexCoords = getCellTexCoords(cellCoordinates);
+
+    // first and last image in the grid are the left and right camera
+    uint gridCount = grid_size_x * grid_size_y;
+    if (viewIndex == 0 || viewIndex == gridCount - 1) {
+        return _colorMosaic.SampleLevel(sampler_colorMosaic, uv, 0);
+    }
+
+    
+
+    float radius_y = 2;
+
+    float radius_left = 0;
+    float radius_right = 0;
+
+
+    float view_bias = get_view_bias(viewIndex);
+    if (view_bias > 0.0f) {
+        radius_right = radius * xStepSize;
+        radius_left = radius_right / 4.0;
+    } else {
+        radius_left = radius * xStepSize;
+        radius_right = radius_left / 4.0;
+    }
+    radius_y = radius * yStepSize;
+
+    float depthAtCenter = LinearEyeDepthViewBased(cellTexCoords, viewIndex);
+    float4 cellColor = getColorMosaic(cellTexCoords, viewIndex); // sample the color of the left camera texture
+
+    float kernelSum = 0.0f;
+    float4 colorSum = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    for (float dx = -radius_left; dx <= radius_right; dx = dx + xStepSize) {
+        for (float dy = -radius_y; dy <= radius_y; dy = dy + yStepSize) {
+            float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
+            float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
+
+            float distance = sqrt(dx * dx + dy * dy);
+            float weight = exp(-(distance * distance) / (2.0f * sigma * sigma));
+            // weight = 1.0;
+                
+            float2 sampleUV = float2(x, y);
+            float4 colorSample = getColorMosaic(sampleUV, viewIndex);
+
+            float depth_sample = LinearEyeDepthViewBased(sampleUV, viewIndex);
+            float4 color_sample = getColorMosaic(sampleUV, viewIndex);
+
+            if (color_sample.w < 1.0f) {
+                // only collect colors from known values -> skip holes
+                continue;
+            }
+
+            if (depth_sample < depthAtCenter) { // 0.0=front | 1.0=back
+                // if center is further at the back then skip sample or reduce weight
+
+                weight = 0.0f;
+            } else {
+                // reduce weight with distance to center:
+                float diff = abs(depthAtCenter - depth_sample);
+                weight = weight * (diff * diff);
+            }
+
+            kernelSum += weight;
+            colorSum += weight * color_sample;
+        }
+    }
+
+    if (kernelSum == 0.0f) {
+        return cellColor;
+    }
+
+    return float4(colorSum.xyz / kernelSum, 1.0f); // return the average color of the samples
+}
+
+[numthreads(32,32,1)]
+void kernelFunction (uint3 id : SV_DispatchThreadID)
+{
+    int numThreads = 32;
+
+
+    float xCohortSize = floor(imageWidth / numThreads);
+    float yCohortSize = floor(imageHeight / numThreads);
+
+    float xStepSize = 1.0f / (float)imageWidth;
+    float yStepSize = 1.0f / (float)imageHeight;
+
+    for(int i = 0; i < numThreads; i++) {
+        for(int j = 0; j < numThreads; j++) {
+            int x = id.x + i * numThreads;
+            int y = id.y + j * numThreads;
+
+            if (x >= imageWidth || y >= imageHeight) {
+                continue; // skip if out of bounds
+            }
+
+            float2 uv = float2(x * xStepSize, y * yStepSize);
+            float4 color = fragHDRP(uv);
+
+            Result[float2(x, y)] = color;
+        }
+    }
+}

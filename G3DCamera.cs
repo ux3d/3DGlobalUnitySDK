@@ -396,11 +396,12 @@ public class G3DCamera
             viewGenerationPass.materialPassName = "G3DViewGeneration";
             viewGenerationPass.cameras = cameras;
             viewGenerationPass.internalCameraCount = internalCameraCount;
+            viewGenerationPass.depthMosaicHandle = depthMosaicHandle;
 
             // add autostereo mosaic generation pass
-            G3DHDRPViewGenerationMosaicPass customPass =
-                customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
-                as G3DHDRPViewGenerationMosaicPass;
+            // G3DHDRPViewGenerationMosaicPass customPass =
+            //     customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
+            //     as G3DHDRPViewGenerationMosaicPass;
             RenderTexture mosaicTexture = new RenderTexture(
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
@@ -410,10 +411,12 @@ public class G3DCamera
                 format = RenderTextureFormat.ARGB32,
                 depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
             };
+            mosaicTexture.enableRandomWrite = true;
             RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
-            material.SetTexture("mosaictexture", rtHandleMosaic);
-            customPass.fullscreenPassMaterial = material;
-            customPass.materialPassName = "G3DFullScreen3D";
+
+            // material.SetTexture("mosaictexture", rtHandleMosaic);
+            // customPass.fullscreenPassMaterial = material;
+            // customPass.materialPassName = "G3DFullScreen3D";
 
             viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
         }

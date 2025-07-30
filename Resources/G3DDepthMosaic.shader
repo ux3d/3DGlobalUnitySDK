@@ -20,6 +20,7 @@ Shader "G3D/DepthMosaic"
             HLSLPROGRAM
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+            #include "G3DHLSLShaderBasics.hlsl"
             #include "G3DHLSLCommonFunctions.hlsl"
 
             #pragma vertex vert

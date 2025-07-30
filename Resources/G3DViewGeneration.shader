@@ -20,6 +20,7 @@ Shader "G3D/ViewGeneration"
             HLSLPROGRAM
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+            #include "G3DHLSLShaderBasics.hlsl"
             #include "G3DHLSLCommonFunctions.hlsl"
 
             #pragma vertex vert
@@ -127,7 +128,6 @@ Shader "G3D/ViewGeneration"
                 }
             }
 
-            // Set the texture array as a shader input
             float getCameraLogDepth(float2 fullScreenUV, int viewIndex) {
                 float2 fragmentUV = calculateUVForMosaic(viewIndex, fullScreenUV, grid_size_y, grid_size_x);
                 return _depthMosaic.Sample(sampler_depthMosaic, fragmentUV).r;
@@ -234,7 +234,7 @@ Shader "G3D/ViewGeneration"
                 }
 
                 if (discardFragmentLeft == 1 && discardFragmentRight == 1) {
-                    discard;
+                    return float4(0.0f, 0.0f, 0.0f, 0.0f); // discard if both fragments are discarded
                 }
                 if (discardFragmentLeft == 1 && discardFragmentRight == 0) {
                     return texture1.Sample(samplertexture1, shiftedRightTexcoords); // sample the right camera texture
