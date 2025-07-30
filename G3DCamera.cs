@@ -373,10 +373,12 @@ public class G3DCamera
             depthMosaicPass.internalCameraCount = internalCameraCount;
 
             RenderTexture depthMosaicTexture = new RenderTexture(
-                mainCamera.pixelWidth * 4,
-                mainCamera.pixelHeight * 4,
-                0
+                mainCamera.pixelWidth,
+                mainCamera.pixelHeight,
+                32,
+                RenderTextureFormat.Depth
             );
+            depthMosaicTexture.Create();
             RTHandle depthMosaicHandle = RTHandles.Alloc(depthMosaicTexture);
             depthMosaicPass.depthMosaicHandle = depthMosaicHandle;
 
