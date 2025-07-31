@@ -20,6 +20,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public RenderTexture computeShaderResultTexture;
     public RTHandle computeShaderResultTextureHandle;
 
+    public int holeFillingRadius = 8;
+
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
         holeFillingCompShader = Resources.Load<ComputeShader>("G3DViewGenHoleFilling");
@@ -104,7 +106,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             );
             ctx.cmd.SetComputeIntParam(holeFillingCompShader, "grid_size_x", 4);
             ctx.cmd.SetComputeIntParam(holeFillingCompShader, "grid_size_y", 4);
-            ctx.cmd.SetComputeIntParam(holeFillingCompShader, "radius", 5);
+            ctx.cmd.SetComputeIntParam(holeFillingCompShader, "radius", holeFillingRadius);
+            ctx.cmd.SetComputeFloatParam(holeFillingCompShader, "sigma", holeFillingRadius / 2.0f);
             ctx.cmd.SetComputeIntParam(
                 holeFillingCompShader,
                 "imageWidth",
@@ -123,7 +126,6 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 computeShaderResultTextureHandle,
                 ctx.cameraColorBuffer
             );
-            CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
         }
     }
 

@@ -108,16 +108,6 @@ float4x4 getViewMatrix(int viewIndex) {
     }
 }
 
-float get_view_bias(uint viewIndex) {
-    int maxView = grid_size_x * grid_size_y;
-
-    if (viewIndex == 0) { // leftmost view
-        return 0.0;
-    }
-    float bias = float(viewIndex) / (maxView - 1);
-    return bias;
-}
-
 // Set the texture array as a shader input
 float getCameraLogDepth(float2 fullScreenUV, int viewIndex) {
     float2 fragmentUV = calculateUVForMosaic(viewIndex, fullScreenUV, grid_size_y, grid_size_x);
@@ -138,14 +128,14 @@ float2 calculateProjectedFragmentPosition(float2 uv, int viewIndex, float4x4 vie
     return float2(NDC.xy); // return the difference between the shifted and original x coordinate
 }
 
-float LinearEyeDepthViewBased(float2 uv, int viewIndex)
+float Linear01DepthViewBased(float2 uv, int viewIndex)
 {
     float logDepth = getCameraLogDepth(uv, viewIndex);
     // Sample the depth from the Camera depth texture.
     float deviceDepth = logDepth;
     float3 worldPos = ComputeWorldSpacePosition(uv, deviceDepth, getInverseViewProjectionMatrix(viewIndex));
     float eyeDepth = LinearEyeDepth(worldPos, getViewMatrix(viewIndex));
-    return eyeDepth;
+    return eyeDepth / _ProjectionParams.z; // convert to linear depth in range [0, 1]
 }
 
 float4 getColorMosaic(float2 uv, int viewIndex) {
@@ -172,16 +162,7 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
     float px_radius_right = 0;
 
 
-    float view_bias = get_view_bias(viewIndex);
-    if (view_bias > 0.0f) {
-        px_radius_right = radius * view_bias;
-        px_radius_left = px_radius_right / 4.0;
-    } else {
-        px_radius_left = radius * view_bias;
-        px_radius_right = px_radius_left / 4.0;
-    }
-
-    float depthAtCenter = LinearEyeDepthViewBased(cellTexCoords, viewIndex);
+    float depthAtCenter = Linear01DepthViewBased(cellTexCoords, viewIndex);
     float4 cellColor = getColorMosaic(cellTexCoords, viewIndex); // sample the color of the left camera texture
     if( cellColor.w >= 1.0f) {
         // if the cell color is valid, return the original color
@@ -190,21 +171,20 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
 
     float kernelSum = 0.0f;
     float4 colorSum = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    for (int dpxX = -px_radius_left; dpxX <= px_radius_right; ++dpxX) {
+    for (int dpxX = -radius; dpxX <= radius; ++dpxX) {
         for (int dpxY = -radius; dpxY <= radius; ++dpxY) {
             float dx = dpxX * xStepSize;
             float dy = dpxY * yStepSize;
             float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
             float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
 
-            float distance = sqrt(dx * dx + dy * dy);
+            float distance = sqrt(dpxX * dpxX + dpxY * dpxY);
             float weight = exp(-(distance * distance) / (2.0f * sigma * sigma));
             // weight = 1.0;
                 
             float2 sampleUV = float2(x, y);
-            float4 colorSample = getColorMosaic(sampleUV, viewIndex);
 
-            float depth_sample = LinearEyeDepthViewBased(sampleUV, viewIndex);
+            float depth_sample = Linear01DepthViewBased(sampleUV, viewIndex);
             float4 color_sample = getColorMosaic(sampleUV, viewIndex);
 
             if (color_sample.w < 1.0f) {
@@ -226,10 +206,6 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
             colorSum += weight * color_sample;
         }
     }
-
-    // if (kernelSum == 0.0f) {
-    //     return float4(1.0f, 0.5f, 0.0f, 1.0f); // return black if no samples were found
-    // }
 
     return float4(colorSum.xyz / kernelSum, 1.0f); // return the average color of the samples
 }
