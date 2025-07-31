@@ -397,6 +397,16 @@ public class G3DCamera
             viewGenerationPass.cameras = cameras;
             viewGenerationPass.internalCameraCount = internalCameraCount;
             viewGenerationPass.depthMosaicHandle = depthMosaicHandle;
+            viewGenerationPass.computeShaderResultTexture = new RenderTexture(
+                mainCamera.pixelWidth,
+                mainCamera.pixelHeight,
+                0
+            );
+            viewGenerationPass.computeShaderResultTexture.enableRandomWrite = true;
+            viewGenerationPass.computeShaderResultTexture.Create();
+            viewGenerationPass.computeShaderResultTextureHandle = RTHandles.Alloc(
+                viewGenerationPass.computeShaderResultTexture
+            );
 
             // add autostereo mosaic generation pass
             // G3DHDRPViewGenerationMosaicPass customPass =

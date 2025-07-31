@@ -57,8 +57,6 @@ float sigma;
 
 int imageWidth;
 int imageHeight;
-float xStepSize;
-float yStepSize;
 
 float4x4 getInverseViewProjectionMatrix(int viewIndex) {
     switch (viewIndex) {
@@ -155,7 +153,7 @@ float4 getColorMosaic(float2 uv, int viewIndex) {
     return _colorMosaic.SampleLevel(sampler_colorMosaic, fragmentUV, 0);
 }
 
-float4 fragHDRP (float2 uv)
+float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
 {
     float2 cellCoordinates = getCellCoordinates(uv, grid_size_x, grid_size_y);
     uint viewIndex = getViewIndex(cellCoordinates, grid_size_x, grid_size_y);
@@ -169,29 +167,33 @@ float4 fragHDRP (float2 uv)
 
     
 
-    float radius_y = 2;
 
-    float radius_left = 0;
-    float radius_right = 0;
+    float px_radius_left = 0;
+    float px_radius_right = 0;
 
 
     float view_bias = get_view_bias(viewIndex);
     if (view_bias > 0.0f) {
-        radius_right = radius * xStepSize;
-        radius_left = radius_right / 4.0;
+        px_radius_right = radius * view_bias;
+        px_radius_left = px_radius_right / 4.0;
     } else {
-        radius_left = radius * xStepSize;
-        radius_right = radius_left / 4.0;
+        px_radius_left = radius * view_bias;
+        px_radius_right = px_radius_left / 4.0;
     }
-    radius_y = radius * yStepSize;
 
     float depthAtCenter = LinearEyeDepthViewBased(cellTexCoords, viewIndex);
     float4 cellColor = getColorMosaic(cellTexCoords, viewIndex); // sample the color of the left camera texture
+    if( cellColor.w >= 1.0f) {
+        // if the cell color is valid, return the original color
+        return cellColor;
+    }
 
     float kernelSum = 0.0f;
     float4 colorSum = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    for (float dx = -radius_left; dx <= radius_right; dx = dx + xStepSize) {
-        for (float dy = -radius_y; dy <= radius_y; dy = dy + yStepSize) {
+    for (int dpxX = -px_radius_left; dpxX <= px_radius_right; ++dpxX) {
+        for (int dpxY = -radius; dpxY <= radius; ++dpxY) {
+            float dx = dpxX * xStepSize;
+            float dy = dpxY * yStepSize;
             float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
             float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
 
@@ -225,9 +227,9 @@ float4 fragHDRP (float2 uv)
         }
     }
 
-    if (kernelSum == 0.0f) {
-        return cellColor;
-    }
+    // if (kernelSum == 0.0f) {
+    //     return float4(1.0f, 0.5f, 0.0f, 1.0f); // return black if no samples were found
+    // }
 
     return float4(colorSum.xyz / kernelSum, 1.0f); // return the average color of the samples
 }
@@ -235,28 +237,29 @@ float4 fragHDRP (float2 uv)
 [numthreads(32,32,1)]
 void kernelFunction (uint3 id : SV_DispatchThreadID)
 {
-    int numThreads = 32;
+    int numThreadsX = 32;
+    int numThreadsY = 32;
 
-
-    float xCohortSize = floor(imageWidth / numThreads);
-    float yCohortSize = floor(imageHeight / numThreads);
+    float xCohortSize = floor((imageWidth + numThreadsX) / numThreadsX);
+    float yCohortSize = floor((imageHeight + numThreadsY) / numThreadsY);
 
     float xStepSize = 1.0f / (float)imageWidth;
     float yStepSize = 1.0f / (float)imageHeight;
 
-    for(int i = 0; i < numThreads; i++) {
-        for(int j = 0; j < numThreads; j++) {
-            int x = id.x + i * numThreads;
-            int y = id.y + j * numThreads;
+    for(int i = 0; i < xCohortSize; i++) {
+        for(int j = 0; j < yCohortSize; j++) {
+            int x = id.x * xCohortSize + i;
+            int y = id.y * yCohortSize + j;
 
             if (x >= imageWidth || y >= imageHeight) {
                 continue; // skip if out of bounds
             }
 
             float2 uv = float2(x * xStepSize, y * yStepSize);
-            float4 color = fragHDRP(uv);
+            float4 color = fragHDRP(uv, xStepSize, yStepSize);
 
             Result[float2(x, y)] = color;
+            // Result[float2(x, y)] = float4(uv,0.1f, 1.0f); // write the color to the result texture
         }
     }
 }

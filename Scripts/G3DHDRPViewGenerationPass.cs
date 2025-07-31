@@ -17,6 +17,9 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
     private ComputeShader holeFillingCompShader;
 
+    public RenderTexture computeShaderResultTexture;
+    public RTHandle computeShaderResultTextureHandle;
+
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
         holeFillingCompShader = Resources.Load<ComputeShader>("G3DViewGenHoleFilling");
@@ -85,7 +88,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 holeFillingCompShader,
                 kernel,
                 "Result",
-                mosaicImageHandle
+                computeShaderResultTexture
             );
             ctx.cmd.SetComputeTextureParam(
                 holeFillingCompShader,
@@ -102,16 +105,6 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             ctx.cmd.SetComputeIntParam(holeFillingCompShader, "grid_size_x", 4);
             ctx.cmd.SetComputeIntParam(holeFillingCompShader, "grid_size_y", 4);
             ctx.cmd.SetComputeIntParam(holeFillingCompShader, "radius", 5);
-            ctx.cmd.SetComputeFloatParam(
-                holeFillingCompShader,
-                "xStepSize",
-                1.0f / (float)mosaicImageHandle.rt.width
-            );
-            ctx.cmd.SetComputeFloatParam(
-                holeFillingCompShader,
-                "yStepSize",
-                1.0f / (float)mosaicImageHandle.rt.height
-            );
             ctx.cmd.SetComputeIntParam(
                 holeFillingCompShader,
                 "imageWidth",
@@ -123,9 +116,13 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 mosaicImageHandle.rt.height
             );
 
-            holeFillingCompShader.Dispatch(kernel, 32, 32, 1);
+            ctx.cmd.DispatchCompute(holeFillingCompShader, kernel, 32, 32, 1);
 
-            HDUtils.BlitCameraTexture(ctx.cmd, mosaicImageHandle, ctx.cameraColorBuffer);
+            HDUtils.BlitCameraTexture(
+                ctx.cmd,
+                computeShaderResultTextureHandle,
+                ctx.cameraColorBuffer
+            );
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
         }
     }
