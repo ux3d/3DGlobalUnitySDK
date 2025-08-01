@@ -376,6 +376,7 @@ public class G3DCamera
                 mainCamera.pixelHeight,
                 0
             );
+            depthMosaicTexture.format = RenderTextureFormat.ARGBFloat;
             depthMosaicTexture.Create();
             RTHandle depthMosaicHandle = RTHandles.Alloc(depthMosaicTexture);
             depthMosaicPass.depthMosaicHandle = depthMosaicHandle;
@@ -409,9 +410,9 @@ public class G3DCamera
             );
 
             // add autostereo mosaic generation pass
-            G3DHDRPViewGenerationMosaicPass finalQutostereoGeneration =
-                customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
-                as G3DHDRPViewGenerationMosaicPass;
+            // G3DHDRPViewGenerationMosaicPass finalAutostereoGeneration =
+            //     customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
+            // as G3DHDRPViewGenerationMosaicPass;
             RenderTexture mosaicTexture = new RenderTexture(
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
@@ -425,8 +426,8 @@ public class G3DCamera
             RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
 
             material.SetTexture("mosaictexture", rtHandleMosaic);
-            finalQutostereoGeneration.fullscreenPassMaterial = material;
-            finalQutostereoGeneration.materialPassName = "G3DFullScreen3D";
+            // finalAutostereoGeneration.fullscreenPassMaterial = material;
+            // finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
 
             viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
         }
@@ -1093,7 +1094,7 @@ public class G3DCamera
             // if generate views only enable the leftmost and rightmost camera
             if (generateViews)
             {
-                if (i == 0 || i == internalCameraCount - 1)
+                if (i == 0 || i == internalCameraCount / 2 || i == internalCameraCount - 1)
                 {
                     camera.gameObject.SetActive(true);
                 }
@@ -1146,10 +1147,18 @@ public class G3DCamera
         return false;
     }
 
+    /// <summary>
+    /// adds rendertextres for the cameras to the shader and sets them as target textures for the cameras.
+    /// </summary>
+    /// <param name="renderTextures"></param>
+    /// <param name="renderTextureIndex"></param>
+    /// <param name="cameraIndex"></param>
+    /// <param name="texNameInShader">only used if view generation is turned on. used to specify the texture name (left, right, middle)</param>
     private void addRenderTextureToCamera(
         RenderTexture[] renderTextures,
         int renderTextureIndex,
-        int cameraIndex
+        int cameraIndex,
+        string texNameInShader = "texture"
     )
     {
         int width = Screen.width;
@@ -1181,7 +1190,7 @@ public class G3DCamera
         if (generateViews)
         {
             viewGenerationMaterial.SetTexture(
-                "texture" + renderTextureIndex,
+                texNameInShader,
                 renderTextures[renderTextureIndex],
                 RenderTextureSubElement.Color
             );
@@ -1203,8 +1212,9 @@ public class G3DCamera
 
         if (generateViews)
         {
-            addRenderTextureToCamera(renderTextures, 0, 0); // right camera
-            addRenderTextureToCamera(renderTextures, 1, internalCameraCount - 1); // left camera
+            addRenderTextureToCamera(renderTextures, 0, 0, "_leftCamTex"); // left camera
+            addRenderTextureToCamera(renderTextures, 1, internalCameraCount / 2, "_middleCamTex"); // middle camera
+            addRenderTextureToCamera(renderTextures, 2, internalCameraCount - 1, "_rightCamTex"); // right camera
         }
         else
         {

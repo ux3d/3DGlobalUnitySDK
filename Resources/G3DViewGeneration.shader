@@ -27,16 +27,19 @@ Shader "G3D/ViewGeneration"
             #pragma fragment fragHDRP
 
             // 0 = left camera, 1 = right camera
-            Texture2D texture0;
-            SamplerState samplertexture0;
-            Texture2D texture1;
-            SamplerState samplertexture1;
+            Texture2D _leftCamTex;
+            SamplerState sampler_leftCamTex;
+            Texture2D _middleCamTex;
+            SamplerState sampler_middleCamTex;
+            Texture2D _rightCamTex;
+            SamplerState sampler_rightCamTex;
 
             Texture2D _depthMosaic;
             SamplerState sampler_depthMosaic;
 
 
             float4x4 rightViewProjMatrix;
+            float4x4 middleViewProjMatrix;
             float4x4 leftViewProjMatrix;
 
             float4x4 inverseProjMatrix0;
@@ -182,6 +185,19 @@ Shader "G3D/ViewGeneration"
                 return eyeDepth;
             }
 
+            uint shouldDiscardFragment(float2 shiftedTexCoords, float originalDepth, float actualDepth)
+            {
+                uint discardFragment = 0;
+                if(abs(originalDepth - actualDepth) > 0.1) {
+                    discardFragment = 1; // discard if the depth of the shifted left camera is too far away from the original left camera depth
+                }
+
+                if(shiftedTexCoords.x < 0 || shiftedTexCoords.x > 1.0f) {
+                    discardFragment = 1; // discard if the tex coord is out of bounds
+                }
+                return discardFragment;
+            }
+
             /// <summary>
             /// creates a grid of views with a given grid size.
             /// each view is offset by a given disparity value.
@@ -197,10 +213,13 @@ Shader "G3D/ViewGeneration"
                 // first and last image in the grid are the left and right camera
                 uint gridCount = grid_size_x * grid_size_y;
                 if (viewIndex == 0) {
-                    return texture0.Sample(samplertexture0, cellTexCoords); // sample the left camera texture
+                    return _leftCamTex.Sample(sampler_leftCamTex, cellTexCoords); // sample the left camera texture
+                }
+                if (viewIndex == gridCount / 2) {
+                    return _middleCamTex.Sample(sampler_middleCamTex, cellTexCoords); // sample the middle camera texture
                 }
                 if (viewIndex == gridCount - 1) {
-                    return texture1.Sample(samplertexture1, cellTexCoords); // sample the right camera texture
+                    return _rightCamTex.Sample(sampler_rightCamTex, cellTexCoords); // sample the right camera texture
                 }
 
                 // -----------------------------------------------------------------------------------------------------------
@@ -208,42 +227,31 @@ Shader "G3D/ViewGeneration"
                 
                 float2 shiftedLeftTexcoords = calculateProjectedFragmentPosition(cellTexCoords, viewIndex, leftViewProjMatrix); // convert to pixel space
                 float originalLeftDepth = LinearEyeDepthViewBased(shiftedLeftTexcoords, 0); // sample the depth of the original left camera
-                float actualDepth = LinearEyeDepthViewBased(cellTexCoords, viewIndex); // sample the depth of the shifted left camera
+                
+                float2 shiftedMiddleTexcoords = calculateProjectedFragmentPosition(cellTexCoords, viewIndex, middleViewProjMatrix); // convert to pixel space
+                float originalMiddleDepth = LinearEyeDepthViewBased(shiftedMiddleTexcoords, gridCount / 2); // sample the depth of the original middle camera
 
                 float2 shiftedRightTexcoords = calculateProjectedFragmentPosition(cellTexCoords, viewIndex, rightViewProjMatrix); // convert to pixel space
                 float originalRightDepth = LinearEyeDepthViewBased(shiftedRightTexcoords, gridCount - 1); // sample the depth of the original right camera
+                
+                float actualDepth = LinearEyeDepthViewBased(cellTexCoords, viewIndex); // sample the depth of the shifted left camera
 
+                uint discardFragmentLeft = shouldDiscardFragment(shiftedLeftTexcoords, originalLeftDepth, actualDepth);
+                uint discardFragmentMiddle = shouldDiscardFragment(shiftedMiddleTexcoords, originalMiddleDepth, actualDepth);
+                uint discardFragmentRight = shouldDiscardFragment(shiftedRightTexcoords, originalRightDepth, actualDepth);
 
-                uint discardFragmentLeft = 0;
-                if(abs(originalLeftDepth - actualDepth) > 0.1) {
-                    discardFragmentLeft = 1; // discard if the depth of the shifted left camera is too far away from the original left camera depth
+                float4 finalColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                if (!discardFragmentLeft) {
+                    finalColor = _leftCamTex.Sample(sampler_leftCamTex, shiftedLeftTexcoords); // sample the left camera texture
+                }
+                if (!discardFragmentRight) {
+                    finalColor = _rightCamTex.Sample(sampler_rightCamTex, shiftedRightTexcoords); // sample the right camera texture
+                }
+                if( !discardFragmentMiddle && finalColor.a == 0.0f) { // if the final color is not set yet, sample the middle camera texture
+                    finalColor = _middleCamTex.Sample(sampler_middleCamTex, shiftedMiddleTexcoords); // sample the middle camera texture
                 }
 
-                if(shiftedLeftTexcoords.x < 0 || shiftedLeftTexcoords.x > 1.0f) {
-                    discardFragmentLeft = 1; // discard if the tex coord is out of bounds
-                }
-
-
-                uint discardFragmentRight = 0;
-                if(abs(originalRightDepth - actualDepth) > 0.1) {
-                    discardFragmentRight = 1; // discard if the depth of the shifted right camera is too far away from the original right camera depth
-                }
-
-                if(shiftedRightTexcoords.x < 0 || shiftedRightTexcoords.x > 1.0f) {
-                    discardFragmentRight = 1; // discard if the tex coord is out of bounds
-                }
-
-                if (discardFragmentLeft == 1 && discardFragmentRight == 1) {
-                    return float4(0.0f, 0.0f, 0.0f, 0.0f); // discard if both fragments are discarded
-                }
-                if (discardFragmentLeft == 1 && discardFragmentRight == 0) {
-                    return texture1.Sample(samplertexture1, shiftedRightTexcoords); // sample the right camera texture
-                }
-                if (discardFragmentLeft == 0 && discardFragmentRight == 1) {
-                    return texture0.Sample(samplertexture0, shiftedLeftTexcoords); // sample the left camera texture
-                }
-
-                return texture1.Sample(samplertexture1, shiftedRightTexcoords);
+                return finalColor;
             }
             ENDHLSL
         }

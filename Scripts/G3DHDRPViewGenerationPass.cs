@@ -20,17 +20,31 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public RenderTexture computeShaderResultTexture;
     public RTHandle computeShaderResultTextureHandle;
 
-    public int holeFillingRadius = 8;
+    public int holeFillingRadius = 1;
+
+    public bool fillHoles = false;
+
+    private Material blitMaterial;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
         holeFillingCompShader = Resources.Load<ComputeShader>("G3DViewGenHoleFilling");
+        blitMaterial = new Material(Shader.Find("G3D/G3DBlit"));
+        blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);
     }
 
     private void setMatrix(CustomPassContext ctx, Matrix4x4 matrix, string name)
     {
         ctx.propertyBlock.SetMatrix(Shader.PropertyToID(name), matrix);
         ctx.cmd.SetComputeMatrixParam(holeFillingCompShader, name, matrix);
+    }
+
+    private void addViewProjectionMatrix(CustomPassContext ctx, Camera camera, string name)
+    {
+        Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(camera.projectionMatrix, false);
+        Matrix4x4 viewMatrix = camera.worldToCameraMatrix;
+        Matrix4x4 viewProjectionMatrix = projectionMatrix * viewMatrix;
+        setMatrix(ctx, viewProjectionMatrix, name);
     }
 
     protected override void Execute(CustomPassContext ctx)
@@ -56,27 +70,19 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 setMatrix(ctx, cameras[i].worldToCameraMatrix, "viewMatrix" + i);
             }
 
-            // upload left view projection matrix
-            Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(
-                cameras[0].projectionMatrix,
-                false
-            );
-            Matrix4x4 viewMatrix = cameras[0].worldToCameraMatrix;
-            Matrix4x4 viewProjectionMatrix = projectionMatrix * viewMatrix;
-            setMatrix(ctx, viewProjectionMatrix, "leftViewProjMatrix");
-
-            // upload right view projection matrix
-            Matrix4x4 rightProjectionMatrix = GL.GetGPUProjectionMatrix(
-                cameras[internalCameraCount - 1].projectionMatrix,
-                false
-            );
-            Matrix4x4 rightViewMatrix = cameras[internalCameraCount - 1].worldToCameraMatrix;
-            Matrix4x4 rightViewProjectionMatrix = rightProjectionMatrix * rightViewMatrix;
-            setMatrix(ctx, rightViewProjectionMatrix, "rightViewProjMatrix");
+            addViewProjectionMatrix(ctx, cameras[0], "leftViewProjMatrix");
+            addViewProjectionMatrix(ctx, cameras[internalCameraCount / 2], "middleViewProjMatrix");
+            addViewProjectionMatrix(ctx, cameras[internalCameraCount - 1], "rightViewProjMatrix");
 
             // TODO remove this line (used to render the mosaic image to screen)
-            // CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
-            CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
+            if (fillHoles)
+            {
+                CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
+            }
+            else
+            {
+                CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
+            }
             CoreUtils.DrawFullScreen(
                 ctx.cmd,
                 fullscreenPassMaterial,
@@ -84,48 +90,52 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 shaderPassId: 0
             );
 
-            // fill holes in the mosaic image
-            int kernel = holeFillingCompShader.FindKernel("kernelFunction");
-            ctx.cmd.SetComputeTextureParam(
-                holeFillingCompShader,
-                kernel,
-                "Result",
-                computeShaderResultTexture
-            );
-            ctx.cmd.SetComputeTextureParam(
-                holeFillingCompShader,
-                kernel,
-                "_depthMosaic",
-                depthMosaicHandle
-            );
-            ctx.cmd.SetComputeTextureParam(
-                holeFillingCompShader,
-                kernel,
-                "_colorMosaic",
-                mosaicImageHandle
-            );
-            ctx.cmd.SetComputeIntParam(holeFillingCompShader, "grid_size_x", 4);
-            ctx.cmd.SetComputeIntParam(holeFillingCompShader, "grid_size_y", 4);
-            ctx.cmd.SetComputeIntParam(holeFillingCompShader, "radius", holeFillingRadius);
-            ctx.cmd.SetComputeFloatParam(holeFillingCompShader, "sigma", holeFillingRadius / 2.0f);
-            ctx.cmd.SetComputeIntParam(
-                holeFillingCompShader,
-                "imageWidth",
-                mosaicImageHandle.rt.width
-            );
-            ctx.cmd.SetComputeIntParam(
-                holeFillingCompShader,
-                "imageHeight",
-                mosaicImageHandle.rt.height
-            );
+            if (fillHoles)
+            {
+                // fill holes in the mosaic image
+                int kernel = holeFillingCompShader.FindKernel("kernelFunction");
+                ctx.cmd.SetComputeTextureParam(
+                    holeFillingCompShader,
+                    kernel,
+                    "Result",
+                    computeShaderResultTexture
+                );
+                ctx.cmd.SetComputeTextureParam(
+                    holeFillingCompShader,
+                    kernel,
+                    "_depthMosaic",
+                    depthMosaicHandle
+                );
+                ctx.cmd.SetComputeTextureParam(
+                    holeFillingCompShader,
+                    kernel,
+                    "_colorMosaic",
+                    mosaicImageHandle
+                );
+                ctx.cmd.SetComputeIntParam(holeFillingCompShader, "grid_size_x", 4);
+                ctx.cmd.SetComputeIntParam(holeFillingCompShader, "grid_size_y", 4);
+                ctx.cmd.SetComputeIntParam(holeFillingCompShader, "radius", holeFillingRadius);
+                ctx.cmd.SetComputeFloatParam(
+                    holeFillingCompShader,
+                    "sigma",
+                    holeFillingRadius / 2.0f
+                );
+                ctx.cmd.SetComputeIntParam(
+                    holeFillingCompShader,
+                    "imageWidth",
+                    mosaicImageHandle.rt.width
+                );
+                ctx.cmd.SetComputeIntParam(
+                    holeFillingCompShader,
+                    "imageHeight",
+                    mosaicImageHandle.rt.height
+                );
 
-            ctx.cmd.DispatchCompute(holeFillingCompShader, kernel, 32, 32, 1);
+                ctx.cmd.DispatchCompute(holeFillingCompShader, kernel, 32, 32, 1);
 
-            HDUtils.BlitCameraTexture(
-                ctx.cmd,
-                computeShaderResultTextureHandle,
-                ctx.cameraColorBuffer
-            );
+                CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
+                CoreUtils.DrawFullScreen(ctx.cmd, blitMaterial, ctx.propertyBlock, shaderPassId: 0);
+            }
         }
     }
 

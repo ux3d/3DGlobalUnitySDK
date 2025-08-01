@@ -12,6 +12,8 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
     RenderTexture[] indivDepthTextures;
 
     public RTHandle depthMosaicHandle;
+    public bool excludeLayer = false;
+    public int layerToExclude = 3;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
@@ -54,6 +56,13 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
             );
             bakingCamera.TryGetCullingParameters(out var cullingParams);
             cullingParams.cullingOptions = CullingOptions.None;
+            camera.cullingMask &= ~(1 << bakingCamera.gameObject.layer);
+
+            if (excludeLayer)
+            {
+                int layerMask = 1 << layerToExclude;
+                cullingParams.cullingMask = ~(uint)layerMask;
+            }
 
             // Assign the custom culling result to the context
             // so it'll be used for the following operations
