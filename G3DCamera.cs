@@ -410,9 +410,9 @@ public class G3DCamera
             );
 
             // add autostereo mosaic generation pass
-            // G3DHDRPViewGenerationMosaicPass finalAutostereoGeneration =
-            //     customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
-            // as G3DHDRPViewGenerationMosaicPass;
+            G3DHDRPViewGenerationMosaicPass finalAutostereoGeneration =
+                customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
+                as G3DHDRPViewGenerationMosaicPass;
             RenderTexture mosaicTexture = new RenderTexture(
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
@@ -426,8 +426,8 @@ public class G3DCamera
             RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
 
             material.SetTexture("mosaictexture", rtHandleMosaic);
-            // finalAutostereoGeneration.fullscreenPassMaterial = material;
-            // finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
+            finalAutostereoGeneration.fullscreenPassMaterial = material;
+            finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
 
             viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
         }

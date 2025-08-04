@@ -20,9 +20,11 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public RenderTexture computeShaderResultTexture;
     public RTHandle computeShaderResultTextureHandle;
 
-    public int holeFillingRadius = 1;
+    public int holeFillingRadius = 3;
 
     public bool fillHoles = false;
+
+    public bool debugRendering = false;
 
     private Material blitMaterial;
 
@@ -74,14 +76,13 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             addViewProjectionMatrix(ctx, cameras[internalCameraCount / 2], "middleViewProjMatrix");
             addViewProjectionMatrix(ctx, cameras[internalCameraCount - 1], "rightViewProjMatrix");
 
-            // TODO remove this line (used to render the mosaic image to screen)
-            if (fillHoles)
+            if (debugRendering)
             {
-                CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
+                CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
             }
             else
             {
-                CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
+                CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
             }
             CoreUtils.DrawFullScreen(
                 ctx.cmd,

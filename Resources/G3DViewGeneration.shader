@@ -134,31 +134,6 @@ Shader "G3D/ViewGeneration"
             float getCameraLogDepth(float2 fullScreenUV, int viewIndex) {
                 float2 fragmentUV = calculateUVForMosaic(viewIndex, fullScreenUV, grid_size_y, grid_size_x);
                 return _depthMosaic.Sample(sampler_depthMosaic, fragmentUV).r;
-                
-                {
-
-                    // Test if bluring the depth map removes the banding artifacts
-                    // const float offset[] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
-                    // const float weight[] = {0.191, 0.15, 0.092, 0.044, 0.017, 0.005, 0.001};
-                    // float4 FragmentColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
-                    // // 2619 x 1387
-                    // //(1.0, 0.0) -> horizontal blur
-                    // //(0.0, 1.0) -> vertical blur
-                    
-                    // float hstep = 1.0 / 2619;
-                    // float vstep = 1.0 / 1387;
-                    
-                    // for (int i = 1; i < 5; i++) {
-                    //     FragmentColor +=
-                    //     _depthMosaic.Sample(sampler_depthMosaic, fragmentUV + float2(hstep*offset[i], vstep*offset[i]))*weight[i] +
-                    //     _depthMosaic.Sample(sampler_depthMosaic, fragmentUV - float2(hstep*offset[i], vstep*offset[i]))*weight[i];      
-                    // }
-                    // float4 ppColour = _depthMosaic.Sample(sampler_depthMosaic, fragmentUV) * weight[0];
-                    // ppColour += FragmentColor;
-                    
-                    
-                    // return ppColour.r;//_depthMosaic.Sample(sampler_depthMosaic, fragmentUV).r;
-                }
             }
 
             // here UV is treated as a full screen UV coordinate
