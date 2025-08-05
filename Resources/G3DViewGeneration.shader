@@ -34,10 +34,6 @@ Shader "G3D/ViewGeneration"
             Texture2D _rightCamTex;
             SamplerState sampler_rightCamTex;
 
-            Texture2D _depthMosaic;
-            SamplerState sampler_depthMosaic;
-
-
             float4x4 rightViewProjMatrix;
             float4x4 middleViewProjMatrix;
             float4x4 leftViewProjMatrix;
@@ -75,6 +71,65 @@ Shader "G3D/ViewGeneration"
             float4x4 viewMatrix13;
             float4x4 viewMatrix14;
             float4x4 viewMatrix15;
+
+            Texture2D _depthMap0;
+            Texture2D _depthMap1;
+            Texture2D _depthMap2;
+            Texture2D _depthMap3;
+            Texture2D _depthMap4;
+            Texture2D _depthMap5;
+            Texture2D _depthMap6;
+            Texture2D _depthMap7;
+            Texture2D _depthMap8;
+            Texture2D _depthMap9;
+            Texture2D _depthMap10;
+            Texture2D _depthMap11;
+            Texture2D _depthMap12;
+            Texture2D _depthMap13;
+            Texture2D _depthMap14;
+            Texture2D _depthMap15;
+
+            SamplerState sampler_linear_repeat;
+
+            // Set the texture array as a shader input
+            float getCameraLogDepth(float2 uv, int cameraIndex) {
+                switch(cameraIndex) {
+                    case 0:
+                        return _depthMap0.Sample( sampler_linear_repeat, uv).r;
+                    case 1:
+                        return _depthMap1.Sample( sampler_linear_repeat, uv).r;
+                    case 2:
+                        return _depthMap2.Sample( sampler_linear_repeat, uv).r;
+                    case 3:
+                        return _depthMap3.Sample( sampler_linear_repeat, uv).r;
+                    case 4:
+                        return _depthMap4.Sample( sampler_linear_repeat, uv).r;
+                    case 5:
+                        return _depthMap5.Sample( sampler_linear_repeat, uv).r;
+                    case 6:
+                        return _depthMap6.Sample( sampler_linear_repeat, uv).r;
+                    case 7:
+                        return _depthMap7.Sample( sampler_linear_repeat, uv).r;
+                    case 8:
+                        return _depthMap8.Sample( sampler_linear_repeat, uv).r;
+                    case 9:
+                        return _depthMap9.Sample( sampler_linear_repeat, uv).r;  
+                    case 10:
+                        return _depthMap10.Sample( sampler_linear_repeat, uv).r;  
+                    case 11:
+                        return _depthMap11.Sample( sampler_linear_repeat, uv).r;  
+                    case 12:
+                        return _depthMap12.Sample( sampler_linear_repeat, uv).r;  
+                    case 13:
+                        return _depthMap13.Sample( sampler_linear_repeat, uv).r;  
+                    case 14:
+                        return _depthMap14.Sample( sampler_linear_repeat, uv).r;  
+                    case 15:
+                        return _depthMap15.Sample( sampler_linear_repeat, uv).r;  
+                    default:
+                        return _depthMap0.Sample( sampler_linear_repeat, uv).r; // use left camera depth map as default
+                }
+            }
 
 
 
@@ -131,11 +186,6 @@ Shader "G3D/ViewGeneration"
                 }
             }
 
-            float getCameraLogDepth(float2 fullScreenUV, int viewIndex) {
-                float2 fragmentUV = calculateUVForMosaic(viewIndex, fullScreenUV, grid_size_y, grid_size_x);
-                return _depthMosaic.Sample(sampler_depthMosaic, fragmentUV).r;
-            }
-
             // here UV is treated as a full screen UV coordinate
             float2 calculateProjectedFragmentPosition(float2 uv, int viewIndex, float4x4 viewProjectionMatrix) {
                 float logDepth = getCameraLogDepth(uv, viewIndex);
@@ -185,6 +235,9 @@ Shader "G3D/ViewGeneration"
                 uint viewIndex = getViewIndex(cellCoordinates, grid_size_x, grid_size_y);
                 float2 cellTexCoords = getCellTexCoords(cellCoordinates);
 
+                // float logDepth = getCameraLogDepth(cellTexCoords, viewIndex);
+                // return float4(logDepth, logDepth, logDepth, 1.0f); // return the log depth for debugging purposes
+
                 // first and last image in the grid are the left and right camera
                 uint gridCount = grid_size_x * grid_size_y;
                 if (viewIndex == 0) {
@@ -216,17 +269,21 @@ Shader "G3D/ViewGeneration"
                 uint discardFragmentRight = shouldDiscardFragment(shiftedRightTexcoords, originalRightDepth, actualDepth);
 
                 float4 finalColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                float factor = 0.0f;
                 if (!discardFragmentLeft) {
-                    finalColor = _leftCamTex.Sample(sampler_leftCamTex, shiftedLeftTexcoords); // sample the left camera texture
+                    finalColor += _leftCamTex.Sample(sampler_leftCamTex, shiftedLeftTexcoords); // sample the left camera texture
+                    factor += 1.0f; // increase the factor for the left camera
                 }
                 if (!discardFragmentRight) {
-                    finalColor = _rightCamTex.Sample(sampler_rightCamTex, shiftedRightTexcoords); // sample the right camera texture
+                    finalColor += _rightCamTex.Sample(sampler_rightCamTex, shiftedRightTexcoords); // sample the right camera texture
+                    factor += 1.0f; // increase the factor for the right camera
                 }
-                if( !discardFragmentMiddle && finalColor.a == 0.0f) { // if the final color is not set yet, sample the middle camera texture
-                    finalColor = _middleCamTex.Sample(sampler_middleCamTex, shiftedMiddleTexcoords); // sample the middle camera texture
+                if( !discardFragmentMiddle) { // if the final color is not set yet, sample the middle camera texture
+                    finalColor += _middleCamTex.Sample(sampler_middleCamTex, shiftedMiddleTexcoords); // sample the middle camera texture
+                    factor += 1.0f; // increase the factor for the middle camera
                 }
 
-                return finalColor;
+                return finalColor / factor;
             }
             ENDHLSL
         }

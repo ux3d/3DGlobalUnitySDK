@@ -349,6 +349,10 @@ public class G3DCamera
 #if G3D_HDRP
     private void initCustomPass()
     {
+        bool debugRendering = false;
+        bool isHoleFilling = false;
+        int holeFillingRadius = 3;
+
         // init fullscreen postprocessing for hd render pipeline
         CustomPassVolume customPassVolume = gameObject.AddComponent<CustomPassVolume>();
         customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
@@ -362,24 +366,21 @@ public class G3DCamera
             G3DHDRPDepthMapPrePass depthMosaicPass =
                 customPassVolume.AddPassOfType(typeof(G3DHDRPDepthMapPrePass))
                 as G3DHDRPDepthMapPrePass;
-            Material depthMosaicMaterial = new Material(Shader.Find("G3D/DepthMosaic"));
-            depthMosaicMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 4);
-            depthMosaicMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 4);
-
-            depthMosaicPass.fullscreenPassMaterial = depthMosaicMaterial;
-            depthMosaicPass.materialPassName = "G3DDepthMosaic";
             depthMosaicPass.cameras = cameras;
             depthMosaicPass.internalCameraCount = internalCameraCount;
 
-            RenderTexture depthMosaicTexture = new RenderTexture(
-                mainCamera.pixelWidth,
-                mainCamera.pixelHeight,
-                0
-            );
-            depthMosaicTexture.format = RenderTextureFormat.ARGBFloat;
-            depthMosaicTexture.Create();
-            RTHandle depthMosaicHandle = RTHandles.Alloc(depthMosaicTexture);
-            depthMosaicPass.depthMosaicHandle = depthMosaicHandle;
+            depthMosaicPass.indivDepthTextures = new RenderTexture[internalCameraCount];
+            for (int i = 0; i < internalCameraCount; i++)
+            {
+                RenderTexture depthTexture = new RenderTexture(
+                    cameras[0].pixelWidth,
+                    cameras[0].pixelHeight,
+                    0,
+                    RenderTextureFormat.Depth
+                );
+                depthTexture.Create();
+                depthMosaicPass.indivDepthTextures[i] = depthTexture;
+            }
 
             // add multiview generation pass
             G3DHDRPViewGenerationPass viewGenerationPass =
@@ -388,16 +389,11 @@ public class G3DCamera
             viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
             viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 4);
             viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 4);
-            viewGenerationMaterial.SetTexture(
-                Shader.PropertyToID("_depthMosaic"),
-                depthMosaicHandle
-            );
 
             viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
             viewGenerationPass.materialPassName = "G3DViewGeneration";
             viewGenerationPass.cameras = cameras;
             viewGenerationPass.internalCameraCount = internalCameraCount;
-            viewGenerationPass.depthMosaicHandle = depthMosaicHandle;
             viewGenerationPass.computeShaderResultTexture = new RenderTexture(
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
@@ -408,27 +404,40 @@ public class G3DCamera
             viewGenerationPass.computeShaderResultTextureHandle = RTHandles.Alloc(
                 viewGenerationPass.computeShaderResultTexture
             );
+            for (int i = 0; i < internalCameraCount; i++)
+            {
+                viewGenerationPass.fullscreenPassMaterial.SetTexture(
+                    "_depthMap" + i,
+                    depthMosaicPass.indivDepthTextures[i],
+                    RenderTextureSubElement.Depth
+                );
+            }
+            viewGenerationPass.indivDepthMaps = depthMosaicPass.indivDepthTextures;
+            viewGenerationPass.debugRendering = debugRendering;
+            viewGenerationPass.fillHoles = isHoleFilling;
+            viewGenerationPass.holeFillingRadius = holeFillingRadius;
 
             // add autostereo mosaic generation pass
-            G3DHDRPViewGenerationMosaicPass finalAutostereoGeneration =
-                customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
-                as G3DHDRPViewGenerationMosaicPass;
             RenderTexture mosaicTexture = new RenderTexture(
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
-                0
-            )
-            {
-                format = RenderTextureFormat.ARGB32,
-                depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
-            };
+                0,
+                RenderTextureFormat.ARGB32,
+                RenderTextureReadWrite.sRGB
+            );
             mosaicTexture.enableRandomWrite = true;
+
+            if (debugRendering == false)
+            {
+                G3DHDRPViewGenerationMosaicPass finalAutostereoGeneration =
+                    customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
+                    as G3DHDRPViewGenerationMosaicPass;
+                finalAutostereoGeneration.fullscreenPassMaterial = material;
+                finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
+            }
+
             RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
-
             material.SetTexture("mosaictexture", rtHandleMosaic);
-            finalAutostereoGeneration.fullscreenPassMaterial = material;
-            finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
-
             viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
         }
         else

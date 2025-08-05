@@ -9,32 +9,12 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
     public List<Camera> cameras;
     public int internalCameraCount = 16;
 
-    RenderTexture[] indivDepthTextures;
+    public RenderTexture[] indivDepthTextures;
 
-    public RTHandle depthMosaicHandle;
     public bool excludeLayer = false;
     public int layerToExclude = 3;
 
-    protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
-    {
-        indivDepthTextures = new RenderTexture[internalCameraCount];
-        for (int i = 0; i < internalCameraCount; i++)
-        {
-            RenderTexture depthTexture = new RenderTexture(
-                cameras[0].pixelWidth / 4,
-                cameras[0].pixelHeight / 4,
-                0,
-                RenderTextureFormat.Depth
-            );
-            depthTexture.Create();
-            indivDepthTextures[i] = depthTexture;
-            fullscreenPassMaterial.SetTexture(
-                "_depthMap" + i,
-                depthTexture,
-                RenderTextureSubElement.Depth
-            );
-        }
-    }
+    protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
     {
@@ -80,15 +60,6 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
                 overrideRenderState: overrideDepthTest
             );
         }
-
-        // combine depthmaps into mosaic depth map
-        CoreUtils.SetRenderTarget(ctx.cmd, depthMosaicHandle, ClearFlag.None);
-        CoreUtils.DrawFullScreen(
-            ctx.cmd,
-            fullscreenPassMaterial,
-            ctx.propertyBlock,
-            shaderPassId: 0
-        );
     }
 
     /// <summary>

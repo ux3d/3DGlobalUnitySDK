@@ -13,20 +13,21 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public int internalCameraCount = 16;
 
     public RTHandle mosaicImageHandle;
-    public RTHandle depthMosaicHandle;
 
     private ComputeShader holeFillingCompShader;
 
     public RenderTexture computeShaderResultTexture;
     public RTHandle computeShaderResultTextureHandle;
 
-    public int holeFillingRadius = 3;
+    public int holeFillingRadius;
 
-    public bool fillHoles = false;
+    public bool fillHoles;
 
-    public bool debugRendering = false;
+    public bool debugRendering;
 
     private Material blitMaterial;
+
+    public RenderTexture[] indivDepthMaps;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
@@ -76,7 +77,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             addViewProjectionMatrix(ctx, cameras[internalCameraCount / 2], "middleViewProjMatrix");
             addViewProjectionMatrix(ctx, cameras[internalCameraCount - 1], "rightViewProjMatrix");
 
-            if (debugRendering)
+            if (debugRendering && !fillHoles)
             {
                 CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
             }
@@ -84,6 +85,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             {
                 CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
             }
+
             CoreUtils.DrawFullScreen(
                 ctx.cmd,
                 fullscreenPassMaterial,
@@ -101,12 +103,15 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                     "Result",
                     computeShaderResultTexture
                 );
-                ctx.cmd.SetComputeTextureParam(
-                    holeFillingCompShader,
-                    kernel,
-                    "_depthMosaic",
-                    depthMosaicHandle
-                );
+                for (int i = 0; i < internalCameraCount; i++)
+                {
+                    ctx.cmd.SetComputeTextureParam(
+                        holeFillingCompShader,
+                        kernel,
+                        "_depthMap" + i,
+                        indivDepthMaps[i]
+                    );
+                }
                 ctx.cmd.SetComputeTextureParam(
                     holeFillingCompShader,
                     kernel,
@@ -134,7 +139,15 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
                 ctx.cmd.DispatchCompute(holeFillingCompShader, kernel, 32, 32, 1);
 
-                CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
+                if (debugRendering)
+                {
+                    CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
+                }
+                else
+                {
+                    CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
+                }
+
                 CoreUtils.DrawFullScreen(ctx.cmd, blitMaterial, ctx.propertyBlock, shaderPassId: 0);
             }
         }
