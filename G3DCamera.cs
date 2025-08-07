@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using PlasticGui.WorkspaceWindow;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -250,7 +249,7 @@ public class G3DCamera
     #endregion
 
     private bool generateViews = true;
-    private bool useVectorMapViewGeneration = false;
+    private bool useVectorMapViewGeneration = true;
     private Material viewGenerationMaterial;
 
     // TODO Handle viewport resizing/ moving
@@ -349,14 +348,15 @@ public class G3DCamera
 
         if (useVectorMapViewGeneration)
         {
+            int invert = shaderParameters.leftLensOrientation == 1 ? 1 : -1;
             Texture2D viewMap = ViewmapGeneratorInterface.getViewMap(
                 (uint)shaderParameters.screenWidth, // PixelCountX
                 (uint)shaderParameters.screenHeight, // PixelCountY
                 (uint)shaderParameters.nativeViewCount, // ViewCount
                 (uint)shaderParameters.angleRatioDenominator, // LensWidth
-                (uint)shaderParameters.angleRatioNumerator, // LensAngleCounter
+                invert * shaderParameters.angleRatioNumerator, // LensAngleCounter
                 false, // ViewOrderInverted
-                shaderParameters.leftLensOrientation != 0, // Rotated
+                false, // Rotated
                 false, // FullPixel
                 shaderParameters.BGRPixelLayout != 0 // BGRMode
             );
@@ -376,7 +376,7 @@ public class G3DCamera
     private void initCustomPass()
     {
         bool debugRendering = false;
-        bool isHoleFilling = false;
+        bool isFillingHoles = false;
         int holeFillingRadius = 3;
 
         // init fullscreen postprocessing for hd render pipeline
@@ -440,7 +440,7 @@ public class G3DCamera
             }
             viewGenerationPass.indivDepthMaps = depthMosaicPass.indivDepthTextures;
             viewGenerationPass.debugRendering = debugRendering;
-            viewGenerationPass.fillHoles = isHoleFilling;
+            viewGenerationPass.fillHoles = isFillingHoles;
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
 
             // add autostereo mosaic generation pass
@@ -1033,6 +1033,9 @@ public class G3DCamera
             material?.SetInt(Shader.PropertyToID("cameraCount"), internalCameraCount);
 
             material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
+
+            material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
+            material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
         }
     }
 

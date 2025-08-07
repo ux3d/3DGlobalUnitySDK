@@ -81,7 +81,6 @@ Shader "G3D/MultiviewMosaicVector"
         float xScreenCoords = i.uv.x * viewportWidth + viewport_pos_x;
         viewport_pos_y = viewport_pos_y - viewportHeight;
         float yScreenCoords = (viewportHeight - i.uv.y * viewportHeight) + viewport_pos_y;
-        // TODO check if this is necessary
         
         // position of window in screen coordinates
         uint2 computedScreenPos = uint2(xScreenCoords, yScreenCoords);
