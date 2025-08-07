@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using PlasticGui.WorkspaceWindow;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -249,6 +250,7 @@ public class G3DCamera
     #endregion
 
     private bool generateViews = true;
+    private bool useVectorMapViewGeneration = false;
     private Material viewGenerationMaterial;
 
     // TODO Handle viewport resizing/ moving
@@ -284,10 +286,10 @@ public class G3DCamera
 
         shaderHandles = new ShaderHandles()
         {
-            leftViewportPosition = Shader.PropertyToID("v_pos_x"),
-            bottomViewportPosition = Shader.PropertyToID("v_pos_y"),
-            screenWidth = Shader.PropertyToID("s_width"),
-            screenHeight = Shader.PropertyToID("s_height"),
+            leftViewportPosition = Shader.PropertyToID("viewport_pos_x"),
+            bottomViewportPosition = Shader.PropertyToID("viewport_pos_y"),
+            screenWidth = Shader.PropertyToID("screen_width"),
+            screenHeight = Shader.PropertyToID("screen_height"),
             nativeViewCount = Shader.PropertyToID("nativeViewCount"),
             angleRatioNumerator = Shader.PropertyToID("zwinkel"),
             angleRatioDenominator = Shader.PropertyToID("nwinkel"),
@@ -344,6 +346,30 @@ public class G3DCamera
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
         headPositionLog = new Queue<string>(10000);
+
+        if (useVectorMapViewGeneration)
+        {
+            Texture2D viewMap = ViewmapGeneratorInterface.getViewMap(
+                (uint)shaderParameters.screenWidth, // PixelCountX
+                (uint)shaderParameters.screenHeight, // PixelCountY
+                (uint)shaderParameters.nativeViewCount, // ViewCount
+                (uint)shaderParameters.angleRatioDenominator, // LensWidth
+                (uint)shaderParameters.angleRatioNumerator, // LensAngleCounter
+                false, // ViewOrderInverted
+                shaderParameters.leftLensOrientation != 0, // Rotated
+                false, // FullPixel
+                shaderParameters.BGRPixelLayout != 0 // BGRMode
+            );
+            viewMap.Apply();
+            material?.SetTexture("_viewMap", viewMap);
+
+            float[] indexMap = new float[shaderParameters.nativeViewCount];
+            for (int i = 0; i < shaderParameters.nativeViewCount; i++)
+            {
+                indexMap[i] = i;
+            }
+            material?.SetFloatArray("indexMap", indexMap);
+        }
     }
 
 #if G3D_HDRP
@@ -437,7 +463,7 @@ public class G3DCamera
             }
 
             RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
-            material.SetTexture("mosaictexture", rtHandleMosaic);
+            material.SetTexture("_colorMosaic", rtHandleMosaic);
             viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
         }
         else
@@ -834,7 +860,11 @@ public class G3DCamera
     {
         if (mode == G3DCameraMode.MULTIVIEW)
         {
-            if (generateViews)
+            if (useVectorMapViewGeneration && generateViews)
+            {
+                material = new Material(Shader.Find("G3D/MultiviewMosaicVector"));
+            }
+            else if (!useVectorMapViewGeneration && generateViews)
             {
                 material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
             }
@@ -948,6 +978,7 @@ public class G3DCamera
 
         // this parameter is used in the shader to invert the y axis
         material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
+        material?.SetInt(Shader.PropertyToID("viewportWidth"), Screen.width);
     }
 
     private void updateShaderParameters()
@@ -1479,7 +1510,7 @@ public class G3DCamera
 
         if (string.IsNullOrEmpty(remedy) == false)
         {
-            messageText = messageText + "\n" + remedy;
+            messageText = messageText + "\\n" + remedy;
         }
 
         return messageText;

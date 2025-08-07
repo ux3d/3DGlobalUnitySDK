@@ -13,9 +13,9 @@ Shader "G3D/AutostereoMultiviewMosaic"
     int  mstart;         // Viewshift permanent Offset
     
     
-    int  s_height;       // screen height
-    int  v_pos_x;        // horizontal viewport position
-    int  v_pos_y;        // vertical viewport position
+    int  screen_height;       // screen height
+    int  viewport_pos_x;        // horizontal viewport position
+    int  viewport_pos_y;        // vertical viewport position
     
     // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
     // to do this we need the actual viewport height
@@ -40,8 +40,8 @@ Shader "G3D/AutostereoMultiviewMosaic"
     };
 
 
-    Texture2D mosaictexture;
-    SamplerState samplermosaictexture;
+    Texture2D _colorMosaic;
+    SamplerState sampler_colorMosaic;
 
     int map(int x, int in_min, int in_max, int out_min, int out_max)
     {
@@ -86,9 +86,9 @@ Shader "G3D/AutostereoMultiviewMosaic"
 
     float4 frag (v2f i) : SV_Target
     {
-        float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
+        float yPos = screen_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
         
-        float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
+        float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(viewport_pos_x, viewport_pos_y);
         int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
         
         float2 uvCoords = i.uv;
@@ -115,7 +115,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
             }
             
             float2 mappedUVCoords = calculateUVForMosaic(viewIndex, uvCoords);
-            float4 tmpColor = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+            float4 tmpColor = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
 
             if(channel == 0) {
                 color.x = tmpColor.x;

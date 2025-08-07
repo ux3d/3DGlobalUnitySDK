@@ -13,9 +13,9 @@ Shader "G3D/AutostereoMultiview"
     int  mstart;         // Viewshift permanent Offset
     int  hqview;         // hqhqViewCount
     
-    int  s_height;       // screen height
-    int  v_pos_x;        // horizontal viewport position
-    int  v_pos_y;        // vertical viewport position
+    int  screen_height;       // screen height
+    int  viewport_pos_x;        // horizontal viewport position
+    int  viewport_pos_y;        // vertical viewport position
     
     // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
     // to do this we need the actual viewport height
@@ -30,7 +30,7 @@ Shader "G3D/AutostereoMultiview"
     int isBGR; // 0 = RGB, 1 = BGR
     
     // unused parameters -> only here for so that this shader overlaps with the multiview shader
-    int  s_width;        // screen width
+    int  screen_width;        // screen width
     int  bborder;        // blackBorder schwarz verblendung zwischen den views?
     int  bspace;         // blackSpace
     int  tvx;            // zCorrectionValue
@@ -153,9 +153,9 @@ Shader "G3D/AutostereoMultiview"
     {
         return sampleFromView(nativeViewCount - 0 - 1, i.uv);
 
-        float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
+        float yPos = screen_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
         
-        float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
+        float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(viewport_pos_x, viewport_pos_y);
         int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
         
         float2 uvCoords = i.uv;

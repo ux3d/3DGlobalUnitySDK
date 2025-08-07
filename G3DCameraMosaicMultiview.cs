@@ -75,9 +75,10 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         shaderHandles = new ShaderHandles()
         {
-            leftViewportPosition = Shader.PropertyToID("v_pos_x"),
-            bottomViewportPosition = Shader.PropertyToID("v_pos_y"),
-            screenHeight = Shader.PropertyToID("s_height"),
+            leftViewportPosition = Shader.PropertyToID("viewport_pos_x"),
+            bottomViewportPosition = Shader.PropertyToID("viewport_pos_y"),
+            screenHeight = Shader.PropertyToID("screen_height"),
+            screenWidth = Shader.PropertyToID("screen_width"),
             nativeViewCount = Shader.PropertyToID("nativeViewCount"),
             angleRatioNumerator = Shader.PropertyToID("zwinkel"),
             angleRatioDenominator = Shader.PropertyToID("nwinkel"),
@@ -121,7 +122,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     public void reinitializeShader()
     {
         material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
-        material.SetTexture("mosaictexture", mosaicTexture, RenderTextureSubElement.Color);
+        material.SetTexture("_colorMosaic", mosaicTexture, RenderTextureSubElement.Color);
 
         updateScreenViewportProperties();
         updateShaderParameters();
@@ -226,6 +227,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         // this parameter is used in the shader to invert the y axis
         material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
+        material?.SetInt(Shader.PropertyToID("viewportWidth"), Screen.width);
     }
 
     private void updateShaderParameters()
@@ -236,6 +238,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             shaderParameters.bottomViewportPosition
         );
         material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
+        material?.SetInt(shaderHandles.screenWidth, shaderParameters.screenWidth);
         material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
         material?.SetInt(shaderHandles.angleRatioNumerator, shaderParameters.angleRatioNumerator);
         material?.SetInt(
