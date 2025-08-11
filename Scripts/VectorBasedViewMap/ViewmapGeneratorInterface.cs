@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 
 internal enum G3DViewMapAlignment
 {
@@ -120,6 +121,18 @@ public sealed class ViewmapGeneratorInterface
         byte[] managedArray = new byte[ResultViewMapSize];
         Marshal.Copy(resultViewMapPtr, managedArray, 0, (int)ResultViewMapSize);
 
+        Color32[] data = new Color32[ResultViewMapWidth * ResultViewMapHeight];
+        for (int y = 0; y < ResultViewMapHeight; y++)
+        for (int x = 0; x < ResultViewMapWidth; x++)
+        {
+            data[y * ResultViewMapWidth + x] = new Color32(
+                managedArray[y * ResultViewMapWidth * 3 + x * 3 + 2],
+                managedArray[y * ResultViewMapWidth * 3 + x * 3 + 1],
+                managedArray[y * ResultViewMapWidth * 3 + x * 3 + 0],
+                255
+            );
+        }
+
         G3DMonitor_Error freeMapResult = ViewmapGeneratorCpp.G3DMonitor_FreeViewMap(
             resultViewMapPtr
         );
@@ -139,23 +152,11 @@ public sealed class ViewmapGeneratorInterface
         Texture2D texture = new Texture2D(
             (int)ResultViewMapWidth,
             (int)ResultViewMapHeight,
-            TextureFormat.RGB24,
-            false
+            GraphicsFormat.R8G8B8A8_UNorm,
+            0
         );
-        // for (int x = 0; x < ResultViewMapWidth; x++)
-        // {
-        //     for (int y = 0; y < ResultViewMapHeight; y++)
-        //     {
-        //         int index = (y * (int)ResultViewMapWidth + x) * 3;
-        //         Color color = new Color(
-        //             managedArray[index] / 255f,
-        //             managedArray[index + 1] / 255f,
-        //             managedArray[index + 2] / 255f
-        //         );
-        //         texture.SetPixel(x, y, color);
-        //     }
-        // }
-        texture.LoadRawTextureData(managedArray);
+        texture.filterMode = FilterMode.Point;
+        texture.SetPixels32(data);
         return texture;
     }
 }

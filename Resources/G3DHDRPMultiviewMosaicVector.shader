@@ -29,46 +29,48 @@ Shader "G3D/MultiviewMosaicVector"
     uint nativeViewCount = 16; // length of indexMap
     int mirror; // 1: mirror from left to right, 0: no mirror
 
+    int mosaic_columns = 4; // number of columns in the mosaic
+    int mosaic_rows = 4;    // number of rows in the mosaic
 
     // viewIndices are the view indices for the three color channels
     // i.e. viewIndex.x maps to view 3, viewIndex.y maps to view 5, and viewIndex.z maps to view 8
     float3 GetColors(int3 viewIndices, v2f i)
     {
-        float3 OutColors = float3(0.0, 0.0, 0.0);
-
         float2 uvCoords = i.uv;
         // mirror the image if necessary
         if (mirror != 0) {
             uvCoords.x = 1.0 - uvCoords.x;
         }
 
-
+        float3 OutColors = float3(0.0, 0.0, 0.0);
         for (int ColorIndex = 0; ColorIndex < 3; ColorIndex ++)
         {
             int viewIndex = viewIndices[ColorIndex];
+
+            
             uint TextureIndex = 255;
             if (viewIndex < nativeViewCount)
             {
                 TextureIndex = indexMap[viewIndex];
             }
-
+            
             float2 mappedUVCoords = calculateUVForMosaic(TextureIndex, uvCoords);
             float4 tmpColor = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
-
-            float Texture1 = 0.0;
+            
+            float colorValue = 0.0;
             switch (TextureIndex)
             {
-            case 254:
+                case 254:
                 if (ColorIndex == 0)
-                Texture1 = 1.0;
+                colorValue = 1.0;
                 break;
-            case 255:
+                case 255:
                 break;
-            default:
-                Texture1 = tmpColor[ColorIndex];
+                default:
+                colorValue = tmpColor[ColorIndex];
                 break;
             }
-            OutColors[ColorIndex] = Texture1;
+            OutColors[ColorIndex] = colorValue;
         }
 
         return OutColors;
@@ -81,6 +83,7 @@ Shader "G3D/MultiviewMosaicVector"
         float xScreenCoords = i.uv.x * viewportWidth + viewport_pos_x;
         viewport_pos_y = viewport_pos_y - viewportHeight;
         float yScreenCoords = (viewportHeight - i.uv.y * viewportHeight) + viewport_pos_y;
+
         
         // position of window in screen coordinates
         uint2 computedScreenPos = uint2(xScreenCoords, yScreenCoords);
@@ -89,14 +92,15 @@ Shader "G3D/MultiviewMosaicVector"
         // get view indices from view map
         // every color value contain index of view in view array to use for this color
         // this works only, if texture is flipped in y since texelFetch use 0,0 for bottom/left
-        float4 ViewIndexFloat = _viewMap.Sample(sampler_viewMap, screenPosUV);
-        
-        // since value is normalized (0..1), we bring it back to byte value
-        int3 ViewIndex = int3(round(ViewIndexFloat.x * 255),
-                                  round(ViewIndexFloat.y * 255),
-                                  round(ViewIndexFloat.z * 255));
+        float4 viewIndexFloat = _viewMap.Load(float4(computedScreenPos, 0, 0)) * 255;
 
-        return float4(GetColors(ViewIndex, i), 1.0f);
+        int3 ViewIndex = int3(round(viewIndexFloat.x),
+                                  round(viewIndexFloat.y),
+                                  round(viewIndexFloat.z));
+
+        // get colors for the view indices
+        float3 colors = GetColors(ViewIndex, i);
+        return float4(colors, 1.0f);
     }
     ENDHLSL
 
