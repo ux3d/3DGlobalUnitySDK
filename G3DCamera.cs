@@ -249,7 +249,7 @@ public class G3DCamera
     #endregion
 
     private bool generateViews = true;
-    private bool useVectorMapViewGeneration = true;
+    private bool useVectorMapViewGeneration = false;
     private Material viewGenerationMaterial;
 
     // TODO Handle viewport resizing/ moving
