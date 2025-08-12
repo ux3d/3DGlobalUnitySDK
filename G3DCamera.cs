@@ -431,7 +431,9 @@ public class G3DCamera
             viewGenerationPass.computeShaderResultTexture = new RenderTexture(
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
-                0
+                0,
+                RenderTextureFormat.Default,
+                RenderTextureReadWrite.Linear
             );
             viewGenerationPass.computeShaderResultTexture.enableRandomWrite = true;
             viewGenerationPass.computeShaderResultTexture.Create();
