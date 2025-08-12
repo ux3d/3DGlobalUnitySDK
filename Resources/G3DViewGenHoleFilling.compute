@@ -55,8 +55,8 @@ int grid_size_y;
 int radius;
 float sigma;
 
-int imageWidth;
-int imageHeight;
+uint imageWidth;
+uint imageHeight;
 
 Texture2D _depthMap0;
 Texture2D _depthMap1;
@@ -208,12 +208,8 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
         return _colorMosaic.SampleLevel(sampler_colorMosaic, uv, 0);
     }
 
-    
-
-
     float px_radius_left = 0;
     float px_radius_right = 0;
-
 
     float depthAtCenter = Linear01DepthViewBased(cellTexCoords, viewIndex);
     float4 cellColor = getColorMosaic(cellTexCoords, viewIndex); // sample the color of the left camera texture
@@ -266,19 +262,19 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
 [numthreads(32,32,1)]
 void kernelFunction (uint3 id : SV_DispatchThreadID)
 {
-    int numThreadsX = 32;
-    int numThreadsY = 32;
+    uint numThreadsX = 32;
+    uint numThreadsY = 32;
 
-    float xCohortSize = floor((imageWidth + numThreadsX) / numThreadsX);
-    float yCohortSize = floor((imageHeight + numThreadsY) / numThreadsY);
+    uint xCohortSize = floor((imageWidth + numThreadsX) / numThreadsX);
+    uint yCohortSize = floor((imageHeight + numThreadsY) / numThreadsY);
 
     float xStepSize = 1.0f / (float)imageWidth;
     float yStepSize = 1.0f / (float)imageHeight;
 
-    for(int i = 0; i < xCohortSize; i++) {
-        for(int j = 0; j < yCohortSize; j++) {
-            int x = id.x * xCohortSize + i;
-            int y = id.y * yCohortSize + j;
+    for(uint i = 0; i < xCohortSize; i++) {
+        for(uint j = 0; j < yCohortSize; j++) {
+            uint x = id.x * xCohortSize + i;
+            uint y = id.y * yCohortSize + j;
 
             if (x >= imageWidth || y >= imageHeight) {
                 continue; // skip if out of bounds
