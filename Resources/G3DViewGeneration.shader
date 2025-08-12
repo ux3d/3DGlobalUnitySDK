@@ -89,45 +89,45 @@ Shader "G3D/ViewGeneration"
             Texture2D _depthMap14;
             Texture2D _depthMap15;
 
-            SamplerState sampler_linear_repeat;
+            SamplerState sampler_point_repeat;
 
             // Set the texture array as a shader input
             float getCameraLogDepth(float2 uv, int cameraIndex) {
                 switch(cameraIndex) {
                     case 0:
-                        return _depthMap0.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap0.Sample( sampler_point_repeat, uv).r;
                     case 1:
-                        return _depthMap1.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap1.Sample( sampler_point_repeat, uv).r;
                     case 2:
-                        return _depthMap2.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap2.Sample( sampler_point_repeat, uv).r;
                     case 3:
-                        return _depthMap3.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap3.Sample( sampler_point_repeat, uv).r;
                     case 4:
-                        return _depthMap4.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap4.Sample( sampler_point_repeat, uv).r;
                     case 5:
-                        return _depthMap5.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap5.Sample( sampler_point_repeat, uv).r;
                     case 6:
-                        return _depthMap6.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap6.Sample( sampler_point_repeat, uv).r;
                     case 7:
-                        return _depthMap7.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap7.Sample( sampler_point_repeat, uv).r;
                     case 8:
-                        return _depthMap8.Sample( sampler_linear_repeat, uv).r;
+                        return _depthMap8.Sample( sampler_point_repeat, uv).r;
                     case 9:
-                        return _depthMap9.Sample( sampler_linear_repeat, uv).r;  
+                        return _depthMap9.Sample( sampler_point_repeat, uv).r;  
                     case 10:
-                        return _depthMap10.Sample( sampler_linear_repeat, uv).r;  
+                        return _depthMap10.Sample( sampler_point_repeat, uv).r;  
                     case 11:
-                        return _depthMap11.Sample( sampler_linear_repeat, uv).r;  
+                        return _depthMap11.Sample( sampler_point_repeat, uv).r;  
                     case 12:
-                        return _depthMap12.Sample( sampler_linear_repeat, uv).r;  
+                        return _depthMap12.Sample( sampler_point_repeat, uv).r;  
                     case 13:
-                        return _depthMap13.Sample( sampler_linear_repeat, uv).r;  
+                        return _depthMap13.Sample( sampler_point_repeat, uv).r;  
                     case 14:
-                        return _depthMap14.Sample( sampler_linear_repeat, uv).r;  
+                        return _depthMap14.Sample( sampler_point_repeat, uv).r;  
                     case 15:
-                        return _depthMap15.Sample( sampler_linear_repeat, uv).r;  
+                        return _depthMap15.Sample( sampler_point_repeat, uv).r;  
                     default:
-                        return _depthMap0.Sample( sampler_linear_repeat, uv).r; // use left camera depth map as default
+                        return _depthMap0.Sample( sampler_point_repeat, uv).r; // use left camera depth map as default
                 }
             }
 
@@ -271,16 +271,16 @@ Shader "G3D/ViewGeneration"
                 float4 finalColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
                 float factor = 0.0f;
                 if (!discardFragmentLeft) {
-                    finalColor += _leftCamTex.Sample(sampler_leftCamTex, shiftedLeftTexcoords); // sample the left camera texture
+                    finalColor += _leftCamTex.Sample(sampler_point_repeat, shiftedLeftTexcoords); // sample the left camera texture
                     factor += 1.0f; // increase the factor for the left camera
                 }
-                if (!discardFragmentRight) {
-                    finalColor += _rightCamTex.Sample(sampler_rightCamTex, shiftedRightTexcoords); // sample the right camera texture
-                    factor += 1.0f; // increase the factor for the right camera
-                }
                 if( !discardFragmentMiddle) { // if the final color is not set yet, sample the middle camera texture
-                    finalColor += _middleCamTex.Sample(sampler_middleCamTex, shiftedMiddleTexcoords); // sample the middle camera texture
+                    finalColor += _middleCamTex.Sample(sampler_point_repeat, shiftedMiddleTexcoords); // sample the middle camera texture
                     factor += 1.0f; // increase the factor for the middle camera
+                }
+                if (!discardFragmentRight) {
+                    finalColor += _rightCamTex.Sample(sampler_point_repeat, shiftedRightTexcoords); // sample the right camera texture
+                    factor += 1.0f; // increase the factor for the right camera
                 }
 
                 return finalColor / factor;
