@@ -398,9 +398,17 @@ public class G3DCamera
             depthMosaicPass.indivDepthTextures = new RenderTexture[internalCameraCount];
             for (int i = 0; i < internalCameraCount; i++)
             {
+                // TODO update render texture sizes when screen size changes
+
+                float width = Screen.width;
+                float height = Screen.height;
+
+                width = width * (renderResolutionScale / 100f);
+                height = height * (renderResolutionScale / 100f);
+
                 RenderTexture depthTexture = new RenderTexture(
-                    cameras[0].pixelWidth,
-                    cameras[0].pixelHeight,
+                    (int)width,
+                    (int)height,
                     0,
                     RenderTextureFormat.Depth
                 );
