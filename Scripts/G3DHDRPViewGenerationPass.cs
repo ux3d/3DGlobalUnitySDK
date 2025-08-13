@@ -83,6 +83,18 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
             if (debugRendering)
             {
+                if (fxaaEnabled == false && fillHoles == false)
+                {
+                    blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), mosaicImageHandle);
+                }
+                else
+                {
+                    blitMaterial.SetTexture(
+                        Shader.PropertyToID("_mainTex"),
+                        computeShaderResultTexture
+                    );
+                }
+
                 CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
                 CoreUtils.DrawFullScreen(ctx.cmd, blitMaterial, ctx.propertyBlock, shaderPassId: 0);
             }

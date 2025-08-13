@@ -35,9 +35,9 @@ float3 Fetch(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 coords
     return SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, uv, 0.0).xyz;
 }
 
-CTYPE Load(TEXTURE2D(_InputTexture), int2 icoords, int idx, int idy)
+float4 Load(TEXTURE2D(_InputTexture), int2 icoords, int idx, int idy)
 {
-    return LOAD_TEXTURE2D(_InputTexture, min(icoords + int2(idx, idy), _PostProcessScreenSize.xy - 1.0)).CTYPE_SWIZZLE;
+    return LOAD_TEXTURE2D(_InputTexture, min(icoords + int2(idx, idy), _PostProcessScreenSize.xy - 1.0));
 }
 
 float FetchAlpha(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 coords, float2 offset)
@@ -46,14 +46,14 @@ float FetchAlpha(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 co
     return SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, uv, 0.0).w;
 }
 
-void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout CTYPE outColor, uint2 positionSS, float2 positionNDC, float paperWhite, float oneOverPaperWhite)
+void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 outColor, uint2 positionSS, float2 positionNDC, float paperWhite, float oneOverPaperWhite)
 {
     {
         // Edge detection
-        CTYPE rgbNW = Load(_InputTexture, positionSS, -1, -1);
-        CTYPE rgbNE = Load(_InputTexture, positionSS, 1, -1);
-        CTYPE rgbSW = Load(_InputTexture, positionSS, -1, 1);
-        CTYPE rgbSE = Load(_InputTexture, positionSS, 1, 1);
+        float4 rgbNW = Load(_InputTexture, positionSS, -1, -1);
+        float4 rgbNE = Load(_InputTexture, positionSS, 1, -1);
+        float4 rgbSW = Load(_InputTexture, positionSS, -1, 1);
+        float4 rgbSE = Load(_InputTexture, positionSS, 1, 1);
 
 #if FXAA_HDR_MAPUNMAP
         // The pixel values we have are already tonemapped but in the range [0, 10000] nits. To run FXAA properly, we need to convert them
@@ -171,15 +171,15 @@ void FXAA(uint3 dispatchThreadId : SV_DispatchThreadID)
     uint2 positionSS = dispatchThreadId.xy;
     float2 positionNDC = positionSS * _PostProcessScreenSize.zw + (0.5 * _PostProcessScreenSize.zw);
 
-    float3 outColor = _colorMosaic.Load(float4(positionSS, 0, 0)).xyz;
-    float3 beforeFXAA = outColor.xyz;
+    float4 outColor = _colorMosaic.Load(float4(positionSS, 0, 0));
+    float4 beforeFXAA = outColor;
 
     RunFXAA(_colorMosaic, s_linear_clamp_sampler, outColor, positionSS, positionNDC, _PaperWhite, _OneOverPaperWhite);
 
-#if defined(ENABLE_ALPHA)
-    // When alpha processing is enabled, FXAA should not affect pixels with zero alpha
-    outColor.xyz = outColor.a > 0 ? outColor.xyz : beforeFXAA.xyz;
-#endif
+// #if defined(ENABLE_ALPHA)
+//     // When alpha processing is enabled, FXAA should not affect pixels with zero alpha
+//     outColor.xyz = outColor.a > 0 ? outColor.xyz : beforeFXAA.xyz;
+// #endif
 
-    _OutputTexture[positionSS] = float4(outColor, 1.0);
+    _OutputTexture[positionSS] = outColor;
 }

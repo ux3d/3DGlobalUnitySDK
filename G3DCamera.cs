@@ -251,9 +251,9 @@ public class G3DCamera
     private bool generateViews = true;
     private bool useVectorMapViewGeneration = false;
     private bool isFillingHoles = true;
-    private bool applyFSAA = true;
-    private bool debugRendering = true;
-    private int holeFillingRadius = 8;
+    private bool applyFXAA = false;
+    private bool debugRendering = false;
+    private int holeFillingRadius = 4;
     private Material viewGenerationMaterial;
 
     // TODO Handle viewport resizing/ moving
@@ -452,7 +452,7 @@ public class G3DCamera
             viewGenerationPass.debugRendering = debugRendering;
             viewGenerationPass.fillHoles = isFillingHoles;
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
-            viewGenerationPass.fxaaEnabled = applyFSAA;
+            viewGenerationPass.fxaaEnabled = applyFXAA;
 
             // add autostereo mosaic generation pass
             RenderTexture mosaicTexture = new RenderTexture(
