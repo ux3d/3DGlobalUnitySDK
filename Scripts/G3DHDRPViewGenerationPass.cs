@@ -32,7 +32,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
     private ComputeShader fxaaCompShader;
     private int fxaaKernel;
-    private bool fxaaEnabled = true;
+    public bool fxaaEnabled;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
