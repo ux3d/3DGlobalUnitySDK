@@ -284,7 +284,6 @@ void kernelFunction (uint3 id : SV_DispatchThreadID)
             float4 color = fragHDRP(uv, xStepSize, yStepSize);
 
             Result[float2(x, y)] = color;
-            // Result[float2(x, y)] = float4(uv,0.1f, 1.0f); // write the color to the result texture
         }
     }
 }

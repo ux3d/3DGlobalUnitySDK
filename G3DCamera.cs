@@ -432,7 +432,7 @@ public class G3DCamera
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
                 0,
-                RenderTextureFormat.Default,
+                RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Linear
             );
             viewGenerationPass.computeShaderResultTexture.enableRandomWrite = true;
