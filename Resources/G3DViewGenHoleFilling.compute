@@ -220,14 +220,19 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
 
     float kernelSum = 0.0f;
     float4 colorSum = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    for (int dpxX = -radius; dpxX <= radius; ++dpxX) {
-        for (int dpxY = -radius; dpxY <= radius; ++dpxY) {
-            float dx = dpxX * xStepSize;
-            float dy = dpxY * yStepSize;
-            float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
-            float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
 
-            float distance = sqrt(dpxX * dpxX + dpxY * dpxY);
+    for (int dpxX = -radius; dpxX <= radius; ++dpxX) {
+        // for (int dpxY = -radius; dpxY <= radius; ++dpxY) {
+            
+            float dx = dpxX * xStepSize;
+
+            // float dy = dpxY * yStepSize;
+            float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
+            float y = clamp(cellTexCoords.y, 0, 1.0f);
+            // float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
+
+            float distance = dpxX;
+            // float distance = sqrt(dpxX * dpxX + dpxY * dpxY);
             float weight = exp(-(distance * distance) / (2.0f * sigma * sigma));
             // weight = 1.0;
                 
@@ -244,7 +249,46 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
             if (depth_sample < depthAtCenter) { // 0.0=front | 1.0=back
                 // if center is further at the back then skip sample or reduce weight
 
-                weight = 0.0f;
+                weight = 0.1f;
+            } else {
+                // reduce weight with distance to center:
+                float diff = abs(depthAtCenter - depth_sample);
+                weight = weight * (diff * diff);
+            }
+
+            kernelSum += weight;
+            colorSum += weight * color_sample;
+        // }
+    }
+    
+    // for (int dpxX = -radius; dpxX <= radius; ++dpxX) {
+        for (int dpxY = -radius; dpxY <= radius; ++dpxY) {
+            
+            // float dx = dpxX * xStepSize;
+
+            float dy = dpxY * yStepSize;
+            float x = clamp(cellTexCoords.x, 0, 1.0f);
+            float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
+
+            float distance = dpxY;
+            // float distance = sqrt(dpxX * dpxX + dpxY * dpxY);
+            float weight = exp(-(distance * distance) / (2.0f * sigma * sigma));
+            // weight = 1.0;
+                
+            float2 sampleUV = float2(x, y);
+
+            float depth_sample = Linear01DepthViewBased(sampleUV, viewIndex);
+            float4 color_sample = getColorMosaic(sampleUV, viewIndex);
+
+            if (color_sample.w < 1.0f) {
+                // only collect colors from known values -> skip holes
+                continue;
+            }
+
+            if (depth_sample < depthAtCenter) { // 0.0=front | 1.0=back
+                // if center is further at the back then skip sample or reduce weight
+
+                weight = 0.1f;
             } else {
                 // reduce weight with distance to center:
                 float diff = abs(depthAtCenter - depth_sample);
@@ -254,7 +298,7 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
             kernelSum += weight;
             colorSum += weight * color_sample;
         }
-    }
+    // }
 
     return float4(colorSum.xyz / kernelSum, 1.0f); // return the average color of the samples
 }

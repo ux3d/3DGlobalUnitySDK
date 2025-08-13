@@ -377,7 +377,7 @@ public class G3DCamera
     {
         bool debugRendering = false;
         bool isFillingHoles = false;
-        int holeFillingRadius = 3;
+        int holeFillingRadius = 32;
 
         // init fullscreen postprocessing for hd render pipeline
         CustomPassVolume customPassVolume = gameObject.AddComponent<CustomPassVolume>();
