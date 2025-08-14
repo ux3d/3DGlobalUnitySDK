@@ -241,13 +241,13 @@ Shader "G3D/ViewGeneration"
                 // first and last image in the grid are the left and right camera
                 uint gridCount = grid_size_x * grid_size_y;
                 if (viewIndex == 0) {
-                    return _leftCamTex.Sample(sampler_leftCamTex, cellTexCoords); // sample the left camera texture
+                    return _leftCamTex.Sample(sampler_point_repeat, cellTexCoords); // sample the left camera texture
                 }
                 if (viewIndex == gridCount / 2) {
-                    return _middleCamTex.Sample(sampler_middleCamTex, cellTexCoords); // sample the middle camera texture
+                    return _middleCamTex.Sample(sampler_point_repeat, cellTexCoords); // sample the middle camera texture
                 }
                 if (viewIndex == gridCount - 1) {
-                    return _rightCamTex.Sample(sampler_rightCamTex, cellTexCoords); // sample the right camera texture
+                    return _rightCamTex.Sample(sampler_point_repeat, cellTexCoords); // sample the right camera texture
                 }
 
                 // -----------------------------------------------------------------------------------------------------------
@@ -270,15 +270,15 @@ Shader "G3D/ViewGeneration"
 
                 float4 finalColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
                 float factor = 0.0f;
-                if (!discardFragmentLeft) {
+                if (!discardFragmentLeft && factor < 1.0f) { // second condition to ensure we only use one fragment here
                     finalColor += _leftCamTex.Sample(sampler_point_repeat, shiftedLeftTexcoords); // sample the left camera texture
                     factor += 1.0f; // increase the factor for the left camera
                 }
-                if( !discardFragmentMiddle) { // if the final color is not set yet, sample the middle camera texture
+                if( !discardFragmentMiddle && factor < 1.0f) { // if the final color is not set yet, sample the middle camera texture
                     finalColor += _middleCamTex.Sample(sampler_point_repeat, shiftedMiddleTexcoords); // sample the middle camera texture
                     factor += 1.0f; // increase the factor for the middle camera
                 }
-                if (!discardFragmentRight) {
+                if (!discardFragmentRight && factor < 1.0f) {
                     finalColor += _rightCamTex.Sample(sampler_point_repeat, shiftedRightTexcoords); // sample the right camera texture
                     factor += 1.0f; // increase the factor for the right camera
                 }
