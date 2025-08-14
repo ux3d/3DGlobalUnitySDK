@@ -250,11 +250,10 @@ public class G3DCamera
 
     private bool generateViews = true;
     private bool useVectorMapViewGeneration = false;
-    private bool isFillingHoles = true;
-    private bool applyFXAA = false;
-    private bool debugRendering = false;
-    private int holeFillingRadius = 4;
-    private int holeFillingRadius = 8;
+    public bool isFillingHoles;
+    public bool applyFXAA;
+    public bool debugRendering;
+    public int holeFillingRadius;
     private Material viewGenerationMaterial;
 
     // TODO Handle viewport resizing/ moving
@@ -380,7 +379,6 @@ public class G3DCamera
 #if G3D_HDRP
     private void initCustomPass()
     {
-
         // init fullscreen postprocessing for hd render pipeline
         CustomPassVolume customPassVolume = gameObject.AddComponent<CustomPassVolume>();
         customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;

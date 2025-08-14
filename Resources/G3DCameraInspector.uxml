@@ -8,6 +8,10 @@
     <uie:PropertyField binding-path="viewOffsetScale" />
     <ui:GroupBox enabled="true" name="Multiview" />
     <ui:GroupBox enabled="true" name="Diorama" />
+    <uie:PropertyField name="isFillingHoles" binding-path="isFillingHoles" />
+    <uie:PropertyField name="holeFillingRadius" binding-path="holeFillingRadius" />
+    <uie:PropertyField name="applyFXAA" binding-path="applyFXAA" />
+    <uie:PropertyField name="debugRendering" binding-path="debugRendering" />
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings">
         <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" />
         <uie:PropertyField name="renderResolutionScale" binding-path="renderResolutionScale" />
