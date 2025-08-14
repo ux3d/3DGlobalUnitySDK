@@ -262,17 +262,18 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
 
         // Sample at current Fibonacci point
         {
-            float dpxX = samplePoint.x;
-            float dpxY = samplePoint.y;
+            // float dpxX = samplePoint.x;
+            // float dpxY = samplePoint.y;
 
-            float dx = dpxX * xStepSize;
-            float dy = dpxY * yStepSize;
+            float dx = samplePoint.x * xStepSize;
+            float dy = samplePoint.y * yStepSize;
             float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
             float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
 
             // float distance = sqrt(dpxX * dpxX + dpxY * dpxY);
-            float distance = side;
-            float weight = exp(-(distance * distance) / (2.0f * sigma * sigma));
+            // float weight = exp(-(distance * distance) / (2.0f * sigma * sigma));
+            float distanceSq = dot(samplePoint, samplePoint);
+            float weight = exp(-distanceSq / (2.0f * sigma * sigma));
             // weight = 1.0;
                 
             float2 sampleUV = float2(x, y);
