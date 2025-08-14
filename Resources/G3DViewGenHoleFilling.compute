@@ -221,40 +221,9 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
     float kernelSum = 0.0f;
     float4 colorSum = float4(0.0f, 0.0f, 0.0f, 0.0f);
 
-    // Sample (0, 0)
-    {
-        float x = clamp(cellTexCoords.x, 0, 1.0f);
-        float y = clamp(cellTexCoords.y, 0, 1.0f);
-
-        float weight = 1.0;
-            
-        float2 sampleUV = float2(x, y);
-
-        float depth_sample = Linear01DepthViewBased(sampleUV, viewIndex);
-        float4 color_sample = getColorMosaic(sampleUV, viewIndex);
-
-        if (color_sample.w < 1.0f) {
-            // only collect colors from known values -> skip holes
-            weight = 0.0;
-        }
-
-        if (depth_sample < depthAtCenter) { // 0.0=front | 1.0=back
-            // if center is further at the back then skip sample or reduce weight
-
-            weight = 0.1f;
-        } else {
-            // reduce weight with distance to center:
-            float diff = abs(depthAtCenter - depth_sample);
-            weight = weight * (diff * diff);
-        }
-
-        kernelSum += weight;
-        colorSum += weight * color_sample;
-    }
-
     float a = 1.0;
     float b = 1.0;
-    float2 samplePoint = float2(-1.0, 0.0);
+    float2 samplePoint = float2(0.0, 0.0);
     float side = 1.0;
 
     float2 stride = float2(1.0, 1.0);
@@ -275,7 +244,7 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
             float distanceSq = dot(samplePoint, samplePoint);
             float weight = exp(-distanceSq / (2.0f * sigma * sigma));
             // weight = 1.0;
-                
+            
             float2 sampleUV = float2(x, y);
 
             float depth_sample = Linear01DepthViewBased(sampleUV, viewIndex);
