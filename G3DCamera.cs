@@ -253,12 +253,18 @@ public class G3DCamera
     public bool isFillingHoles;
     public bool applyFXAA;
     public bool debugRendering;
+
+    [Range(1, 64)]
     public int holeFillingRadius;
     private Material viewGenerationMaterial;
+#if G3D_HDRP
+    private G3DHDRPViewGenerationPass viewGenerationPass;
+#endif
 
     // TODO Handle viewport resizing/ moving
 
     #region Initialization
+
     void Start()
     {
         mainCamera = GetComponent<Camera>();
@@ -417,7 +423,7 @@ public class G3DCamera
             }
 
             // add multiview generation pass
-            G3DHDRPViewGenerationPass viewGenerationPass =
+            viewGenerationPass =
                 customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationPass))
                 as G3DHDRPViewGenerationPass;
             viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
@@ -951,6 +957,10 @@ public class G3DCamera
             oldRenderResolutionScale = renderResolutionScale;
             updateShaderRenderTextures();
         }
+
+#if G3D_HDRP
+        viewGenerationPass.holeFillingRadius = holeFillingRadius;
+#endif
     }
 
     private void updateScreenViewportProperties()
