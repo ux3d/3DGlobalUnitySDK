@@ -169,7 +169,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         ctx.cmd.SetComputeFloatParam(holeFillingCompShader, "sigma", holeFillingRadius / 2.0f);
         ctx.cmd.SetComputeIntParams(holeFillingCompShader, "imageSize", new int[] {mosaicImageHandle.rt.width, mosaicImageHandle.rt.height});
 
-        ctx.cmd.DispatchCompute(holeFillingCompShader, holeFillingKernel, 32, 32, 1);
+        ctx.cmd.DispatchCompute(holeFillingCompShader, holeFillingKernel, mosaicImageHandle.rt.width, mosaicImageHandle.rt.height, 1);
 
         // Blit the result to the mosaic image
         CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);

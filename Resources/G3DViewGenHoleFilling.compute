@@ -320,28 +320,11 @@ float4 fragHDRP(float2 uv, int2 coord) {
     return float4(colorSum.xyz / kernelSum, 1.0f); // return the average color of the samples
 }
 
-[numthreads(32,32,1)]
+[numthreads(1, 1, 1)]
 void kernelFunction (uint3 id : SV_DispatchThreadID)
 {
-    uint numThreadsX = 32;
-    uint numThreadsY = 32;
-
-    uint xCohortSize = floor((imageSize.x + numThreadsX) / numThreadsX);
-    uint yCohortSize = floor((imageSize.y + numThreadsY) / numThreadsY);
-
-    for(uint i = 0; i < xCohortSize; i++) {
-        for(uint j = 0; j < yCohortSize; j++) {
-            uint x = id.x * xCohortSize + i;
-            uint y = id.y * yCohortSize + j;
-
-            if (x >= imageSize.x || y >= imageSize.y) {
-                continue; // skip if out of bounds
-            }
-
-            float2 uv = float2(x, y) / imageSize;
-            float4 color = fragHDRP(uv, int2(x, y));
-
-            Result[float2(x, y)] = color;
-        }
-    }
+    float2 coord = float2(id.x, id.y);
+    float2 uv = coord / imageSize;
+    float4 color = fragHDRP(uv, coord);
+    Result[coord] = color;
 }
