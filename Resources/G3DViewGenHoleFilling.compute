@@ -181,8 +181,7 @@ float2 calculateProjectedFragmentPosition(float2 uv, int viewIndex, float4x4 vie
     return float2(NDC.xy); // return the difference between the shifted and original x coordinate
 }
 
-float Linear01DepthViewBased(float2 uv, int viewIndex)
-{
+float Linear01DepthViewBased(float2 uv, int viewIndex) {
     float logDepth = getCameraLogDepth(uv, viewIndex);
     // Sample the depth from the Camera depth texture.
     float deviceDepth = logDepth;
@@ -193,16 +192,15 @@ float Linear01DepthViewBased(float2 uv, int viewIndex)
 
 float4 getColorMosaic(float2 uv, int viewIndex) {
     float2 fragmentUV = calculateUVForMosaic(viewIndex, uv, grid_size_y, grid_size_x);
-    return _colorMosaic.SampleLevel(sampler_colorMosaic, fragmentUV, 0);
+    // return _colorMosaic.Sample(sampler_colorMosaic, fragmentUV);
+    // return float4(1.0, 0.0, 0.0, 1.0);
+
+    return _colorMosaic.Load(int3(imageWidth * fragmentUV.x, imageHeight * fragmentUV.y, 0));
 }
 
-void sampleColorAtPoint(float2 samplePoint, float2 cellTexCoords, float xStepSize, float yStepSize, uint viewIndex, float depthAtCenter, inout float kernelSum, inout float4 colorSum) {
-    // Sample at current Fibonacci point
-    // float dpxX = samplePoint.x;
-    // float dpxY = samplePoint.y;
-
-    float dx = samplePoint.x * xStepSize;
-    float dy = samplePoint.y * yStepSize;
+void sampleColorAtPoint(float2 samplePoint, float2 cellTexCoords, uint viewIndex, float depthAtCenter, inout float kernelSum, inout float4 colorSum) {
+    float dx = samplePoint.x / imageWidth;
+    float dy = samplePoint.y / imageHeight;
     float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
     float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
 
@@ -238,16 +236,15 @@ void sampleColorAtPoint(float2 samplePoint, float2 cellTexCoords, float xStepSiz
     colorSum += weight * color_sample;
 }
 
-float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
-{
-    float2 cellCoordinates = getCellCoordinates(uv, grid_size_x, grid_size_y);
-    uint viewIndex = getViewIndex(cellCoordinates, grid_size_x, grid_size_y);
+float4 fragHDRP(float2 uv, int2 coord) {
+    float2 cellCoordinates = getCellCoordinates(float2(coord) / float2(imageWidth, imageHeight), int2(grid_size_x, grid_size_y));
+    uint viewIndex = getViewIndex(cellCoordinates, int2(grid_size_x, grid_size_y));
     float2 cellTexCoords = getCellTexCoords(cellCoordinates);
 
     // first and last image in the grid are the left and right camera
     uint gridCount = grid_size_x * grid_size_y;
     if (viewIndex == 0 || viewIndex == gridCount - 1) {
-        return _colorMosaic.SampleLevel(sampler_colorMosaic, uv, 0);
+        return _colorMosaic.Load(int3(coord, 0));
     }
 
     float px_radius_left = 0;
@@ -266,25 +263,25 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
     // Sample at (1, 0)
     {
         float2 samplePoint = float2(1.0, 0.0);
-        sampleColorAtPoint(samplePoint, cellTexCoords, xStepSize, yStepSize, viewIndex, depthAtCenter, kernelSum, colorSum);
+        sampleColorAtPoint(samplePoint, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
     }
 
     // Sample at (-1, 0)
     {
         float2 samplePoint = float2(-1.0, 0.0);
-        sampleColorAtPoint(samplePoint, cellTexCoords, xStepSize, yStepSize, viewIndex, depthAtCenter, kernelSum, colorSum);
+        sampleColorAtPoint(samplePoint, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
     }
     
     // Sample at (0, 1)
     {
         float2 samplePoint = float2(0.0, 1.0);
-        sampleColorAtPoint(samplePoint, cellTexCoords, xStepSize, yStepSize, viewIndex, depthAtCenter, kernelSum, colorSum);
+        sampleColorAtPoint(samplePoint, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
     }
     
     // Sample at (0, -1)
     {
         float2 samplePoint = float2(0.0, -1.0);
-        sampleColorAtPoint(samplePoint, cellTexCoords, xStepSize, yStepSize, viewIndex, depthAtCenter, kernelSum, colorSum);
+        sampleColorAtPoint(samplePoint, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
     }
 
     float a = 1.0;
@@ -296,7 +293,7 @@ float4 fragHDRP (float2 uv, float xStepSize, float yStepSize)
     for (uint i = 0; i < (uint) radius; i++) {
 
         // Sample at current Fibonacci point
-        sampleColorAtPoint(samplePoint * 0.5f, cellTexCoords, xStepSize, yStepSize, viewIndex, depthAtCenter, kernelSum, colorSum);
+        sampleColorAtPoint(samplePoint * 0.5f, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
 
         // calculate new Fibonacci point
         if (i > 1) {
@@ -334,9 +331,6 @@ void kernelFunction (uint3 id : SV_DispatchThreadID)
     uint xCohortSize = floor((imageWidth + numThreadsX) / numThreadsX);
     uint yCohortSize = floor((imageHeight + numThreadsY) / numThreadsY);
 
-    float xStepSize = 1.0f / (float)imageWidth;
-    float yStepSize = 1.0f / (float)imageHeight;
-
     for(uint i = 0; i < xCohortSize; i++) {
         for(uint j = 0; j < yCohortSize; j++) {
             uint x = id.x * xCohortSize + i;
@@ -346,8 +340,8 @@ void kernelFunction (uint3 id : SV_DispatchThreadID)
                 continue; // skip if out of bounds
             }
 
-            float2 uv = float2(x * xStepSize, y * yStepSize);
-            float4 color = fragHDRP(uv, xStepSize, yStepSize);
+            float2 uv = float2(x, y) / float2(imageWidth, imageHeight);
+            float4 color = fragHDRP(uv, int2(x, y));
 
             Result[float2(x, y)] = color;
         }

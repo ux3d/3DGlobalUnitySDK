@@ -231,8 +231,8 @@ Shader "G3D/ViewGeneration"
             /// </summary>
             float4 fragHDRP (v2f i) : SV_Target
             {
-                float2 cellCoordinates = getCellCoordinates(i.uv, grid_size_x, grid_size_y);
-                uint viewIndex = getViewIndex(cellCoordinates, grid_size_x, grid_size_y);
+                float2 cellCoordinates = getCellCoordinates(i.uv, int2(grid_size_x, grid_size_y));
+                uint viewIndex = getViewIndex(cellCoordinates, int2(grid_size_x, grid_size_y));
                 float2 cellTexCoords = getCellTexCoords(cellCoordinates);
 
                 // float logDepth = getCameraLogDepth(cellTexCoords, viewIndex);
