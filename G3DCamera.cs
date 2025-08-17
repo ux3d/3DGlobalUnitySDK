@@ -254,7 +254,7 @@ public class G3DCamera
     public bool applyFXAA;
     public bool debugRendering;
 
-    [Range(1, 64)]
+    [Range(0, 64)]
     public int holeFillingRadius;
     private Material viewGenerationMaterial;
 #if G3D_HDRP
