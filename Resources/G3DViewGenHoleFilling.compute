@@ -2,7 +2,7 @@
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
 #include "G3DHLSLCommonFunctions.hlsl"
 
-#pragma kernel kernelFunction
+#pragma kernel main
 
 Texture2D _depthMosaic;
 SamplerState sampler_depthMosaic;
@@ -190,97 +190,63 @@ float Linear01DepthViewBased(float2 uv, int viewIndex) {
 
 float4 getColorMosaic(float2 uv, int viewIndex) {
     float2 fragmentUV = calculateUVForMosaic(viewIndex, uv, gridSize.y, gridSize.x);
-    // return _colorMosaic.Sample(sampler_colorMosaic, fragmentUV);
-    // return float4(1.0, 0.0, 0.0, 1.0);
-
-    return _colorMosaic.Load(int3(float2(imageSize) * fragmentUV, 0));
+    return _colorMosaic[float2(imageSize) * fragmentUV];
 }
 
-void sampleColorAtPoint(float2 samplePoint, float2 cellTexCoords, uint viewIndex, float depthAtCenter, inout float kernelSum, inout float4 colorSum) {
-    float dx = samplePoint.x / imageSize.x;
-    float dy = samplePoint.y / imageSize.y;
-    float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
-    float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
+void sampleColorAtPoint(float2 fragUV, float2 delta, uint viewIndex, float fragDepth, inout float kernelSum, inout float3 colorSum) {
+    float2 uv = clamp(fragUV + delta / imageSize, 0, 1);
 
-    // float distance = sqrt(dpxX * dpxX + dpxY * dpxY);
-    // float weight = exp(-(distance * distance) / (2.0f * sigma * sigma));
-    float distanceSq = dot(samplePoint, samplePoint);
+    float distanceSq = dot(delta, delta);
     // float weight = exp(-distanceSq / (2.0f * sigma * sigma));
-    float2 sampleUV = float2(x, y);
 
-    float depth_sample = Linear01DepthViewBased(sampleUV, viewIndex);
-    float4 color_sample = getColorMosaic(sampleUV, viewIndex);
-
-    if (color_sample.w < 1.0f) {
-        // only collect colors from known values -> skip holes
-        // weight = 0.0f;
+    float4 sampleColor = getColorMosaic(uv, viewIndex);
+    if (sampleColor.w < 1.0) {
+        // Discard samples which lie in wholes.
         return;
     }
 
-    float weight = 0.0f; // default weight is 0.0
-    if (depth_sample < depthAtCenter) { // 0.0=front | 1.0=back
-        // if center is further at the back then skip sample or reduce weight
-
-        weight = 0.0f;
-    } else {
-        // reduce weight with distance to center:
-        float diff = abs(depthAtCenter - depth_sample);
-        // weight = weight * (diff * diff);
-        weight = 1.0f;
-        weight /= distanceSq + 0.01;
+    // 0.0 -> near plane
+    // 1.0 -> far plane
+    float sampleDepth = Linear01DepthViewBased(uv, viewIndex);
+    if (sampleDepth < fragDepth) { 
+        // If the sampled point is nearer than the original fragment, discard it.
+        return;
     }
 
+    float diff = abs(fragDepth - sampleDepth);
+    float weight = 1.0;
+    // weight = weight * (diff * diff);
+    weight /= distanceSq + 0.01;
+
     kernelSum += weight;
-    colorSum += weight * color_sample;
+    colorSum += weight * sampleColor.rgb;
 }
 
-float4 fragHDRP(float2 uv, int2 coord) {
+float4 frag(int2 coord) {
     float2 cellCoordinates = getCellCoordinates(float2(coord) / imageSize, gridSize);
     uint viewIndex = getViewIndex(cellCoordinates, gridSize);
-    float2 cellTexCoords = getCellTexCoords(cellCoordinates);
+    float2 fragUV = getCellTexCoords(cellCoordinates);
 
     // first and last image in the grid are the left and right camera
     uint gridCount = gridSize.x * gridSize.y;
     if (viewIndex == 0 || viewIndex == gridCount - 1) {
-        return _colorMosaic.Load(int3(coord, 0));
+        return _colorMosaic[coord];
     }
 
-    float px_radius_left = 0;
-    float px_radius_right = 0;
-
-    float depthAtCenter = Linear01DepthViewBased(cellTexCoords, viewIndex);
-    float4 cellColor = getColorMosaic(cellTexCoords, viewIndex); // sample the color of the left camera texture
+    float fragDepth = Linear01DepthViewBased(fragUV, viewIndex);
+    float4 cellColor = getColorMosaic(fragUV, viewIndex); // sample the color of the left camera texture
     if( cellColor.w >= 1.0f) {
         // if the cell color is valid, return the original color
         return cellColor;
     }
 
-    float kernelSum = 0.0f;
-    float4 colorSum = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float kernelSum = 0.0;
+    float3 colorSum = float3(0.0, 0.0, 0.0);
 
-    // Sample at (1, 0)
-    {
-        float2 samplePoint = float2(1.0, 0.0);
-        sampleColorAtPoint(samplePoint, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
-    }
-
-    // Sample at (-1, 0)
-    {
-        float2 samplePoint = float2(-1.0, 0.0);
-        sampleColorAtPoint(samplePoint, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
-    }
-    
-    // Sample at (0, 1)
-    {
-        float2 samplePoint = float2(0.0, 1.0);
-        sampleColorAtPoint(samplePoint, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
-    }
-    
-    // Sample at (0, -1)
-    {
-        float2 samplePoint = float2(0.0, -1.0);
-        sampleColorAtPoint(samplePoint, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
-    }
+    sampleColorAtPoint(fragUV, float2(1.0, 0.0), viewIndex, fragDepth, kernelSum, colorSum);
+    sampleColorAtPoint(fragUV, float2(-1.0, 0.0), viewIndex, fragDepth, kernelSum, colorSum);
+    sampleColorAtPoint(fragUV, float2(0.0, 1.0), viewIndex, fragDepth, kernelSum, colorSum);
+    sampleColorAtPoint(fragUV, float2(0.0, -1.0), viewIndex, fragDepth, kernelSum, colorSum);
 
     float a = 1.0;
     float b = 1.0;
@@ -291,9 +257,9 @@ float4 fragHDRP(float2 uv, int2 coord) {
     for (uint i = 0; i < (uint) radius; i++) {
 
         // Sample at current Fibonacci point
-        sampleColorAtPoint(samplePoint * 0.5f, cellTexCoords, viewIndex, depthAtCenter, kernelSum, colorSum);
+        sampleColorAtPoint(fragUV, samplePoint * 0.5f, viewIndex, fragDepth, kernelSum, colorSum);
 
-        // calculate new Fibonacci point
+        // Generate next point on the Fibonacci spiral
         if (i > 1) {
             float next = a + b;
             a = b;
@@ -313,18 +279,17 @@ float4 fragHDRP(float2 uv, int2 coord) {
         samplePoint += square;
     }
     
-    if (kernelSum <= 0.01f) {
-        return float4(1.0f, 0.5f, 0.1f, 1.0f); // return orange if no samples were collected
+    if (kernelSum == 0.0) {
+        return float4(1.0, 0.5, 0.1, 1.0); // return orange if no samples were collected
     }
 
-    return float4(colorSum.xyz / kernelSum, 1.0f); // return the average color of the samples
+    return float4(colorSum / kernelSum, 1.0); // return the average color of the samples
 }
 
 [numthreads(1, 1, 1)]
-void kernelFunction (uint3 id : SV_DispatchThreadID)
+void main(uint3 id : SV_DispatchThreadID)
 {
     float2 coord = float2(id.x, id.y);
-    float2 uv = coord / imageSize;
-    float4 color = fragHDRP(uv, coord);
+    float4 color = frag(coord);
     Result[coord] = color;
 }

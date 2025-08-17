@@ -39,7 +39,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         if (fillHoles)
         {
             holeFillingCompShader = Resources.Load<ComputeShader>("G3DViewGenHoleFilling");
-            holeFillingKernel = holeFillingCompShader.FindKernel("kernelFunction");
+            holeFillingKernel = holeFillingCompShader.FindKernel("main");
         }
 
         if (fxaaEnabled)
