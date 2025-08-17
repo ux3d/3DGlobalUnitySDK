@@ -104,6 +104,9 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     private void runReprojection(CustomPassContext ctx)
     {
         // upload all inv view projection matrices
+        Matrix4x4[] viewMatrices = new Matrix4x4[16];
+        Matrix4x4[] invProjMatrices = new Matrix4x4[16];
+        
         for (int i = 0; i < internalCameraCount; i++)
         {
             Matrix4x4 projectionMatrixInner = GL.GetGPUProjectionMatrix(
@@ -117,7 +120,13 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
             setMatrix(ctx, invGPUProjMatrix, "inverseProjMatrix" + i);
             setMatrix(ctx, cameras[i].worldToCameraMatrix, "viewMatrix" + i);
+
+            viewMatrices[i] = cameras[i].worldToCameraMatrix;
+            invProjMatrices[i] = invGPUProjMatrix;
         }
+
+        ctx.cmd.SetComputeMatrixArrayParam(holeFillingCompShader, "viewMatrices", viewMatrices);
+        ctx.cmd.SetComputeMatrixArrayParam(holeFillingCompShader, "invProjMatrices", invProjMatrices);
 
         addViewProjectionMatrix(ctx, cameras[0], "leftViewProjMatrix");
         addViewProjectionMatrix(ctx, cameras[internalCameraCount / 2], "middleViewProjMatrix");
