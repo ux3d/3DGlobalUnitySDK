@@ -50,8 +50,7 @@ float4x4 viewMatrix15;
 
 
 
-int grid_size_x;
-int grid_size_y;
+int2 gridSize;
 int radius;
 float sigma;
 
@@ -191,7 +190,7 @@ float Linear01DepthViewBased(float2 uv, int viewIndex) {
 }
 
 float4 getColorMosaic(float2 uv, int viewIndex) {
-    float2 fragmentUV = calculateUVForMosaic(viewIndex, uv, grid_size_y, grid_size_x);
+    float2 fragmentUV = calculateUVForMosaic(viewIndex, uv, gridSize.y, gridSize.x);
     // return _colorMosaic.Sample(sampler_colorMosaic, fragmentUV);
     // return float4(1.0, 0.0, 0.0, 1.0);
 
@@ -237,12 +236,12 @@ void sampleColorAtPoint(float2 samplePoint, float2 cellTexCoords, uint viewIndex
 }
 
 float4 fragHDRP(float2 uv, int2 coord) {
-    float2 cellCoordinates = getCellCoordinates(float2(coord) / float2(imageWidth, imageHeight), int2(grid_size_x, grid_size_y));
-    uint viewIndex = getViewIndex(cellCoordinates, int2(grid_size_x, grid_size_y));
+    float2 cellCoordinates = getCellCoordinates(float2(coord) / float2(imageWidth, imageHeight), gridSize);
+    uint viewIndex = getViewIndex(cellCoordinates, gridSize);
     float2 cellTexCoords = getCellTexCoords(cellCoordinates);
 
     // first and last image in the grid are the left and right camera
-    uint gridCount = grid_size_x * grid_size_y;
+    uint gridCount = gridSize.x * gridSize.y;
     if (viewIndex == 0 || viewIndex == gridCount - 1) {
         return _colorMosaic.Load(int3(coord, 0));
     }
