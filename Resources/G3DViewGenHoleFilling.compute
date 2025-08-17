@@ -120,9 +120,9 @@ float4 getColorMosaic(float2 uv, int viewIndex) {
 }
 
 void sampleColorAtPoint(float2 fragUV, float2 delta, uint viewIndex, float fragDepth, inout float kernelSum, inout float3 colorSum) {
-    float2 uv = clamp(fragUV + delta / imageSize, 0, 1);
+    float2 uv = clamp(fragUV + delta / imageSize, float2(0.0, 0.0), float2(1.0, 1.0));
 
-    float distanceSq = dot(delta, delta);
+    // float distanceSq = dot(delta, delta);
     // float weight = exp(-distanceSq / (2.0f * sigma * sigma));
 
     float4 sampleColor = getColorMosaic(uv, viewIndex);
@@ -139,10 +139,9 @@ void sampleColorAtPoint(float2 fragUV, float2 delta, uint viewIndex, float fragD
         return;
     }
 
-    float diff = abs(fragDepth - sampleDepth);
     float weight = 1.0;
-    // weight = weight * (diff * diff);
-    weight /= distanceSq + 0.01;
+    weight *= exp(-length(delta));
+    weight *= exp(-(fragDepth - sampleDepth));
 
     kernelSum += weight;
     colorSum += weight * sampleColor.rgb;
@@ -161,7 +160,7 @@ float4 frag(int2 coord) {
 
     float fragDepth = Linear01DepthViewBased(fragUV, viewIndex);
     float4 cellColor = getColorMosaic(fragUV, viewIndex); // sample the color of the left camera texture
-    if( cellColor.w >= 1.0f) {
+    if( cellColor.w >= 1.0) {
         // if the cell color is valid, return the original color
         return cellColor;
     }
@@ -169,41 +168,50 @@ float4 frag(int2 coord) {
     float kernelSum = 0.0;
     float3 colorSum = float3(0.0, 0.0, 0.0);
 
+    sampleColorAtPoint(fragUV, float2(0.0, 0.0), viewIndex, fragDepth, kernelSum, colorSum);
+    
     sampleColorAtPoint(fragUV, float2(1.0, 0.0), viewIndex, fragDepth, kernelSum, colorSum);
     sampleColorAtPoint(fragUV, float2(-1.0, 0.0), viewIndex, fragDepth, kernelSum, colorSum);
     sampleColorAtPoint(fragUV, float2(0.0, 1.0), viewIndex, fragDepth, kernelSum, colorSum);
     sampleColorAtPoint(fragUV, float2(0.0, -1.0), viewIndex, fragDepth, kernelSum, colorSum);
 
-    float a = 1.0;
-    float b = 1.0;
-    float2 samplePoint = float2(0.0, 0.0);
-    float side = 1.0;
-
-    float2 stride = float2(1.0, 1.0);
-    for (uint i = 0; i < (uint) radius; i++) {
-
-        // Sample at current Fibonacci point
-        sampleColorAtPoint(fragUV, samplePoint * 0.5f, viewIndex, fragDepth, kernelSum, colorSum);
-
-        // Generate next point on the Fibonacci spiral
-        if (i > 1) {
-            float next = a + b;
-            a = b;
-            b = next;
-            side = b;
-        }
-
-        float2 square = float2(side, side);
-
-        if ((i >> 1) & 1 != 0) {
-            square.x *= -1.0;
-        }
-        if (((i + 1) >> 1) & 1 != 0) {
-            square.y *= -1.0;
-        }
-
-        samplePoint += square;
+    for (int i = 0; i < radius; i++) {
+        sampleColorAtPoint(fragUV, float2(i, 0.0), viewIndex, fragDepth, kernelSum, colorSum);
+        sampleColorAtPoint(fragUV, float2(-i, 0.0), viewIndex, fragDepth, kernelSum, colorSum);
+        sampleColorAtPoint(fragUV, float2(0.0, i), viewIndex, fragDepth, kernelSum, colorSum);
+        sampleColorAtPoint(fragUV, float2(0.0, -i), viewIndex, fragDepth, kernelSum, colorSum);
     }
+
+    // float a = 1.0;
+    // float b = 1.0;
+    // float2 samplePoint = float2(0.0, 0.0);
+    // float side = 1.0;
+
+    // float2 stride = float2(1.0, 1.0);
+    // for (uint i = 0; i < (uint) radius; i++) {
+
+    //     // Sample at current Fibonacci point
+    //     sampleColorAtPoint(fragUV, samplePoint * 0.5f, viewIndex, fragDepth, kernelSum, colorSum);
+
+    //     // Generate next point on the Fibonacci spiral
+    //     if (i > 1) {
+    //         float next = a + b;
+    //         a = b;
+    //         b = next;
+    //         side = b;
+    //     }
+
+    //     float2 square = float2(side, side);
+
+    //     if ((i >> 1) & 1 != 0) {
+    //         square.x *= -1.0;
+    //     }
+    //     if (((i + 1) >> 1) & 1 != 0) {
+    //         square.y *= -1.0;
+    //     }
+
+    //     samplePoint += square;
+    // }
     
     if (kernelSum == 0.0) {
         return float4(1.0, 0.5, 0.1, 1.0); // return orange if no samples were collected
