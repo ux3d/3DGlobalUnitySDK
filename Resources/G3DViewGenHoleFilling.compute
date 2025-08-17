@@ -54,8 +54,7 @@ int2 gridSize;
 int radius;
 float sigma;
 
-uint imageWidth;
-uint imageHeight;
+int2 imageSize;
 
 Texture2D _depthMap0;
 Texture2D _depthMap1;
@@ -194,12 +193,12 @@ float4 getColorMosaic(float2 uv, int viewIndex) {
     // return _colorMosaic.Sample(sampler_colorMosaic, fragmentUV);
     // return float4(1.0, 0.0, 0.0, 1.0);
 
-    return _colorMosaic.Load(int3(imageWidth * fragmentUV.x, imageHeight * fragmentUV.y, 0));
+    return _colorMosaic.Load(int3(float2(imageSize) * fragmentUV, 0));
 }
 
 void sampleColorAtPoint(float2 samplePoint, float2 cellTexCoords, uint viewIndex, float depthAtCenter, inout float kernelSum, inout float4 colorSum) {
-    float dx = samplePoint.x / imageWidth;
-    float dy = samplePoint.y / imageHeight;
+    float dx = samplePoint.x / imageSize.x;
+    float dy = samplePoint.y / imageSize.y;
     float x = clamp(cellTexCoords.x + dx, 0, 1.0f);
     float y = clamp(cellTexCoords.y + dy, 0, 1.0f);
 
@@ -236,7 +235,7 @@ void sampleColorAtPoint(float2 samplePoint, float2 cellTexCoords, uint viewIndex
 }
 
 float4 fragHDRP(float2 uv, int2 coord) {
-    float2 cellCoordinates = getCellCoordinates(float2(coord) / float2(imageWidth, imageHeight), gridSize);
+    float2 cellCoordinates = getCellCoordinates(float2(coord) / imageSize, gridSize);
     uint viewIndex = getViewIndex(cellCoordinates, gridSize);
     float2 cellTexCoords = getCellTexCoords(cellCoordinates);
 
@@ -327,19 +326,19 @@ void kernelFunction (uint3 id : SV_DispatchThreadID)
     uint numThreadsX = 32;
     uint numThreadsY = 32;
 
-    uint xCohortSize = floor((imageWidth + numThreadsX) / numThreadsX);
-    uint yCohortSize = floor((imageHeight + numThreadsY) / numThreadsY);
+    uint xCohortSize = floor((imageSize.x + numThreadsX) / numThreadsX);
+    uint yCohortSize = floor((imageSize.y + numThreadsY) / numThreadsY);
 
     for(uint i = 0; i < xCohortSize; i++) {
         for(uint j = 0; j < yCohortSize; j++) {
             uint x = id.x * xCohortSize + i;
             uint y = id.y * yCohortSize + j;
 
-            if (x >= imageWidth || y >= imageHeight) {
+            if (x >= imageSize.x || y >= imageSize.y) {
                 continue; // skip if out of bounds
             }
 
-            float2 uv = float2(x, y) / float2(imageWidth, imageHeight);
+            float2 uv = float2(x, y) / imageSize;
             float4 color = fragHDRP(uv, int2(x, y));
 
             Result[float2(x, y)] = color;
