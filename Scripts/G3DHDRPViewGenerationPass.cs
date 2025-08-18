@@ -106,7 +106,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         // upload all inv view projection matrices
         Matrix4x4[] viewMatrices = new Matrix4x4[16];
         Matrix4x4[] invProjMatrices = new Matrix4x4[16];
-        
+
         for (int i = 0; i < internalCameraCount; i++)
         {
             Matrix4x4 projectionMatrixInner = GL.GetGPUProjectionMatrix(
@@ -125,8 +125,15 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             invProjMatrices[i] = invGPUProjMatrix;
         }
 
-        ctx.cmd.SetComputeMatrixArrayParam(holeFillingCompShader, "viewMatrices", viewMatrices);
-        ctx.cmd.SetComputeMatrixArrayParam(holeFillingCompShader, "invProjMatrices", invProjMatrices);
+        if (fillHoles)
+        {
+            ctx.cmd.SetComputeMatrixArrayParam(holeFillingCompShader, "viewMatrices", viewMatrices);
+            ctx.cmd.SetComputeMatrixArrayParam(
+                holeFillingCompShader,
+                "invProjMatrices",
+                invProjMatrices
+            );
+        }
 
         addViewProjectionMatrix(ctx, cameras[0], "leftViewProjMatrix");
         addViewProjectionMatrix(ctx, cameras[internalCameraCount / 2], "middleViewProjMatrix");
@@ -173,12 +180,22 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             "_colorMosaic",
             mosaicImageHandle
         );
-        ctx.cmd.SetComputeIntParams(holeFillingCompShader, "gridSize", new int[] {4, 4});
+        ctx.cmd.SetComputeIntParams(holeFillingCompShader, "gridSize", new int[] { 4, 4 });
         ctx.cmd.SetComputeIntParam(holeFillingCompShader, "radius", holeFillingRadius);
         ctx.cmd.SetComputeFloatParam(holeFillingCompShader, "sigma", holeFillingRadius / 2.0f);
-        ctx.cmd.SetComputeIntParams(holeFillingCompShader, "imageSize", new int[] {mosaicImageHandle.rt.width, mosaicImageHandle.rt.height});
+        ctx.cmd.SetComputeIntParams(
+            holeFillingCompShader,
+            "imageSize",
+            new int[] { mosaicImageHandle.rt.width, mosaicImageHandle.rt.height }
+        );
 
-        ctx.cmd.DispatchCompute(holeFillingCompShader, holeFillingKernel, mosaicImageHandle.rt.width, mosaicImageHandle.rt.height, 1);
+        ctx.cmd.DispatchCompute(
+            holeFillingCompShader,
+            holeFillingKernel,
+            mosaicImageHandle.rt.width,
+            mosaicImageHandle.rt.height,
+            1
+        );
 
         // Blit the result to the mosaic image
         CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
