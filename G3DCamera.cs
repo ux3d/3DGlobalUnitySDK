@@ -135,13 +135,13 @@ public class G3DCamera
     [Tooltip(
         "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
     )]
-    public bool adaptRenderResolutionToViews = true;
+    private bool adaptRenderResolutionToViews = false;
 
     [Tooltip(
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
-    public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
-    public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
+    private Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
+    private LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
@@ -194,6 +194,9 @@ public class G3DCamera
     private Material material;
 #if G3D_HDRP
     private G3DHDRPCustomPass customPass;
+    private HDAdditionalCameraData.AntialiasingMode antialiasingMode = HDAdditionalCameraData
+        .AntialiasingMode
+        .None;
 #endif
 #if G3D_URP
     private G3DUrpScriptableRenderPass customPass;
@@ -252,6 +255,7 @@ public class G3DCamera
     void Start()
     {
         mainCamera = GetComponent<Camera>();
+        oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
 
         // create a focus plane object at focus distance from camera.
@@ -325,6 +329,8 @@ public class G3DCamera
         customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
         customPass.fullscreenPassMaterial = material;
         customPass.materialPassName = "G3DFullScreen3D";
+
+        antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
 #endif
 
 #if G3D_URP
@@ -364,7 +370,16 @@ public class G3DCamera
     /// </summary>
     void OnValidate()
     {
-        if (calibrationFile != previousCalibrationFile)
+        if (enabled == false)
+        {
+            // do not run this code if the script is not enabled
+            return;
+        }
+
+        if (
+            calibrationFile != previousCalibrationFile
+            || previousSceneScaleFactor != sceneScaleFactor
+        )
         {
             previousCalibrationFile = calibrationFile;
             setupCameras();
@@ -386,12 +401,6 @@ public class G3DCamera
                 internalCameraCount = 2;
                 viewSeparation = 0.065f;
             }
-        }
-
-        if (previousSceneScaleFactor != sceneScaleFactor)
-        {
-            previousSceneScaleFactor = sceneScaleFactor;
-            setupCameras();
         }
     }
 
@@ -423,7 +432,7 @@ public class G3DCamera
 
         int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
         int NativeViewcount = calibration.getInt("NativeViewcount");
-        float ApertureAngle = 22.0f;
+        float ApertureAngle = 14.0f;
         try
         {
             ApertureAngle = calibration.getFloat("ApertureAngle");
@@ -575,6 +584,10 @@ public class G3DCamera
                 cameras[i].clearFlags = mainCamera.clearFlags;
                 cameras[i].backgroundColor = mainCamera.backgroundColor;
                 cameras[i].targetDisplay = mainCamera.targetDisplay;
+
+#if G3D_HDRP
+                cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
+#endif
             }
         }
     }
@@ -785,6 +798,7 @@ public class G3DCamera
             || oldRenderResolutionScale != renderResolutionScale
         )
         {
+            oldRenderResolutionScale = renderResolutionScale;
             updateShaderRenderTextures();
         }
     }
@@ -936,7 +950,7 @@ public class G3DCamera
         cameraParent.transform.localPosition = new Vector3(
             horizontalOffset,
             verticalOffset,
-            -focusDistanceWithDollyZoom
+            -currentFocusDistance
         );
 
         //calculate camera positions and matrices
@@ -951,6 +965,12 @@ public class G3DCamera
             camera.transform.localRotation = cameraParent.transform.localRotation;
 #if G3D_URP
             camera.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
+#endif
+#if G3D_HDRP
+            HDAdditionalCameraData hdAdditionalCameraData =
+                camera.gameObject.GetComponent<HDAdditionalCameraData>();
+            if (hdAdditionalCameraData != null)
+                hdAdditionalCameraData.antialiasing = antialiasingMode;
 #endif
 
             float localCameraOffset = calculateCameraOffset(
@@ -1310,6 +1330,24 @@ public class G3DCamera
             return;
         }
 
+        if (enabled == false)
+        {
+            // do not run this code if the script is not enabled
+            return;
+        }
+
+        if (mainCamera == null)
+        {
+            mainCamera = GetComponent<Camera>();
+            if (mainCamera == null)
+            {
+                Debug.LogError(
+                    "No main camera found. Please add a camera to the G3DCamera object."
+                );
+                return;
+            }
+        }
+
         float dollyZoomFactor = scaledFocusDistance - scaledFocusDistance * dollyZoom;
 
         float tmpHalfCameraWidthAtStart =
@@ -1321,7 +1359,7 @@ public class G3DCamera
         float fieldOfViewWithoutDolly =
             2 * Mathf.Atan(tmpHalfCameraWidthAtStart / scaledFocusDistance) * Mathf.Rad2Deg;
 
-        Vector3 basePosition = new Vector3(0, 0, scaledFocusDistance);
+        Vector3 basePosition = new Vector3(0, 0, focusDistanceWithDollyZoom);
 
         Vector3 position;
         // draw eye separation
@@ -1350,7 +1388,6 @@ public class G3DCamera
                 internalCameraCount
             );
             position = transform.position + transform.right * localCameraOffset;
-            position += transform.forward * dollyZoomFactor; // apply dolly zoom
 
             // apply new projection matrix
             Matrix4x4 localProjectionMatrix = Matrix4x4.TRS(
@@ -1381,7 +1418,7 @@ public class G3DCamera
 
         // draw focus plane
         Gizmos.color = new Color(0, 0, 1, 0.25F);
-        position = new Vector3(0, 0, 1) * scaledFocusDistance;
+        position = new Vector3(0, 0, 1) * focusDistanceWithDollyZoom;
         float frustumWidth =
             Mathf.Tan(fieldOfViewWithoutDolly * Mathf.Deg2Rad / 2) * scaledFocusDistance * 2;
         float frustumHeight =
@@ -1439,94 +1476,7 @@ public class G3DCamera
         return headPositionFilter.x != 0 || headPositionFilter.y != 0 || headPositionFilter.z != 0;
     }
 
-    /// <summary>
-    /// The provided file uri has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="uri"></param>
-    public void UpdateShaderParametersFromURI(string uri)
-    {
-        if (uri == null || uri == "")
-        {
-            return;
-        }
-
-        try
-        {
-            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromURI(
-                uri,
-                (CalibrationProvider provider) =>
-                {
-                    lock (shaderLock)
-                    {
-                        shaderParameters = provider.getShaderParameters();
-                    }
-                    updateShaderParameters();
-                    return 0;
-                }
-            );
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from uri: " + e.Message);
-        }
-    }
-
-    /// <summary>
-    /// The provided file path has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="filePath"></param>
-    public void UpdateShaderParametersFromFile(string filePath)
-    {
-        if (filePath == null || filePath == "" || filePath.EndsWith(".ini") == false)
-        {
-            return;
-        }
-
-        try
-        {
-            lock (shaderLock)
-            {
-                CalibrationProvider defaultCalibrationProvider =
-                    CalibrationProvider.getFromConfigFile(filePath);
-                shaderParameters = defaultCalibrationProvider.getShaderParameters();
-            }
-            updateShaderParameters();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from file: " + e.Message);
-        }
-    }
-
-    /// <summary>
-    /// The provided string has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="json"></param>
-    public void UpdateShaderParametersFromINIString(string iniFile)
-    {
-        if (iniFile == null || iniFile == "")
-        {
-            return;
-        }
-
-        try
-        {
-            lock (shaderLock)
-            {
-                CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
-                    iniFile
-                );
-                shaderParameters = defaultCalibrationProvider.getShaderParameters();
-            }
-            updateShaderParameters();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from json: " + e.Message);
-        }
-    }
-
-    public void logCameraPOsitionsToFile()
+    public void logCameraPositionsToFile()
     {
         System.IO.StreamWriter writer = new System.IO.StreamWriter(
             Application.dataPath + "/HeadPositionLog.csv",

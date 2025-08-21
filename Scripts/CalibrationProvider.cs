@@ -222,7 +222,14 @@ public class CalibrationProvider
             throw new System.Exception("Key not found: " + key);
         }
         float number;
-        if (float.TryParse(value, out number))
+        if (
+            float.TryParse(
+                value,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out number
+            )
+        )
         {
             return number;
         }

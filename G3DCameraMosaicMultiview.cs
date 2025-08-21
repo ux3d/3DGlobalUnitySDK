@@ -164,6 +164,12 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     /// </summary>
     void OnValidate()
     {
+        if (isActiveAndEnabled == false)
+        {
+            // do not run this code if the script is not enabled
+            return;
+        }
+
         if (calibrationFile != previousCalibrationFile)
         {
             previousCalibrationFile = calibrationFile;

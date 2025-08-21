@@ -11,9 +11,9 @@
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings">
         <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" />
         <uie:PropertyField name="renderResolutionScale" binding-path="renderResolutionScale" />
-        <uie:PropertyField name="adaptRenderResolutionToViews" binding-path="adaptRenderResolutionToViews" />
-        <uie:PropertyField name="headPositionFilter" binding-path="headPositionFilter" />
-        <uie:PropertyField name="latencyCorrectionMode" binding-path="latencyCorrectionMode" />
+        <uie:PropertyField name="adaptRenderResolutionToViews" binding-path="adaptRenderResolutionToViews" enabled="false" />
+        <uie:PropertyField name="headPositionFilter" binding-path="headPositionFilter" enabled="false" />
+        <uie:PropertyField name="latencyCorrectionMode" binding-path="latencyCorrectionMode" enabled="false" />
         <ui:Label text="Debug settings" name="DebuggingSettings" style="-unity-font-style: bold; margin-top: 13px; margin-right: 2px; margin-bottom: 4px;" />
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
