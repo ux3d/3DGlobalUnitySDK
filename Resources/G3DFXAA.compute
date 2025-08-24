@@ -94,7 +94,7 @@ void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 
 }
 
 
-[numthreads(8,8,1)]
+[numthreads(1, 1, 1)]
 void FXAA(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     UNITY_XR_ASSIGN_VIEW_INDEX(dispatchThreadId.z);

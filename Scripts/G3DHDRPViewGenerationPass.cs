@@ -228,8 +228,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         ctx.cmd.DispatchCompute(
             fxaaCompShader,
             fxaaKernel,
-            (mosaicImageHandle.rt.width + 7) / 8,
-            (mosaicImageHandle.rt.height + 7) / 8,
+            mosaicImageHandle.rt.width,
+            mosaicImageHandle.rt.height,
             1
         );
     }
