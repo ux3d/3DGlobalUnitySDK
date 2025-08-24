@@ -77,7 +77,54 @@ void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 
     }
 
     // outColor.rgb = float3(1.0, 0.0, 0.0);
-    outColor.rgb = (rgbM + rgbNW + rgbNE + rgbSW + rgbSE) / 5.0;
+    // outColor.rgb = (rgbM + rgbNW + rgbNE + rgbSW + rgbSE) / 5.0;
+
+    outColor.rgb =
+        0.2 * rgbM
+        + 0.2 * rgbNW
+        + 0.2 * rgbNE
+        + 0.2 * rgbSW
+        + 0.2 * rgbSE;
+
+    // outColor.rgb =
+    //     0.5 * rgbM
+    //     + 0.125 * rgbNW
+    //     + 0.125 * rgbNE
+    //     + 0.125 * rgbSW
+    //     + 0.125 * rgbSE;
+
+    float3 colors[9] = {
+        Load(_InputTexture, positionSS, -1, -1).rgb,
+        Load(_InputTexture, positionSS, 0, -1).rgb,
+        Load(_InputTexture, positionSS, 1, -1).rgb,
+        Load(_InputTexture, positionSS, -1, 0).rgb,
+        Load(_InputTexture, positionSS, 0, 0).rgb,
+        Load(_InputTexture, positionSS, 1, 0).rgb,
+        Load(_InputTexture, positionSS, -1, 1).rgb,
+        Load(_InputTexture, positionSS, 0, 1).rgb,
+        Load(_InputTexture, positionSS, 1, 1).rgb
+    };
+
+    float coeffs[9] = {
+        1.0 / 16.0,
+        1.0 / 8.0,
+        1.0 / 16.0,
+        1.0 / 8.0,
+        1.0 / 4.0,
+        1.0 / 8.0,
+        1.0 / 16.0,
+        1.0 / 8.0,
+        1.0 / 16.0
+    };
+
+    float3 conv = 0.0.xxx;
+    for (uint i = 0; i < 9; i++) {
+        conv += coeffs[i] * colors[i];
+    }
+
+    outColor.rgb = conv;
+
+    // outColor.r = 1.0;
     return;
 
     // float convolution = 4 * c - u - d - l - r;
