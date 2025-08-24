@@ -26,7 +26,8 @@ float LuminanceGamma(float3 c) {
 float3 Fetch(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 coords, float2 offset)
 {
     float2 uv = saturate(coords + offset) * _RTHandlePostProcessScale.xy;
-    return SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, uv, 0.0).xyz;
+    float3 color = SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, uv, 0.0).xyz;
+    return saturate(color);
 }
 
 float4 Load(TEXTURE2D(_InputTexture), int2 icoords, int idx, int idy)
@@ -42,55 +43,123 @@ float FetchAlpha(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 co
 
 void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 outColor, uint2 positionSS, float2 positionNDC)
 {
-    // Edge detection
-    float4 rgbNW = Load(_InputTexture, positionSS, -1, -1);
-    float4 rgbNE = Load(_InputTexture, positionSS, 1, -1);
-    float4 rgbSW = Load(_InputTexture, positionSS, -1, 1);
-    float4 rgbSE = Load(_InputTexture, positionSS, 1, 1);
+    float c = LuminanceGamma(Load(_InputTexture, positionSS, 0, 0).rgb);
+    float u = LuminanceGamma(Load(_InputTexture, positionSS, 0, -1).rgb);
+    float d = LuminanceGamma(Load(_InputTexture, positionSS, 0, 1).rgb);
+    float l = LuminanceGamma(Load(_InputTexture, positionSS, -1, 0).rgb);
+    float r = LuminanceGamma(Load(_InputTexture, positionSS, 1, 0).rgb);
 
-    rgbNW.xyz = saturate(rgbNW.xyz);
-    rgbNE.xyz = saturate(rgbNE.xyz);
-    rgbSW.xyz = saturate(rgbSW.xyz);
-    rgbSE.xyz = saturate(rgbSE.xyz);
-    outColor.xyz = saturate(outColor.xyz);
-    float lumaNW = LuminanceGamma(rgbNW.xyz);
-    float lumaNE = LuminanceGamma(rgbNE.xyz);
-    float lumaSW = LuminanceGamma(rgbSW.xyz);
-    float lumaSE = LuminanceGamma(rgbSE.xyz);
-    float lumaM = LuminanceGamma(outColor.xyz);
+    // ----
+
+    float3 rgbM = Load(_InputTexture, positionSS, 0, 0).rgb;
+    float3 rgbNW = Load(_InputTexture, positionSS, -1, -1).rgb;
+    float3 rgbNE = Load(_InputTexture, positionSS, 1, -1).rgb;
+    float3 rgbSW = Load(_InputTexture, positionSS, -1, 1).rgb;
+    float3 rgbSE = Load(_InputTexture, positionSS, 1, 1).rgb;
+
+    float lumaM = LuminanceGamma(rgbM);
+    float lumaNW = LuminanceGamma(rgbNW);
+    float lumaNE = LuminanceGamma(rgbNE);
+    float lumaSW = LuminanceGamma(rgbSW);
+    float lumaSE = LuminanceGamma(rgbSE);
+
+    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+    float edge = 4.0 * lumaM - lumaNW - lumaNE - lumaSW - lumaSE;
+
+    // ----
+
+    // if (lumaMax - lumaMin < 0.05) {
+    //     return;
+    // }
+    if (edge < 0.05) {
+        return;
+    }
+
+    // outColor.rgb = float3(1.0, 0.0, 0.0);
+    outColor.rgb = (rgbM + rgbNW + rgbNE + rgbSW + rgbSE) / 5.0;
+    return;
+
+    // float convolution = 4 * c - u - d - l - r;
+    // float convolution = lumaMax - lumaMin;
+    // outColor.rgb = float3(convolution, convolution, convolution);
+
 
     float2 dir;
     dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
-    dir.y = ((lumaNW + lumaSW) - (lumaNE + lumaSE));
+    dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));
 
-    float lumaSum = lumaNW + lumaNE + lumaSW + lumaSE;
-    float dirReduce = max(lumaSum * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);
-    float rcpDirMin = rcp(min(abs(dir.x), abs(dir.y)) + dirReduce);
+    float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.25 * 0.5, 0.001);
+    float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
 
     dir = min((FXAA_SPAN_MAX).xx, max((-FXAA_SPAN_MAX).xx, dir * rcpDirMin)) * _ScreenSize.zw;
 
-    // Blur
-    float3 rgb03 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (0.0 / 3.0 - 0.5));
+    float3 rgb03 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (-1.0 / 3.0 - 0.5));
     float3 rgb13 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (1.0 / 3.0 - 0.5));
     float3 rgb23 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (2.0 / 3.0 - 0.5));
-    float3 rgb33 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (3.0 / 3.0 - 0.5));
-
-    rgb03 = saturate(rgb03);
-    rgb13 = saturate(rgb13);
-    rgb23 = saturate(rgb23);
-    rgb33 = saturate(rgb33);
+    float3 rgb33 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (4.0 / 3.0 - 0.5));
 
     float3 rgbA = 0.5 * (rgb13 + rgb23);
     float3 rgbB = rgbA * 0.5 + 0.25 * (rgb03 + rgb33);
 
     float lumaB = LuminanceGamma(rgbB);
 
-    float lumaMin = Min3(lumaM, lumaNW, Min3(lumaNE, lumaSW, lumaSE));
-    float lumaMax = Max3(lumaM, lumaNW, Max3(lumaNE, lumaSW, lumaSE));
+    if ((lumaB < lumaMin) || (lumaB > lumaMax)) {
+        outColor.rgb = rgbA;
+    }
+    else {
+        outColor.rgb = rgbB;
+    }
 
-    float3 rgb = ((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB;
+    // // Edge detection
+    // float4 rgbNW = Load(_InputTexture, positionSS, -1, -1);
+    // float4 rgbNE = Load(_InputTexture, positionSS, 1, -1);
+    // float4 rgbSW = Load(_InputTexture, positionSS, -1, 1);
+    // float4 rgbSE = Load(_InputTexture, positionSS, 1, 1);
 
-    outColor.xyz = rgb;
+    // rgbNW.xyz = saturate(rgbNW.xyz);
+    // rgbNE.xyz = saturate(rgbNE.xyz);
+    // rgbSW.xyz = saturate(rgbSW.xyz);
+    // rgbSE.xyz = saturate(rgbSE.xyz);
+    // outColor.xyz = saturate(outColor.xyz);
+    // float lumaNW = LuminanceGamma(rgbNW.xyz);
+    // float lumaNE = LuminanceGamma(rgbNE.xyz);
+    // float lumaSW = LuminanceGamma(rgbSW.xyz);
+    // float lumaSE = LuminanceGamma(rgbSE.xyz);
+    // float lumaM = LuminanceGamma(outColor.xyz);
+
+    // float2 dir;
+    // dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
+    // dir.y = ((lumaNW + lumaSW) - (lumaNE + lumaSE));
+
+    // float lumaSum = lumaNW + lumaNE + lumaSW + lumaSE;
+    // float dirReduce = max(lumaSum * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);
+    // float rcpDirMin = rcp(min(abs(dir.x), abs(dir.y)) + dirReduce);
+
+    // dir = min((FXAA_SPAN_MAX).xx, max((-FXAA_SPAN_MAX).xx, dir * rcpDirMin)) * _ScreenSize.zw;
+
+    // // Blur
+    // float3 rgb03 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (0.0 / 3.0 - 0.5));
+    // float3 rgb13 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (1.0 / 3.0 - 0.5));
+    // float3 rgb23 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (2.0 / 3.0 - 0.5));
+    // float3 rgb33 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (3.0 / 3.0 - 0.5));
+
+    // rgb03 = saturate(rgb03);
+    // rgb13 = saturate(rgb13);
+    // rgb23 = saturate(rgb23);
+    // rgb33 = saturate(rgb33);
+
+    // float3 rgbA = 0.5 * (rgb13 + rgb23);
+    // float3 rgbB = rgbA * 0.5 + 0.25 * (rgb03 + rgb33);
+
+    // float lumaB = LuminanceGamma(rgbB);
+
+    // float lumaMin = Min3(lumaM, lumaNW, Min3(lumaNE, lumaSW, lumaSE));
+    // float lumaMax = Max3(lumaM, lumaNW, Max3(lumaNE, lumaSW, lumaSE));
+
+    // float3 rgb = ((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB;
+
+    // outColor.xyz = rgb;
 }
 
 
@@ -102,9 +171,14 @@ void FXAA(uint3 dispatchThreadId : SV_DispatchThreadID)
     float2 positionNDC = positionSS * _PostProcessScreenSize.zw + (0.5 * _PostProcessScreenSize.zw);
 
     float4 outColor = _colorMosaic.Load(float4(positionSS, 0, 0));
-    float4 beforeFXAA = outColor;
 
-    RunFXAA(_colorMosaic, s_linear_clamp_sampler, outColor, positionSS, positionNDC);
+    if (4 * positionSS.x % int(_PostProcessScreenSize.x) == 0 || 4 * positionSS.y % int(_PostProcessScreenSize.y) == 0) {
+        // do not run fxx on debug view boundaries
+        // outColor = float4(1.0, 0.0, 1.0, 1.0);
+    }
+    else {
+        RunFXAA(_colorMosaic, s_linear_clamp_sampler, outColor, positionSS, positionNDC);
+    }
 
     _OutputTexture[positionSS] = outColor;
 }
