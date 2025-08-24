@@ -18,6 +18,11 @@ SamplerState sampler_colorMosaic;
 // #define FXAA_REDUCE_MUL     (1.0 / 8.0)
 // #define FXAA_REDUCE_MIN     (1.0 / 128.0)
 
+float LuminanceGamma(float3 c) {
+    float3 w = float3(0.299, 0.587, 0.114);
+    return sqrt(dot(c, w));
+}
+
 float3 Fetch(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 coords, float2 offset)
 {
     float2 uv = saturate(coords + offset) * _RTHandlePostProcessScale.xy;
@@ -48,11 +53,11 @@ void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 
     rgbSW.xyz = saturate(rgbSW.xyz);
     rgbSE.xyz = saturate(rgbSE.xyz);
     outColor.xyz = saturate(outColor.xyz);
-    float lumaNW = Luminance(rgbNW.xyz);
-    float lumaNE = Luminance(rgbNE.xyz);
-    float lumaSW = Luminance(rgbSW.xyz);
-    float lumaSE = Luminance(rgbSE.xyz);
-    float lumaM = Luminance(outColor.xyz);
+    float lumaNW = LuminanceGamma(rgbNW.xyz);
+    float lumaNE = LuminanceGamma(rgbNE.xyz);
+    float lumaSW = LuminanceGamma(rgbSW.xyz);
+    float lumaSE = LuminanceGamma(rgbSE.xyz);
+    float lumaM = LuminanceGamma(outColor.xyz);
 
     float2 dir;
     dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
@@ -78,7 +83,7 @@ void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 
     float3 rgbA = 0.5 * (rgb13 + rgb23);
     float3 rgbB = rgbA * 0.5 + 0.25 * (rgb03 + rgb33);
 
-    float lumaB = Luminance(rgbB);
+    float lumaB = LuminanceGamma(rgbB);
 
     float lumaMin = Min3(lumaM, lumaNW, Min3(lumaNE, lumaSW, lumaSE));
     float lumaMax = Max3(lumaM, lumaNW, Max3(lumaNE, lumaSW, lumaSE));
