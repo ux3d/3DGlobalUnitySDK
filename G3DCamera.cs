@@ -584,6 +584,7 @@ public class G3DCamera
                 cameras[i].clearFlags = mainCamera.clearFlags;
                 cameras[i].backgroundColor = mainCamera.backgroundColor;
                 cameras[i].targetDisplay = mainCamera.targetDisplay;
+                cameras[i].cullingMask = mainCamera.cullingMask;
 
 #if G3D_HDRP
                 cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
