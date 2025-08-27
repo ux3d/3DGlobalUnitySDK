@@ -146,6 +146,14 @@ public class G3DCamera
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
     public bool showTestFrame = false;
+    [Tooltip("If set to true, the shader will show the test stripe.")]
+    public bool showTestStripe = false;
+    [Tooltip("Width of the test gap in pixels.")]
+    public int testGapWidth = 0;
+    [Tooltip("Width of the black border in pixels.")]
+    public int blackBorder = 0;
+    [Tooltip("Width of the black space in pixels.")]
+    public int blackSpace = 0;
 
     [Tooltip(
         "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
