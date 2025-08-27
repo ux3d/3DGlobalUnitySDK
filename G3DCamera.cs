@@ -91,7 +91,7 @@ public class G3DCamera
     [Tooltip(
         "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
     )]
-    public string calibrationPath = "";
+    public string calibrationPath = "C:\\3d Global\\calibrations";
 
     #region 3D Effect settings
     public G3DCameraMode mode = G3DCameraMode.DIORAMA;
