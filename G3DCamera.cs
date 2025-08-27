@@ -78,6 +78,7 @@ struct ShaderHandles
 /// IMPORTANT: This script must not be attached to a camera already using a G3D camera script.
 /// </summary>
 [RequireComponent(typeof(Camera))]
+[RequireComponent(typeof(G3DRuntimeUI))]
 [DisallowMultipleComponent]
 public class G3DCamera
     : MonoBehaviour,
@@ -260,8 +261,15 @@ public class G3DCamera
     // TODO Handle viewport resizing/ moving
 
     #region Initialization
+
     void Start()
     {
+        // Ensure G3DRuntimeUI is present as a component
+        if (GetComponent<G3DRuntimeUI>() == null)
+        {
+            gameObject.AddComponent<G3DRuntimeUI>();
+        }
+
         mainCamera = GetComponent<Camera>();
         oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
