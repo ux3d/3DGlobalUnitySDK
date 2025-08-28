@@ -33,6 +33,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     private ComputeShader fxaaCompShader;
     private int fxaaKernel;
     public bool fxaaEnabled;
+    
+    private Material smaaMaterial;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
@@ -47,6 +49,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             fxaaCompShader = Resources.Load<ComputeShader>("G3DFXAA");
             fxaaKernel = fxaaCompShader.FindKernel("FXAA");
         }
+
+        smaaMaterial = new Material(Shader.Find("G3D/SMAA"));
 
         blitMaterial = new Material(Shader.Find("G3D/G3DBlit"));
         blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);
@@ -79,7 +83,12 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
             runHoleFilling(ctx);
 
-            runFXAA(ctx);
+            // runFXAA(ctx);
+
+            smaaMaterial.SetTexture(Shader.PropertyToID("_mainTex"), mosaicImageHandle);
+            CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTexture, ClearFlag.None);
+            ctx.cmd.ClearRenderTarget(true, true, Color.clear);
+            CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: 0);
 
             if (debugRendering)
             {

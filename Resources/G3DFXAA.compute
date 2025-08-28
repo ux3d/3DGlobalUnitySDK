@@ -1,3 +1,4 @@
+// #pragma target 4.0
 #pragma kernel FXAA
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
@@ -5,6 +6,11 @@
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Builtin/BuiltinData.hlsl"
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/PostProcessing/Shaders/PostProcessDefines.hlsl"
+
+// #define SMAA_RT_METRICS float4(1.0 / 1980.0, 1.0 / 1080.0, 1980.0, 1080.0)
+// #define SMAA_HLSL_4
+// #define SMAA_PRESET_HIGH
+// #include "SMAA.hlsl"
 
 RWTexture2D<float4> _OutputTexture;
 Texture2D _colorMosaic;
@@ -41,8 +47,39 @@ float FetchAlpha(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 co
     return SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, uv, 0.0).w;
 }
 
+SamplerState PointSampler2 { Filter = MIN_MAG_MIP_POINT; AddressU = Clamp; AddressV = Clamp; };
+
 void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 outColor, uint2 positionSS, float2 positionNDC)
 {
+    // bool discarded = false;
+
+    // outColor = _InputTexture.Sample(PointSampler2, positionNDC, 0.0);
+    // outColor = SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, positionNDC, 0.0);
+    // outColor = tex2Dlod(
+    //     _InputTextureSampler,
+    //     float4(positionNDC, 0.0, 0.0)
+    // );
+
+    // float4 smaaOffsets[3];
+    // SMAAEdgeDetectionVS(
+    //     positionNDC,
+    //     smaaOffsets
+    // );
+    // float2 tmptmptmptmp = SMAAColorEdgeDetectionPS(
+    //     positionNDC,
+    //     smaaOffsets,
+    //     _InputTexture,
+    //     discarded
+    // );
+
+    // outColor = float4(0.0, 0.0, 0.0, 1.0);
+    // return;
+
+    // if (true) {
+    // outColor.x = tmptmptmptmp.x;
+        // return;
+    // }
+
     float c = LuminanceGamma(Load(_InputTexture, positionSS, 0, 0).rgb);
     float u = LuminanceGamma(Load(_InputTexture, positionSS, 0, -1).rgb);
     float d = LuminanceGamma(Load(_InputTexture, positionSS, 0, 1).rgb);
