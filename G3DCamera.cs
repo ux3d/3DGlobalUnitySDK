@@ -252,6 +252,7 @@ public class G3DCamera
     private bool useVectorMapViewGeneration = false;
     public bool isFillingHoles;
     public bool applyFXAA;
+    public bool applySMAA;
     public bool debugRendering;
 
     [Range(0, 64)]
@@ -459,6 +460,7 @@ public class G3DCamera
             viewGenerationPass.fillHoles = isFillingHoles;
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
             viewGenerationPass.fxaaEnabled = applyFXAA;
+            viewGenerationPass.smaaEnabled = applySMAA;
             
             viewGenerationPass.smaaEdgesTex = new RenderTexture(
                 mainCamera.pixelWidth,

@@ -38,6 +38,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public bool fxaaEnabled;
     
     private Material smaaMaterial;
+    public bool smaaEnabled;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
@@ -91,24 +92,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
             // runFXAA(ctx);
 
-            smaaMaterial.SetVector(Shader.PropertyToID("SMAA_RT_METRICS"), new Vector4(
-                1.0f / mosaicImageHandle.rt.width,
-                1.0f / mosaicImageHandle.rt.height,
-                mosaicImageHandle.rt.width,
-                mosaicImageHandle.rt.height
-            ));
-
-            smaaMaterial.SetTexture(Shader.PropertyToID("ColorTex"), mosaicImageHandle);
-            CoreUtils.SetRenderTarget(ctx.cmd, smaaEdgesTex, ClearFlag.Color);
-            CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("EdgeDetection"));
-
-            smaaMaterial.SetTexture(Shader.PropertyToID("edgesTex"), smaaEdgesTex);
-            CoreUtils.SetRenderTarget(ctx.cmd, smaaBlendTex, ClearFlag.Color);
-            CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("BlendingWeightCalculation"));
-
-            smaaMaterial.SetTexture(Shader.PropertyToID("blendTex"), smaaBlendTex);
-            CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTexture, ClearFlag.None);
-            CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("NeighborhoodBlending"));
+            runSMAA(ctx);
 
             // ctx.cmd.Blit(smaaEdgesTex, computeShaderResultTexture);
             // ctx.cmd.Blit(smaaBlendTex, computeShaderResultTexture);
@@ -264,6 +248,34 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             mosaicImageHandle.rt.height,
             1
         );
+    }
+
+    private void runSMAA(CustomPassContext ctx)
+    {
+        if (!smaaEnabled)
+        {
+            ctx.cmd.Blit(mosaicImageHandle, computeShaderResultTexture);
+            return;
+        }
+
+        smaaMaterial.SetVector(Shader.PropertyToID("SMAA_RT_METRICS"), new Vector4(
+            1.0f / mosaicImageHandle.rt.width,
+            1.0f / mosaicImageHandle.rt.height,
+            mosaicImageHandle.rt.width,
+            mosaicImageHandle.rt.height
+        ));
+
+        smaaMaterial.SetTexture(Shader.PropertyToID("ColorTex"), mosaicImageHandle);
+        CoreUtils.SetRenderTarget(ctx.cmd, smaaEdgesTex, ClearFlag.Color);
+        CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("EdgeDetection"));
+
+        smaaMaterial.SetTexture(Shader.PropertyToID("edgesTex"), smaaEdgesTex);
+        CoreUtils.SetRenderTarget(ctx.cmd, smaaBlendTex, ClearFlag.Color);
+        CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("BlendingWeightCalculation"));
+
+        smaaMaterial.SetTexture(Shader.PropertyToID("blendTex"), smaaBlendTex);
+        CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTexture, ClearFlag.None);
+        CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("NeighborhoodBlending"));
     }
 
     /// <summary>
