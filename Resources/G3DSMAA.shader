@@ -21,9 +21,10 @@ Shader "G3D/SMAA" {
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
             #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
             
-            #define SMAA_RT_METRICS float4(1.0 / 1980.0, 1.0 / 1080.0, 1980.0, 1080.0)
             #define SMAA_HLSL_4
             #define SMAA_PRESET_MEDIUM
+            // #define SMAA_RT_METRICS float4(1.0 / 1980.0, 1.0 / 1080.0, 1980.0, 1080.0)
+            uniform float4 SMAA_RT_METRICS;
             #include "SMAA.hlsl"
 
             struct VertAttributes {
