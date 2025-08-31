@@ -85,7 +85,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
             // runFXAA(ctx);
 
-            smaaMaterial.SetTexture(Shader.PropertyToID("_mainTex"), mosaicImageHandle);
+            smaaMaterial.SetTexture(Shader.PropertyToID("MainTex"), mosaicImageHandle);
             CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTexture, ClearFlag.None);
             ctx.cmd.ClearRenderTarget(true, true, Color.clear);
             CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: 0);

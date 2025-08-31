@@ -37,8 +37,8 @@ Shader "G3D/SMAA" {
                 float4 smaaOffsets[3] : TEXCOORD1;
             };
 
-            Texture2D _mainTex;
-            SamplerState sampler_mainTex;
+            Texture2D MainTex;
+            SamplerState SamplerMainTex;
 
             v2f vert(VertAttributes input) {
                 v2f output;
@@ -56,7 +56,7 @@ Shader "G3D/SMAA" {
                 float2 edges = SMAAColorEdgeDetectionPS(
                     i.uv,
                     i.smaaOffsets,
-                    _mainTex
+                    MainTex
                 );
 
                 return float4(edges, 1.0, 1.0);
