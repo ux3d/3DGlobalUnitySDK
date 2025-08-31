@@ -459,6 +459,21 @@ public class G3DCamera
             viewGenerationPass.fillHoles = isFillingHoles;
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
             viewGenerationPass.fxaaEnabled = applyFXAA;
+            
+            viewGenerationPass.smaaEdgesTex = new RenderTexture(
+                mainCamera.pixelWidth,
+                mainCamera.pixelHeight,
+                0,
+                RenderTextureFormat.RG32,
+                RenderTextureReadWrite.Linear
+            );
+            viewGenerationPass.smaaBlendTex = new RenderTexture(
+                mainCamera.pixelWidth,
+                mainCamera.pixelHeight,
+                0,
+                RenderTextureFormat.RG32,
+                RenderTextureReadWrite.Linear
+            );
 
             // add autostereo mosaic generation pass
             RenderTexture mosaicTexture = new RenderTexture(

@@ -20,6 +20,9 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public RenderTexture computeShaderResultTexture;
     public RTHandle computeShaderResultTextureHandle;
 
+    public RenderTexture smaaEdgesTex;
+    public RenderTexture smaaBlendTex;
+
     public int holeFillingRadius;
 
     public bool fillHoles;
@@ -51,9 +54,9 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         }
 
         smaaMaterial = new Material(Shader.Find("G3D/SMAA"));
-        smaaMaterial.SetTexture("AreaTex", Resources.Load<Texture2D>("SMAA/AreaTex"));
+        smaaMaterial.SetTexture("areaTex", Resources.Load<Texture2D>("SMAA/AreaTex"));
         // Import search tex as PNG because I can't get Unity to work with an R8 DDS file properly.
-        smaaMaterial.SetTexture("SearchTex", Resources.Load<Texture2D>("SMAA/SearchTexPNG"));
+        smaaMaterial.SetTexture("searchTex", Resources.Load<Texture2D>("SMAA/SearchTexPNG"));
 
         blitMaterial = new Material(Shader.Find("G3D/G3DBlit"));
         blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);
@@ -88,16 +91,23 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
             // runFXAA(ctx);
 
-            smaaMaterial.SetTexture(Shader.PropertyToID("MainTex"), mosaicImageHandle);
             smaaMaterial.SetVector(Shader.PropertyToID("SMAA_RT_METRICS"), new Vector4(
                 1.0f / mosaicImageHandle.rt.width,
                 1.0f / mosaicImageHandle.rt.height,
                 mosaicImageHandle.rt.width,
                 mosaicImageHandle.rt.height
             ));
-            CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTexture, ClearFlag.None);
-            ctx.cmd.ClearRenderTarget(true, true, Color.clear);
-            CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: 0);
+
+            smaaMaterial.SetTexture(Shader.PropertyToID("MainTex"), mosaicImageHandle);
+            CoreUtils.SetRenderTarget(ctx.cmd, smaaEdgesTex, ClearFlag.Color);
+            CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("EdgeDetection"));
+
+            smaaMaterial.SetTexture(Shader.PropertyToID("edgesTex"), smaaEdgesTex);
+            CoreUtils.SetRenderTarget(ctx.cmd, smaaBlendTex, ClearFlag.Color);
+            CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("BlendingWeightCalculation"));
+
+            // ctx.cmd.Blit(smaaEdgesTex, computeShaderResultTexture);
+            ctx.cmd.Blit(smaaBlendTex, computeShaderResultTexture);
 
             if (debugRendering)
             {
