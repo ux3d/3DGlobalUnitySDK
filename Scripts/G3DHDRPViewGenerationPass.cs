@@ -51,6 +51,9 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         }
 
         smaaMaterial = new Material(Shader.Find("G3D/SMAA"));
+        smaaMaterial.SetTexture("AreaTex", Resources.Load<Texture2D>("SMAA/AreaTex"));
+        // Import search tex as PNG because I can't get Unity to work with an R8 DDS file properly.
+        smaaMaterial.SetTexture("SearchTex", Resources.Load<Texture2D>("SMAA/SearchTexPNG"));
 
         blitMaterial = new Material(Shader.Find("G3D/G3DBlit"));
         blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);

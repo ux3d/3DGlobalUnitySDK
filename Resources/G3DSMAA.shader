@@ -25,7 +25,7 @@ Shader "G3D/SMAA" {
             #define SMAA_PRESET_MEDIUM
             // #define SMAA_RT_METRICS float4(1.0 / 1980.0, 1.0 / 1080.0, 1980.0, 1080.0)
             uniform float4 SMAA_RT_METRICS;
-            #include "SMAA.hlsl"
+            #include "SMAA/SMAA.hlsl"
 
             struct VertAttributes {
                 uint vertexID : SV_VertexID;
@@ -39,7 +39,13 @@ Shader "G3D/SMAA" {
             };
 
             Texture2D MainTex;
-            SamplerState SamplerMainTex;
+            SamplerState sampler_MainTex;
+
+            Texture2D AreaTex;
+            SamplerState sampler_AreaTex;
+
+            Texture2D SearchTex;
+            SamplerState sampler_SearchTex;
 
             v2f vert(VertAttributes input) {
                 v2f output;
@@ -54,13 +60,19 @@ Shader "G3D/SMAA" {
             }
             
             float4 frag(v2f i) : SV_Target {
-                float2 edges = SMAAColorEdgeDetectionPS(
-                    i.uv,
-                    i.smaaOffsets,
-                    MainTex
-                );
+                // float2 edges = SMAAColorEdgeDetectionPS(
+                //     i.uv,
+                //     i.smaaOffsets,
+                //     MainTex
+                // );
 
-                return float4(edges, 1.0, 1.0);
+                // return float4(edges, 1.0, 1.0);
+                // return MainTex.Sample(sampler_MainTex, i.uv);
+                // return AreaTex.Sample(sampler_AreaTex, i.uv);
+                // return AreaTex.Sample(SMAALinearClampSampler, i.uv);
+                // return float4(i.uv, 1.0, 1.0);
+
+                return float4(SearchTex.Sample(SMAAPointClampSampler, i.uv).xxx, 1.0);
             }
             ENDHLSL
         }
