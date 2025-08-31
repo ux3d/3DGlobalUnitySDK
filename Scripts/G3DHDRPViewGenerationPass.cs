@@ -98,7 +98,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 mosaicImageHandle.rt.height
             ));
 
-            smaaMaterial.SetTexture(Shader.PropertyToID("MainTex"), mosaicImageHandle);
+            smaaMaterial.SetTexture(Shader.PropertyToID("ColorTex"), mosaicImageHandle);
             CoreUtils.SetRenderTarget(ctx.cmd, smaaEdgesTex, ClearFlag.Color);
             CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("EdgeDetection"));
 
@@ -106,8 +106,12 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             CoreUtils.SetRenderTarget(ctx.cmd, smaaBlendTex, ClearFlag.Color);
             CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("BlendingWeightCalculation"));
 
+            smaaMaterial.SetTexture(Shader.PropertyToID("blendTex"), smaaBlendTex);
+            CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTexture, ClearFlag.None);
+            CoreUtils.DrawFullScreen(ctx.cmd, smaaMaterial, ctx.propertyBlock, shaderPassId: smaaMaterial.FindPass("NeighborhoodBlending"));
+
             // ctx.cmd.Blit(smaaEdgesTex, computeShaderResultTexture);
-            ctx.cmd.Blit(smaaBlendTex, computeShaderResultTexture);
+            // ctx.cmd.Blit(smaaBlendTex, computeShaderResultTexture);
 
             if (debugRendering)
             {
