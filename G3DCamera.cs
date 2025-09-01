@@ -978,6 +978,7 @@ public class G3DCamera
 #if G3D_HDRP
         viewGenerationPass.holeFillingRadius = holeFillingRadius;
         viewGenerationPass.smaaEnabled = applySMAA;
+        viewGenerationPass.fxaaEnabled = applyFXAA;
 #endif
     }
 

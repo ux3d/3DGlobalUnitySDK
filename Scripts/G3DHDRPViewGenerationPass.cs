@@ -48,11 +48,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             holeFillingKernel = holeFillingCompShader.FindKernel("main");
         }
 
-        if (fxaaEnabled)
-        {
-            fxaaCompShader = Resources.Load<ComputeShader>("G3DFXAA");
-            fxaaKernel = fxaaCompShader.FindKernel("FXAA");
-        }
+        fxaaCompShader = Resources.Load<ComputeShader>("G3DFXAA");
+        fxaaKernel = fxaaCompShader.FindKernel("FXAA");
 
         smaaMaterial = new Material(Shader.Find("G3D/SMAA"));
         smaaMaterial.SetTexture("areaTex", Resources.Load<Texture2D>("SMAA/AreaTex"));
