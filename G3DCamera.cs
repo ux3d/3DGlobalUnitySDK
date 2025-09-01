@@ -461,7 +461,7 @@ public class G3DCamera
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
             viewGenerationPass.fxaaEnabled = applyFXAA;
             viewGenerationPass.smaaEnabled = applySMAA;
-            
+
             viewGenerationPass.smaaEdgesTex = new RenderTexture(
                 mainCamera.pixelWidth,
                 mainCamera.pixelHeight,
@@ -977,6 +977,7 @@ public class G3DCamera
 
 #if G3D_HDRP
         viewGenerationPass.holeFillingRadius = holeFillingRadius;
+        viewGenerationPass.smaaEnabled = applySMAA;
 #endif
     }
 
