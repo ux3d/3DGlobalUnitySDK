@@ -11,6 +11,7 @@
     <uie:PropertyField name="isFillingHoles" binding-path="isFillingHoles" />
     <uie:PropertyField name="holeFillingRadius" binding-path="holeFillingRadius" />
     <uie:PropertyField name="applyFXAA" binding-path="applyFXAA" />
+    <uie:PropertyField name="applySMAA" binding-path="applySMAA" />
     <uie:PropertyField name="debugRendering" binding-path="debugRendering" />
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings">
         <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" />

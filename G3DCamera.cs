@@ -252,6 +252,7 @@ public class G3DCamera
     private bool useVectorMapViewGeneration = false;
     public bool isFillingHoles;
     public bool applyFXAA;
+    public bool applySMAA;
     public bool debugRendering;
 
     [Range(0, 64)]
@@ -459,6 +460,10 @@ public class G3DCamera
             viewGenerationPass.fillHoles = isFillingHoles;
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
             viewGenerationPass.fxaaEnabled = applyFXAA;
+            if (applySMAA)
+            {
+                viewGenerationPass.enableSMAA(mainCamera.pixelWidth, mainCamera.pixelHeight);
+            }
 
             // add autostereo mosaic generation pass
             RenderTexture mosaicTexture = new RenderTexture(
@@ -960,6 +965,15 @@ public class G3DCamera
 
 #if G3D_HDRP
         viewGenerationPass.holeFillingRadius = holeFillingRadius;
+        if (applySMAA)
+        {
+            viewGenerationPass.enableSMAA(mainCamera.pixelWidth, mainCamera.pixelHeight);
+        }
+        else
+        {
+            viewGenerationPass.disableSMAA();
+        }
+        viewGenerationPass.fxaaEnabled = applyFXAA;
 #endif
     }
 
