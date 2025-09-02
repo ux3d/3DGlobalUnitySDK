@@ -1,5 +1,9 @@
-// #pragma target 4.0
+// Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel FXAA
+#pragma multi_compile _ ENABLE_ALPHA
+#pragma multi_compile _ HDR_INPUT
+
+#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
@@ -7,15 +11,16 @@
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Builtin/BuiltinData.hlsl"
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/PostProcessing/Shaders/PostProcessDefines.hlsl"
 
-// #define SMAA_RT_METRICS float4(1.0 / 1980.0, 1.0 / 1080.0, 1980.0, 1080.0)
-// #define SMAA_HLSL_4
-// #define SMAA_PRESET_HIGH
-// #include "SMAA.hlsl"
-
 RWTexture2D<float4> _OutputTexture;
 Texture2D _colorMosaic;
 SamplerState sampler_colorMosaic;
 
+
+float4 _HDROutputParams;
+#define _PaperWhite           _HDROutputParams.z
+#define _OneOverPaperWhite    _HDROutputParams.w
+
+#define FXAA_HDR_MAPUNMAP   defined(HDR_INPUT)
 #define FXAA_SPAN_MAX       (4.0)
 #define FXAA_REDUCE_MUL     (1.0 / 4.0)
 #define FXAA_REDUCE_MIN     (1.0 / 32.0)
@@ -24,16 +29,10 @@ SamplerState sampler_colorMosaic;
 // #define FXAA_REDUCE_MUL     (1.0 / 8.0)
 // #define FXAA_REDUCE_MIN     (1.0 / 128.0)
 
-float LuminanceGamma(float3 c) {
-    float3 w = float3(0.299, 0.587, 0.114);
-    return sqrt(dot(c, w));
-}
-
 float3 Fetch(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 coords, float2 offset)
 {
     float2 uv = saturate(coords + offset) * _RTHandlePostProcessScale.xy;
-    float3 color = SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, uv, 0.0).xyz;
-    return saturate(color);
+    return SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, uv, 0.0).xyz;
 }
 
 float4 Load(TEXTURE2D(_InputTexture), int2 icoords, int idx, int idy)
@@ -47,128 +46,125 @@ float FetchAlpha(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), float2 co
     return SAMPLE_TEXTURE2D_LOD(_InputTexture, _InputTextureSampler, uv, 0.0).w;
 }
 
-SamplerState PointSampler2 { Filter = MIN_MAG_MIP_POINT; AddressU = Clamp; AddressV = Clamp; };
-
-void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 outColor, uint2 positionSS, float2 positionNDC)
+void RunFXAA(TEXTURE2D_PARAM(_InputTexture, _InputTextureSampler), inout float4 outColor, uint2 positionSS, float2 positionNDC, float paperWhite, float oneOverPaperWhite)
 {
-    float c = LuminanceGamma(Load(_InputTexture, positionSS, 0, 0).rgb);
-    float u = LuminanceGamma(Load(_InputTexture, positionSS, 0, -1).rgb);
-    float d = LuminanceGamma(Load(_InputTexture, positionSS, 0, 1).rgb);
-    float l = LuminanceGamma(Load(_InputTexture, positionSS, -1, 0).rgb);
-    float r = LuminanceGamma(Load(_InputTexture, positionSS, 1, 0).rgb);
+    {
+        // Edge detection
+        float4 rgbNW = Load(_InputTexture, positionSS, -1, -1);
+        float4 rgbNE = Load(_InputTexture, positionSS, 1, -1);
+        float4 rgbSW = Load(_InputTexture, positionSS, -1, 1);
+        float4 rgbSE = Load(_InputTexture, positionSS, 1, 1);
 
-    // ----
+#if FXAA_HDR_MAPUNMAP
+        // The pixel values we have are already tonemapped but in the range [0, 10000] nits. To run FXAA properly, we need to convert them
+        // to a SDR range [0; 1]. Since the tonemapped values are not evenly distributed and mostly close to the paperWhite nits value, we can
+        // normalize by paperWhite to get most of the scene in [0; 1] range. For the remaining pixels, we can use the FastTonemap() to remap
+        // them to [0, 1] range.
+        float lumaNW = Luminance(FastTonemap(rgbNW.xyz * oneOverPaperWhite));
+        float lumaNE = Luminance(FastTonemap(rgbNE.xyz * oneOverPaperWhite));
+        float lumaSW = Luminance(FastTonemap(rgbSW.xyz * oneOverPaperWhite));
+        float lumaSE = Luminance(FastTonemap(rgbSE.xyz * oneOverPaperWhite));
+        float lumaM = Luminance(FastTonemap(outColor.xyz * oneOverPaperWhite));
+#else
+        rgbNW.xyz = saturate(rgbNW.xyz);
+        rgbNE.xyz = saturate(rgbNE.xyz);
+        rgbSW.xyz = saturate(rgbSW.xyz);
+        rgbSE.xyz = saturate(rgbSE.xyz);
+        outColor.xyz = saturate(outColor.xyz);
+        float lumaNW = Luminance(rgbNW.xyz);
+        float lumaNE = Luminance(rgbNE.xyz);
+        float lumaSW = Luminance(rgbSW.xyz);
+        float lumaSE = Luminance(rgbSE.xyz);
+        float lumaM = Luminance(outColor.xyz);
+#endif
 
-    float3 rgbM = Load(_InputTexture, positionSS, 0, 0).rgb;
-    float3 rgbNW = Load(_InputTexture, positionSS, -1, -1).rgb;
-    float3 rgbNE = Load(_InputTexture, positionSS, 1, -1).rgb;
-    float3 rgbSW = Load(_InputTexture, positionSS, -1, 1).rgb;
-    float3 rgbSE = Load(_InputTexture, positionSS, 1, 1).rgb;
+        float2 dir;
+        dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
+        dir.y = ((lumaNW + lumaSW) - (lumaNE + lumaSE));
 
-    float lumaM = LuminanceGamma(rgbM);
-    float lumaNW = LuminanceGamma(rgbNW);
-    float lumaNE = LuminanceGamma(rgbNE);
-    float lumaSW = LuminanceGamma(rgbSW);
-    float lumaSE = LuminanceGamma(rgbSE);
+        float lumaSum = lumaNW + lumaNE + lumaSW + lumaSE;
+        float dirReduce = max(lumaSum * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);
+        float rcpDirMin = rcp(min(abs(dir.x), abs(dir.y)) + dirReduce);
 
-    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
-    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
-    float edge = 4.0 * lumaM - lumaNW - lumaNE - lumaSW - lumaSE;
+        dir = min((FXAA_SPAN_MAX).xx, max((-FXAA_SPAN_MAX).xx, dir * rcpDirMin)) * _ScreenSize.zw;
 
-    // ----
+        // Blur
+        float3 rgb03 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (0.0 / 3.0 - 0.5));
+        float3 rgb13 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (1.0 / 3.0 - 0.5));
+        float3 rgb23 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (2.0 / 3.0 - 0.5));
+        float3 rgb33 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (3.0 / 3.0 - 0.5));
 
-    // if (lumaMax - lumaMin < 0.05) {
-    //     return;
-    // }
-    if (edge < 0.05) {
-        return;
-    }
+#if FXAA_HDR_MAPUNMAP
+        rgb03 = FastTonemap(rgb03 * oneOverPaperWhite);
+        rgb13 = FastTonemap(rgb13 * oneOverPaperWhite);
+        rgb23 = FastTonemap(rgb23 * oneOverPaperWhite);
+        rgb33 = FastTonemap(rgb33 * oneOverPaperWhite);
+#else
+        rgb03 = saturate(rgb03);
+        rgb13 = saturate(rgb13);
+        rgb23 = saturate(rgb23);
+        rgb33 = saturate(rgb33);
+#endif
 
-    // outColor.rgb = float3(1.0, 0.0, 0.0);
-    // outColor.rgb = (rgbM + rgbNW + rgbNE + rgbSW + rgbSE) / 5.0;
+        float3 rgbA = 0.5 * (rgb13 + rgb23);
+        float3 rgbB = rgbA * 0.5 + 0.25 * (rgb03 + rgb33);
 
-    outColor.rgb =
-        0.2 * rgbM
-        + 0.2 * rgbNW
-        + 0.2 * rgbNE
-        + 0.2 * rgbSW
-        + 0.2 * rgbSE;
+        float lumaB = Luminance(rgbB);
 
-    // outColor.rgb =
-    //     0.5 * rgbM
-    //     + 0.125 * rgbNW
-    //     + 0.125 * rgbNE
-    //     + 0.125 * rgbSW
-    //     + 0.125 * rgbSE;
+        float lumaMin = Min3(lumaM, lumaNW, Min3(lumaNE, lumaSW, lumaSE));
+        float lumaMax = Max3(lumaM, lumaNW, Max3(lumaNE, lumaSW, lumaSE));
 
-    float3 colors[9] = {
-        Load(_InputTexture, positionSS, -1, -1).rgb,
-        Load(_InputTexture, positionSS, 0, -1).rgb,
-        Load(_InputTexture, positionSS, 1, -1).rgb,
-        Load(_InputTexture, positionSS, -1, 0).rgb,
-        Load(_InputTexture, positionSS, 0, 0).rgb,
-        Load(_InputTexture, positionSS, 1, 0).rgb,
-        Load(_InputTexture, positionSS, -1, 1).rgb,
-        Load(_InputTexture, positionSS, 0, 1).rgb,
-        Load(_InputTexture, positionSS, 1, 1).rgb
-    };
+        float3 rgb = ((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB;
 
-    float coeffs[9] = {
-        1.0 / 16.0,
-        1.0 / 8.0,
-        1.0 / 16.0,
-        1.0 / 8.0,
-        1.0 / 4.0,
-        1.0 / 8.0,
-        1.0 / 16.0,
-        1.0 / 8.0,
-        1.0 / 16.0
-    };
+#if FXAA_HDR_MAPUNMAP
+        outColor.xyz = FastTonemapInvert(rgb) * paperWhite;;
+#else
+        outColor.xyz = rgb;
+#endif
 
-    float3 conv = 0.0.xxx;
-    for (uint i = 0; i < 9; i++) {
-        conv += coeffs[i] * colors[i];
-    }
+#ifdef ENABLE_ALPHA
+        // FXAA for the alpha channel: alpha can be completely decorelated from the RGB channels, so we might fetch different neighbors for the alpha!
+        // For this reason we have to recompute the fetch direction
+        lumaNW = rgbNW.w;
+        lumaNE = rgbNE.w;
+        lumaSW = rgbSW.w;
+        lumaSE = rgbSE.w;
+        lumaM = outColor.w;
 
-    outColor.rgb = conv;
+        dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
+        dir.y = ((lumaNW + lumaSW) - (lumaNE + lumaSE));
 
-    // outColor.r = 1.0;
-    return;
+        lumaSum = lumaNW + lumaNE + lumaSW + lumaSE;
+        dirReduce = max(lumaSum * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);
+        rcpDirMin = rcp(min(abs(dir.x), abs(dir.y)) + dirReduce);
 
-    // float convolution = 4 * c - u - d - l - r;
-    // float convolution = lumaMax - lumaMin;
-    // outColor.rgb = float3(convolution, convolution, convolution);
+        dir = min((FXAA_SPAN_MAX).xx, max((-FXAA_SPAN_MAX).xx, dir * rcpDirMin)) * _ScreenSize.zw;
 
+        // Blur
+        float a03 = FetchAlpha(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (0.0 / 3.0 - 0.5));
+        float a13 = FetchAlpha(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (1.0 / 3.0 - 0.5));
+        float a23 = FetchAlpha(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (2.0 / 3.0 - 0.5));
+        float a33 = FetchAlpha(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (3.0 / 3.0 - 0.5));
 
-    float2 dir;
-    dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
-    dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));
+        a03 = saturate(a03);
+        a13 = saturate(a13);
+        a23 = saturate(a23);
+        a33 = saturate(a33);
 
-    float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.25 * 0.5, 0.001);
-    float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+        float A = 0.5 * (a13 + a23);
+        float B = A * 0.5 + 0.25 * (a03 + a33);
 
-    dir = min((FXAA_SPAN_MAX).xx, max((-FXAA_SPAN_MAX).xx, dir * rcpDirMin)) * _ScreenSize.zw;
+        lumaMin = Min3(lumaM, lumaNW, Min3(lumaNE, lumaSW, lumaSE));
+        lumaMax = Max3(lumaM, lumaNW, Max3(lumaNE, lumaSW, lumaSE));
 
-    float3 rgb03 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (-1.0 / 3.0 - 0.5));
-    float3 rgb13 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (1.0 / 3.0 - 0.5));
-    float3 rgb23 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (2.0 / 3.0 - 0.5));
-    float3 rgb33 = Fetch(TEXTURE2D_ARGS(_InputTexture, _InputTextureSampler), positionNDC, dir * (4.0 / 3.0 - 0.5));
+        outColor.w = ((lumaB < lumaMin) || (lumaB > lumaMax)) ? A : B;
+#endif
 
-    float3 rgbA = 0.5 * (rgb13 + rgb23);
-    float3 rgbB = rgbA * 0.5 + 0.25 * (rgb03 + rgb33);
-
-    float lumaB = LuminanceGamma(rgbB);
-
-    if ((lumaB < lumaMin) || (lumaB > lumaMax)) {
-        outColor.rgb = rgbA;
-    }
-    else {
-        outColor.rgb = rgbB;
     }
 }
 
 
-[numthreads(1, 1, 1)]
+[numthreads(8,8,1)]
 void FXAA(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     UNITY_XR_ASSIGN_VIEW_INDEX(dispatchThreadId.z);
@@ -176,14 +172,14 @@ void FXAA(uint3 dispatchThreadId : SV_DispatchThreadID)
     float2 positionNDC = positionSS * _PostProcessScreenSize.zw + (0.5 * _PostProcessScreenSize.zw);
 
     float4 outColor = _colorMosaic.Load(float4(positionSS, 0, 0));
+    float4 beforeFXAA = outColor;
 
-    if (4 * positionSS.x % int(_PostProcessScreenSize.x) == 0 || 4 * positionSS.y % int(_PostProcessScreenSize.y) == 0) {
-        // do not run fxx on debug view boundaries
-        // outColor = float4(1.0, 0.0, 1.0, 1.0);
-    }
-    else {
-        RunFXAA(_colorMosaic, s_linear_clamp_sampler, outColor, positionSS, positionNDC);
-    }
+    RunFXAA(_colorMosaic, s_linear_clamp_sampler, outColor, positionSS, positionNDC, _PaperWhite, _OneOverPaperWhite);
+
+// #if defined(ENABLE_ALPHA)
+//     // When alpha processing is enabled, FXAA should not affect pixels with zero alpha
+//     outColor.xyz = outColor.a > 0 ? outColor.xyz : beforeFXAA.xyz;
+// #endif
 
     _OutputTexture[positionSS] = outColor;
 }
