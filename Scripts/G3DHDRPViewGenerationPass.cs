@@ -163,6 +163,21 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
                 CoreUtils.DrawFullScreen(ctx.cmd, blitMaterial, ctx.propertyBlock, shaderPassId: 0);
             }
+            else
+            {
+                if (fxaaEnabled == false && fillHoles == false && smaaEnabled == false)
+                {
+                    return;
+                }
+
+                blitMaterial.SetTexture(
+                    Shader.PropertyToID("_mainTex"),
+                    computeShaderResultTexture
+                );
+
+                CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
+                CoreUtils.DrawFullScreen(ctx.cmd, blitMaterial, ctx.propertyBlock, shaderPassId: 0);
+            }
         }
     }
 
