@@ -20,8 +20,10 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public RenderTexture computeShaderResultTexture;
     public RTHandle computeShaderResultTextureHandle;
 
-    public RenderTexture smaaEdgesTex;
-    public RenderTexture smaaBlendTex;
+    private RenderTexture smaaEdgesTex;
+    private RTHandle smaaEdgesTexHandle;
+    private RenderTexture smaaBlendTex;
+    private RTHandle smaaBlendTexHandle;
 
     public int holeFillingRadius;
 
@@ -38,7 +40,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public bool fxaaEnabled;
 
     private Material smaaMaterial;
-    public bool smaaEnabled;
+    private bool smaaEnabled;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
@@ -52,12 +54,67 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         fxaaKernel = fxaaCompShader.FindKernel("FXAA");
 
         smaaMaterial = new Material(Shader.Find("G3D/SMAA"));
-        smaaMaterial.SetTexture("areaTex", Resources.Load<Texture2D>("SMAA/AreaTex"));
+        smaaMaterial.SetTexture("_AreaTex", Resources.Load<Texture2D>("SMAA/AreaTex"));
         // Import search tex as PNG because I can't get Unity to work with an R8 DDS file properly.
-        smaaMaterial.SetTexture("searchTex", Resources.Load<Texture2D>("SMAA/SearchTexPNG"));
+        smaaMaterial.SetTexture("_SearchTex", Resources.Load<Texture2D>("SMAA/SearchTex"));
 
         blitMaterial = new Material(Shader.Find("G3D/G3DBlit"));
         blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);
+    }
+
+    private void CreateSMAATextures(int width, int height)
+    {
+        releaseSMAATextures();
+
+        smaaEdgesTex = new RenderTexture(
+            width,
+            height,
+            0,
+            RenderTextureFormat.ARGB32,
+            RenderTextureReadWrite.Linear
+        );
+        smaaEdgesTex.name = "SMAAEdgesTex";
+        smaaEdgesTex.enableRandomWrite = true;
+        smaaEdgesTex.Create();
+        smaaEdgesTexHandle = RTHandles.Alloc(smaaEdgesTex);
+
+        smaaBlendTex = new RenderTexture(
+            width,
+            height,
+            0,
+            RenderTextureFormat.ARGB32,
+            RenderTextureReadWrite.Linear
+        );
+        smaaBlendTex.name = "SMAABlendTex";
+        smaaBlendTex.enableRandomWrite = true;
+        smaaBlendTex.Create();
+        smaaBlendTexHandle = RTHandles.Alloc(smaaBlendTex);
+    }
+
+    public void enableSMAA(int width, int height)
+    {
+        smaaEnabled = true;
+        CreateSMAATextures(width, height);
+    }
+
+    public void disableSMAA()
+    {
+        smaaEnabled = false;
+        releaseSMAATextures();
+    }
+
+    private void releaseSMAATextures()
+    {
+        if (smaaEdgesTex)
+        {
+            smaaEdgesTex?.Release();
+        }
+        if (smaaBlendTex)
+        {
+            smaaBlendTex?.Release();
+        }
+        smaaBlendTexHandle?.Release();
+        smaaEdgesTexHandle?.Release();
     }
 
     private void setMatrix(CustomPassContext ctx, Matrix4x4 matrix, string name)
@@ -86,13 +143,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             // color image now in mosaicImageHandle
 
             runHoleFilling(ctx);
-
             runFXAA(ctx);
-
             runSMAA(ctx);
-
-            // ctx.cmd.Blit(smaaEdgesTex, computeShaderResultTexture);
-            // ctx.cmd.Blit(smaaBlendTex, computeShaderResultTexture);
 
             if (debugRendering)
             {
@@ -251,12 +303,12 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     {
         if (!smaaEnabled)
         {
-            // ctx.cmd.Blit(mosaicImageHandle, computeShaderResultTexture);
             return;
         }
 
+        smaaMaterial.EnableKeyword("SMAA_PRESET_HIGH");
         smaaMaterial.SetVector(
-            Shader.PropertyToID("SMAA_RT_METRICS"),
+            Shader.PropertyToID("_SMAARTMetrics"),
             new Vector4(
                 1.0f / mosaicImageHandle.rt.width,
                 1.0f / mosaicImageHandle.rt.height,
@@ -264,8 +316,12 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
                 mosaicImageHandle.rt.height
             )
         );
+        smaaMaterial.SetInt(Shader.PropertyToID("_StencilRef"), (int)(1 << 2));
+        smaaMaterial.SetInt(Shader.PropertyToID("_StencilCmp"), (int)(1 << 2));
 
-        smaaMaterial.SetTexture(Shader.PropertyToID("ColorTex"), mosaicImageHandle);
+        // -----------------------------------------------------------------------------
+        // EdgeDetection stage
+        ctx.propertyBlock.SetTexture(Shader.PropertyToID("_InputTexture"), mosaicImageHandle);
         CoreUtils.SetRenderTarget(ctx.cmd, smaaEdgesTex, ClearFlag.Color);
         CoreUtils.DrawFullScreen(
             ctx.cmd,
@@ -274,7 +330,9 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             shaderPassId: smaaMaterial.FindPass("EdgeDetection")
         );
 
-        smaaMaterial.SetTexture(Shader.PropertyToID("edgesTex"), smaaEdgesTex);
+        // -----------------------------------------------------------------------------
+        // BlendWeights stage
+        ctx.propertyBlock.SetTexture(Shader.PropertyToID("_InputTexture"), smaaEdgesTex);
         CoreUtils.SetRenderTarget(ctx.cmd, smaaBlendTex, ClearFlag.Color);
         CoreUtils.DrawFullScreen(
             ctx.cmd,
@@ -283,8 +341,11 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             shaderPassId: smaaMaterial.FindPass("BlendingWeightCalculation")
         );
 
-        smaaMaterial.SetTexture(Shader.PropertyToID("blendTex"), smaaBlendTex);
-        CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTexture, ClearFlag.None);
+        // -----------------------------------------------------------------------------
+        // NeighborhoodBlending stage
+        ctx.propertyBlock.SetTexture(Shader.PropertyToID("_InputTexture"), mosaicImageHandle);
+        ctx.propertyBlock.SetTexture(Shader.PropertyToID("_BlendTex"), smaaBlendTex);
+        CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTextureHandle, ClearFlag.None);
         CoreUtils.DrawFullScreen(
             ctx.cmd,
             smaaMaterial,

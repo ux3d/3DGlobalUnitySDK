@@ -460,22 +460,10 @@ public class G3DCamera
             viewGenerationPass.fillHoles = isFillingHoles;
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
             viewGenerationPass.fxaaEnabled = applyFXAA;
-            viewGenerationPass.smaaEnabled = applySMAA;
-
-            viewGenerationPass.smaaEdgesTex = new RenderTexture(
-                mainCamera.pixelWidth,
-                mainCamera.pixelHeight,
-                0,
-                RenderTextureFormat.RG32,
-                RenderTextureReadWrite.Linear
-            );
-            viewGenerationPass.smaaBlendTex = new RenderTexture(
-                mainCamera.pixelWidth,
-                mainCamera.pixelHeight,
-                0,
-                RenderTextureFormat.RG32,
-                RenderTextureReadWrite.Linear
-            );
+            if (applySMAA)
+            {
+                viewGenerationPass.enableSMAA(mainCamera.pixelWidth, mainCamera.pixelHeight);
+            }
 
             // add autostereo mosaic generation pass
             RenderTexture mosaicTexture = new RenderTexture(
@@ -977,7 +965,14 @@ public class G3DCamera
 
 #if G3D_HDRP
         viewGenerationPass.holeFillingRadius = holeFillingRadius;
-        viewGenerationPass.smaaEnabled = applySMAA;
+        if (applySMAA)
+        {
+            viewGenerationPass.enableSMAA(mainCamera.pixelWidth, mainCamera.pixelHeight);
+        }
+        else
+        {
+            viewGenerationPass.disableSMAA();
+        }
         viewGenerationPass.fxaaEnabled = applyFXAA;
 #endif
     }
