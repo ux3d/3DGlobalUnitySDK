@@ -180,6 +180,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     protected override void Execute(CustomPassContext ctx)
     {
         var camera = ctx.hdCamera.camera;
+        HDAdditionalCameraData hdCamera = camera.GetComponent<HDAdditionalCameraData>();
         if (isMainG3DCamera(camera))
         {
             runReprojection(ctx);
@@ -187,7 +188,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
             runHoleFilling(ctx);
             runFXAA(ctx);
-            runSMAA(ctx);
+            runSMAA(ctx, hdCamera);
 
             if (debugRendering)
             {
@@ -358,7 +359,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         );
     }
 
-    private void runSMAA(CustomPassContext ctx)
+    private void runSMAA(CustomPassContext ctx, HDAdditionalCameraData hdCamera)
     {
         if (antialiasingMode != AntialiasingMode.SMAA)
         {
@@ -377,6 +378,22 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         );
         smaaMaterial.SetInt(Shader.PropertyToID("_StencilRef"), (int)(1 << 2));
         smaaMaterial.SetInt(Shader.PropertyToID("_StencilCmp"), (int)(1 << 2));
+
+        switch (hdCamera.SMAAQuality)
+        {
+            case HDAdditionalCameraData.SMAAQualityLevel.Low:
+                smaaMaterial.EnableKeyword("SMAA_PRESET_LOW");
+                break;
+            case HDAdditionalCameraData.SMAAQualityLevel.Medium:
+                smaaMaterial.EnableKeyword("SMAA_PRESET_MEDIUM");
+                break;
+            case HDAdditionalCameraData.SMAAQualityLevel.High:
+                smaaMaterial.EnableKeyword("SMAA_PRESET_HIGH");
+                break;
+            default:
+                smaaMaterial.EnableKeyword("SMAA_PRESET_HIGH");
+                break;
+        }
 
         // -----------------------------------------------------------------------------
         // EdgeDetection stage

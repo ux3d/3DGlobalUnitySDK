@@ -19,7 +19,6 @@ float4 _SMAARTMetrics;
 #define LinearSampler s_linear_clamp_sampler
 #define PointSampler s_point_clamp_sampler
 #define GAMMA_FOR_EDGE_DETECTION (1/2.2)
-#define SMAA_PRESET_HIGH
 
 #include "SMAA.hlsl"
 
