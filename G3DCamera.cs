@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
@@ -106,11 +104,26 @@ public class G3DCamera
     [Tooltip("If set to true, the views will be flipped horizontally.")]
     public bool mirrorViews = false;
 
+    #region Performance
     [Tooltip(
         "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4. Adapt Render Resolution To Views takes precedence."
     )]
     [Range(1, 100)]
     public int renderResolutionScale = 100;
+
+    [Tooltip("Only actually renders three views. The rest are generated. IF turned on anti ali")]
+    public bool generateViews = true;
+
+    [Tooltip(
+        "Fill small holes in generated views. (Only takes effect if view generation is turned on.)"
+    )]
+    public bool isFillingHoles;
+
+    [Range(0, 64)]
+    public int holeFillingRadius = 8;
+    private bool useVectorMapViewGeneration = false;
+    #endregion
+
 
     [Tooltip(
         "Set the dolly zoom effekt. 1 correponds to no dolly zoom. 0 is all the way zoomed in to the focus plane. 3 is all the way zoomed out."
@@ -145,7 +158,11 @@ public class G3DCamera
 
     [Tooltip("If set to true, the library will print debug messages to the console.")]
     public bool debugMessages = false;
-    public bool showTestFrame = false;
+
+    [Tooltip(
+        "If set to true, shows the individual views as a mosaic instead of the autostereo effect."
+    )]
+    public bool debugRendering;
 
     [Tooltip(
         "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
@@ -248,15 +265,6 @@ public class G3DCamera
 
     #endregion
 
-    private bool generateViews = true;
-    private bool useVectorMapViewGeneration = false;
-    public bool isFillingHoles;
-    public bool applyFXAA;
-    public bool applySMAA;
-    public bool debugRendering;
-
-    [Range(0, 64)]
-    public int holeFillingRadius;
     private Material viewGenerationMaterial;
 #if G3D_HDRP
     private G3DHDRPViewGenerationPass viewGenerationPass;
@@ -435,18 +443,6 @@ public class G3DCamera
             viewGenerationPass.materialPassName = "G3DViewGeneration";
             viewGenerationPass.cameras = cameras;
             viewGenerationPass.internalCameraCount = internalCameraCount;
-            viewGenerationPass.computeShaderResultTexture = new RenderTexture(
-                mainCamera.pixelWidth,
-                mainCamera.pixelHeight,
-                0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Linear
-            );
-            viewGenerationPass.computeShaderResultTexture.enableRandomWrite = true;
-            viewGenerationPass.computeShaderResultTexture.Create();
-            viewGenerationPass.computeShaderResultTextureHandle = RTHandles.Alloc(
-                viewGenerationPass.computeShaderResultTexture
-            );
             for (int i = 0; i < internalCameraCount; i++)
             {
                 viewGenerationPass.fullscreenPassMaterial.SetTexture(
@@ -459,11 +455,11 @@ public class G3DCamera
             viewGenerationPass.debugRendering = debugRendering;
             viewGenerationPass.fillHoles = isFillingHoles;
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
-            viewGenerationPass.fxaaEnabled = applyFXAA;
-            if (applySMAA)
-            {
-                viewGenerationPass.enableSMAA(mainCamera.pixelWidth, mainCamera.pixelHeight);
-            }
+            AntialiasingMode aaMode = getCameraAAMode();
+            viewGenerationPass.init(
+                new Vector2Int(mainCamera.pixelWidth, mainCamera.pixelHeight),
+                aaMode
+            );
 
             // add autostereo mosaic generation pass
             RenderTexture mosaicTexture = new RenderTexture(
@@ -778,6 +774,25 @@ public class G3DCamera
         return new Vector2Int(HorizontalResolution, VerticalResolution);
     }
 
+    private AntialiasingMode getCameraAAMode()
+    {
+        AntialiasingMode aaMode = AntialiasingMode.None;
+        if (
+            antialiasingMode
+            == HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing
+        )
+        {
+            aaMode = AntialiasingMode.SMAA;
+        }
+        else if (
+            antialiasingMode == HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing
+        )
+        {
+            aaMode = AntialiasingMode.FXAA;
+        }
+        return aaMode;
+    }
+
     private void initLibrary()
     {
         string applicationName = Application.productName;
@@ -964,16 +979,14 @@ public class G3DCamera
         }
 
 #if G3D_HDRP
-        viewGenerationPass.holeFillingRadius = holeFillingRadius;
-        if (applySMAA)
+        if (generateViews)
         {
-            viewGenerationPass.enableSMAA(mainCamera.pixelWidth, mainCamera.pixelHeight);
+            viewGenerationPass.holeFillingRadius = holeFillingRadius;
+            viewGenerationPass.fillHoles = isFillingHoles;
+
+            AntialiasingMode aaMode = getCameraAAMode();
+            viewGenerationPass.setAntiAliasingMode(aaMode);
         }
-        else
-        {
-            viewGenerationPass.disableSMAA();
-        }
-        viewGenerationPass.fxaaEnabled = applyFXAA;
 #endif
     }
 
@@ -1046,7 +1059,7 @@ public class G3DCamera
             material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
 
             // test frame and stripe
-            material?.SetInt(shaderHandles.showTestFrame, showTestFrame ? 1 : 0);
+            material?.SetInt(shaderHandles.showTestFrame, 0);
             material?.SetInt(shaderHandles.showTestStripe, shaderParameters.showTestStripe);
 
             material?.SetInt(shaderHandles.testGapWidth, shaderParameters.testGapWidth);
@@ -1140,15 +1153,18 @@ public class G3DCamera
             camera.nearClipPlane = mainCamera.nearClipPlane;
             camera.projectionMatrix = mainCamera.projectionMatrix;
             camera.transform.localRotation = cameraParent.transform.localRotation;
+            if (generateViews == false)
+            {
 #if G3D_URP
-            camera.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
+                camera.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
 #endif
 #if G3D_HDRP
-            HDAdditionalCameraData hdAdditionalCameraData =
-                camera.gameObject.GetComponent<HDAdditionalCameraData>();
-            if (hdAdditionalCameraData != null)
-                hdAdditionalCameraData.antialiasing = antialiasingMode;
+                HDAdditionalCameraData hdAdditionalCameraData =
+                    camera.gameObject.GetComponent<HDAdditionalCameraData>();
+                if (hdAdditionalCameraData != null)
+                    hdAdditionalCameraData.antialiasing = antialiasingMode;
 #endif
+            }
 
             float localCameraOffset = calculateCameraOffset(
                 i,

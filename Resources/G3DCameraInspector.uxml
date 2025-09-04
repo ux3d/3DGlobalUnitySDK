@@ -8,11 +8,12 @@
     <uie:PropertyField binding-path="viewOffsetScale" />
     <ui:GroupBox enabled="true" name="Multiview" />
     <ui:GroupBox enabled="true" name="Diorama" />
-    <uie:PropertyField name="isFillingHoles" binding-path="isFillingHoles" />
-    <uie:PropertyField name="holeFillingRadius" binding-path="holeFillingRadius" />
-    <uie:PropertyField name="applyFXAA" binding-path="applyFXAA" />
-    <uie:PropertyField name="applySMAA" binding-path="applySMAA" />
-    <uie:PropertyField name="debugRendering" binding-path="debugRendering" />
+    <uie:PropertyField name="generateViews" binding-path="generateViews" />
+    <ui:VisualElement name="viewGenerationContainer" style="flex-grow: 1; margin-bottom: 15px;">
+        <uie:PropertyField name="isFillingHoles" binding-path="isFillingHoles" />
+        <uie:PropertyField name="holeFillingRadius" binding-path="holeFillingRadius" />
+        <uie:PropertyField name="debugRendering" binding-path="debugRendering" />
+    </ui:VisualElement>
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings">
         <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" />
         <uie:PropertyField name="renderResolutionScale" binding-path="renderResolutionScale" />
@@ -23,6 +24,5 @@
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
         <uie:PropertyField name="debugMessages" binding-path="debugMessages" />
-        <uie:PropertyField name="showTestFrame" binding-path="showTestFrame" />
     </ui:Foldout>
 </ui:UXML>

@@ -4,6 +4,13 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
+internal enum AntialiasingMode
+{
+    None,
+    FXAA,
+    SMAA
+}
+
 internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 {
     public RTHandle leftColorMapHandle;
@@ -37,10 +44,11 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
     private ComputeShader fxaaCompShader;
     private int fxaaKernel;
-    public bool fxaaEnabled;
 
     private Material smaaMaterial;
-    private bool smaaEnabled;
+    private AntialiasingMode antialiasingMode = AntialiasingMode.None;
+
+    public Vector2Int renderResolution = new Vector2Int(1920, 1080);
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
@@ -60,6 +68,34 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
         blitMaterial = new Material(Shader.Find("G3D/G3DBlit"));
         blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);
+    }
+
+    public void init(Vector2Int resolution, AntialiasingMode mode)
+    {
+        renderResolution = resolution;
+        CreateComputeShaderResultTexture();
+        setAntiAliasingMode(mode);
+    }
+
+    private void CreateComputeShaderResultTexture()
+    {
+        // release old texture if it exists
+        if (computeShaderResultTexture)
+        {
+            computeShaderResultTexture?.Release();
+        }
+        computeShaderResultTextureHandle?.Release();
+
+        computeShaderResultTexture = new RenderTexture(
+            renderResolution.x,
+            renderResolution.y,
+            0,
+            RenderTextureFormat.ARGB32,
+            RenderTextureReadWrite.Linear
+        );
+        computeShaderResultTexture.enableRandomWrite = true;
+        computeShaderResultTexture.Create();
+        computeShaderResultTextureHandle = RTHandles.Alloc(computeShaderResultTexture);
     }
 
     private void CreateSMAATextures(int width, int height)
@@ -91,16 +127,23 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         smaaBlendTexHandle = RTHandles.Alloc(smaaBlendTex);
     }
 
-    public void enableSMAA(int width, int height)
+    public void setAntiAliasingMode(AntialiasingMode mode)
     {
-        smaaEnabled = true;
-        CreateSMAATextures(width, height);
-    }
+        AntialiasingMode oldMode = antialiasingMode;
+        if (oldMode == mode)
+        {
+            return;
+        }
 
-    public void disableSMAA()
-    {
-        smaaEnabled = false;
-        releaseSMAATextures();
+        antialiasingMode = mode;
+        if (mode == AntialiasingMode.None || mode == AntialiasingMode.FXAA)
+        {
+            releaseSMAATextures();
+        }
+        else if (mode == AntialiasingMode.SMAA)
+        {
+            CreateSMAATextures(renderResolution.x, renderResolution.y);
+        }
     }
 
     private void releaseSMAATextures()
@@ -148,7 +191,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
             if (debugRendering)
             {
-                if (fxaaEnabled == false && fillHoles == false && smaaEnabled == false)
+                if (fillHoles == false && antialiasingMode == AntialiasingMode.None)
                 {
                     blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), mosaicImageHandle);
                 }
@@ -165,7 +208,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             }
             else
             {
-                if (fxaaEnabled == false && fillHoles == false && smaaEnabled == false)
+                if (fillHoles == false && antialiasingMode == AntialiasingMode.None)
                 {
                     return;
                 }
@@ -284,10 +327,11 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
     private void runFXAA(CustomPassContext ctx)
     {
-        if (fxaaEnabled == false)
+        if (antialiasingMode != AntialiasingMode.FXAA)
         {
             return;
         }
+
         Tonemapping tonemapping = ctx.hdCamera.volumeStack.GetComponent<Tonemapping>();
         float paperWhite = tonemapping.paperWhite.value;
         Vector4 hdroutParameters = new Vector4(0, 1000, paperWhite, 1f / paperWhite);
@@ -316,7 +360,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
     private void runSMAA(CustomPassContext ctx)
     {
-        if (!smaaEnabled)
+        if (antialiasingMode != AntialiasingMode.SMAA)
         {
             return;
         }
@@ -399,7 +443,12 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         return true;
     }
 
-    protected override void Cleanup() { }
+    protected override void Cleanup()
+    {
+        releaseSMAATextures();
+        computeShaderResultTextureHandle?.Release();
+        computeShaderResultTexture?.Release();
+    }
 }
 
 internal class G3DHDRPViewGenerationMosaicPass : FullScreenCustomPass

@@ -10,9 +10,12 @@ public class InspectorG3DCamera : Editor
     public VisualTreeAsset inspectorXML;
 
     private PropertyField modeField;
+    private PropertyField generateViewsField;
 
     private VisualElement dioramaInspector;
     private VisualElement multiviewInspector;
+
+    private VisualElement viewGenerationContainer;
 
     public override VisualElement CreateInspectorGUI()
     {
@@ -43,10 +46,33 @@ public class InspectorG3DCamera : Editor
         dioramaInspector = mainInspector.Q<VisualElement>("Diorama");
         multiviewInspector = mainInspector.Q<VisualElement>("Multiview");
 
+        viewGenerationContainer = mainInspector.Q<VisualElement>("viewGenerationContainer");
+        generateViewsField = mainInspector.Q<PropertyField>("generateViews");
+        generateViewsField.RegisterValueChangeCallback(
+            (evt) =>
+            {
+                bool newMode = evt.changedProperty.boolValue;
+                setViewgenerationDisplay(newMode);
+            }
+        );
+
         // setup UI
         setDisplayMode((target as G3DCamera).mode);
+        setViewgenerationDisplay((target as G3DCamera).generateViews);
 
         return mainInspector;
+    }
+
+    private void setViewgenerationDisplay(bool enabled)
+    {
+        if (enabled)
+        {
+            viewGenerationContainer.style.display = DisplayStyle.Flex;
+        }
+        else
+        {
+            viewGenerationContainer.style.display = DisplayStyle.None;
+        }
     }
 
     private void setDisplayMode(G3DCameraMode mode)
