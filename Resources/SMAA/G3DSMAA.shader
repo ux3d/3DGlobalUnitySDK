@@ -38,7 +38,7 @@ Shader "G3D/SMAA" {
 
                 #pragma vertex VertEdge
                 #pragma fragment FragEdge
-                #include "SMAA/SubpixelMorphologicalAntialiasingBridge.hlsl"
+                #include "SubpixelMorphologicalAntialiasingBridge.hlsl"
 
             ENDHLSL
         }
@@ -59,7 +59,7 @@ Shader "G3D/SMAA" {
 
                 #pragma vertex VertBlend
                 #pragma fragment FragBlend
-                #include "SMAA/SubpixelMorphologicalAntialiasingBridge.hlsl"
+                #include "SubpixelMorphologicalAntialiasingBridge.hlsl"
 
             ENDHLSL
         }
@@ -71,7 +71,7 @@ Shader "G3D/SMAA" {
 
                 #pragma vertex VertNeighbor
                 #pragma fragment FragNeighbor
-                #include "SMAA/SubpixelMorphologicalAntialiasingBridge.hlsl"
+                #include "SubpixelMorphologicalAntialiasingBridge.hlsl"
 
             ENDHLSL
         }

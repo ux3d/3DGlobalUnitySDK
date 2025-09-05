@@ -639,7 +639,11 @@ public class G3DCamera
             {
                 viewSeparation = 0.031f;
             }
-            focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+
+            if (focusPlaneObject != null)
+            {
+                focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+            }
             return;
         }
 
