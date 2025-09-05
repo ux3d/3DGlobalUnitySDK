@@ -10,7 +10,7 @@
     <ui:GroupBox enabled="true" name="Diorama" />
     <uie:PropertyField name="generateViews" binding-path="generateViews" />
     <ui:VisualElement name="viewGenerationContainer" style="flex-grow: 1; margin-bottom: 15px;">
-        <uie:PropertyField name="isFillingHoles" binding-path="isFillingHoles" />
+        <uie:PropertyField name="isFillingHoles" binding-path="isFillingHoles" label="fill holes" />
         <uie:PropertyField name="holeFillingRadius" binding-path="holeFillingRadius" />
         <uie:PropertyField name="debugRendering" binding-path="debugRendering" />
     </ui:VisualElement>

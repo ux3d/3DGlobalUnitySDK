@@ -15,15 +15,19 @@ In general it renders two or more camera views per frame and combines them into 
 
 # Parameters
 
-| Name               | Description                                                                                                                  |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| Calibration file   | The calibration file used to calibrate the cameras. This value has to be set for all modes (multi view and diorama) to work. |
-| Calibration Path   | Path to diorama mode display calibration files.                                                                              |
-| Mode               | Switch between Diorama and Multiview modes.                                                                                  |
-| Scene scale factor | Scales display calibration to fit larger scenes.                                                                             |
-| Mirror views       | Mirrors the individual views horizontally (e.g. needed for Holobox displays).                                                |
-| Dolly zoom         | Mimics a dolly zoom effect.                                                                                                  |
-| View offset scale  | Scales the view disparity (e.g pushes 3d cameras closer together/ further apart).                                            |
+| Name                | Description                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Calibration file    | The calibration file used to calibrate the cameras. This value has to be set for all modes (multi view and diorama) to work.         |
+| Calibration Path    | Path to diorama mode display calibration files.                                                                                      |
+| Mode                | Switch between Diorama and Multiview modes.                                                                                          |
+| Scene scale factor  | Scales display calibration to fit larger scenes.                                                                                     |
+| Mirror views        | Mirrors the individual views horizontally (e.g. needed for Holobox displays).                                                        |
+| Dolly zoom          | Mimics a dolly zoom effect.                                                                                                          |
+| View offset scale   | Scales the view disparity (e.g pushes 3d cameras closer together/ further apart).                                                    |
+| Generate Views      | If set to true, only the outer most and the middle view will be rendered. The rest is generated based on these.                      |
+| Fill holes          | If set to true, small holes in the generated views will be filled.                                                                   |
+| Hole filling radius | How far around the missing pixels the algorithm searches for a usable pixel. Larger values result in better results but take longer. |
+| Debug rendering     | Disable autostereo effect rendering. Render views as grid.                                                                           |
 
 ### Calibration files
 
@@ -52,7 +56,6 @@ Mimics a dolly zoom effect by scaling the camera position and field of view. Thi
 | Show gizmos             | Render helper gizmos in scene.                                      |
 | Gizmo size              | Size of the gizmos.                                                 |
 | Debug messages          | Print debug messages from the head tracking library to the console. |
-| Show test frame         | Show a red/ green test frame.                                       |
 
 ### Render resolution scale
 
@@ -65,6 +68,18 @@ This value can be used to increase performance by reducing the resolution of the
 The plugin renders the scene from newly created cameras (usually one for each eye; except when multiview is enabled) and combines the images into one final image.
 The camera the script is attached to is used as the main camera, displays the final image, but does not render anything itself.
 The new cameras are created as children of the main camera at runtime.
+
+# View Generation
+
+When this is enabled only the outer most and the middle view are rendered. The other views are generated based on these two views.
+
+## Anti Aliasing
+
+Only FXAA and SMAA work when view generation is enabled. When the cameras anti aliasing is set to TAA no anti aliasing is applied to the rendered views.
+
+## Bloom
+
+Bloom does not work correctly when view generation is enabled. Bloom results in weird halo like effects around objects in the generated views. It is recommended to disable bloom when using view generation.
 
 # Switching render pipelines
 
