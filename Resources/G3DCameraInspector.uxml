@@ -1,23 +1,19 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <uie:PropertyField binding-path="mode" name="mode" />
+    <ui:Label text="The head tracking library will search for " name="DioramaCalibrationInfoText" style="-unity-font-style: bold-and-italic; -unity-text-align: upper-center;" />
     <uie:PropertyField name="calibrationFile" binding-path="calibrationFile" />
-    <uie:PropertyField name="CalibrationPath" binding-path="calibrationPath" />
-    <uie:PropertyField binding-path="mode" name="mode" style="margin-top: 15px;" />
+    <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
     <uie:PropertyField name="sceneScaleFactor" binding-path="sceneScaleFactor" />
-    <uie:PropertyField name="mirrorViews" binding-path="mirrorViews" />
+    <ui:Label text="Camera placement" name="CameraPlacement" style="margin-top: 10px; -unity-font-style: bold;" />
     <uie:PropertyField name="dollyZoom" binding-path="dollyZoom" />
-    <uie:PropertyField binding-path="viewOffsetScale" />
-    <ui:GroupBox enabled="true" name="Multiview" />
-    <ui:GroupBox enabled="true" name="Diorama" />
-    <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings">
-        <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" />
-        <uie:PropertyField name="renderResolutionScale" binding-path="renderResolutionScale" />
-        <uie:PropertyField name="adaptRenderResolutionToViews" binding-path="adaptRenderResolutionToViews" enabled="false" />
-        <uie:PropertyField name="headPositionFilter" binding-path="headPositionFilter" enabled="false" />
-        <uie:PropertyField name="latencyCorrectionMode" binding-path="latencyCorrectionMode" enabled="false" />
+    <uie:PropertyField binding-path="viewOffsetScale" name="viewOffsetScale" />
+    <ui:Label text="Performance" name="Performance" style="margin-top: 10px; -unity-font-style: bold;" />
+    <uie:PropertyField name="renderResolutionScale" binding-path="renderResolutionScale" />
+    <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings" style="margin-top: 10px;">
+        <uie:PropertyField name="mirrorViews" binding-path="mirrorViews" />
+        <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" style="margin-top: 10px;" />
         <ui:Label text="Debug settings" name="DebuggingSettings" style="-unity-font-style: bold; margin-top: 13px; margin-right: 2px; margin-bottom: 4px;" />
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
-        <uie:PropertyField name="debugMessages" binding-path="debugMessages" />
-        <uie:PropertyField name="showTestFrame" binding-path="showTestFrame" />
     </ui:Foldout>
 </ui:UXML>

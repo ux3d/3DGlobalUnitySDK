@@ -91,7 +91,7 @@ public class G3DCamera
     [Tooltip(
         "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
     )]
-    public string calibrationPath = "";
+    public string calibrationPathOverwrite = "";
 
     #region 3D Effect settings
     public G3DCameraMode mode = G3DCameraMode.DIORAMA;
@@ -133,19 +133,13 @@ public class G3DCamera
 
     #region Advanced settings
     [Tooltip(
-        "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
-    )]
-    private bool adaptRenderResolutionToViews = false;
-
-    [Tooltip(
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
-    private Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
-    private LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
+    public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
+    public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
-    [Tooltip("If set to true, the library will print debug messages to the console.")]
+    [Tooltip("If set to true, the head tracking library will print debug messages to the console.")]
     public bool debugMessages = false;
-    public bool showTestFrame = false;
 
     [Tooltip(
         "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
@@ -161,6 +155,8 @@ public class G3DCamera
     #region Private variables
 
     private LibInterface libInterface;
+
+    private string calibrationPath;
 
     // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
     private float viewSeparation = 0.065f;
@@ -254,6 +250,15 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
+        calibrationPath = System.Environment.GetFolderPath(
+            Environment.SpecialFolder.CommonDocuments
+        );
+        calibrationPath = Path.Combine(calibrationPath, "3D Global", "calibrations");
+        if (!string.IsNullOrEmpty(calibrationPathOverwrite))
+        {
+            calibrationPath = calibrationPathOverwrite;
+        }
+
         mainCamera = GetComponent<Camera>();
         oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
@@ -871,7 +876,7 @@ public class G3DCamera
             material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
 
             // test frame and stripe
-            material?.SetInt(shaderHandles.showTestFrame, showTestFrame ? 1 : 0);
+            material?.SetInt(shaderHandles.showTestFrame, 0);
             material?.SetInt(shaderHandles.showTestStripe, shaderParameters.showTestStripe);
 
             material?.SetInt(shaderHandles.testGapWidth, shaderParameters.testGapWidth);
@@ -1049,16 +1054,8 @@ public class G3DCamera
             int width = Screen.width;
             int height = Screen.height;
 
-            if (adaptRenderResolutionToViews)
-            {
-                // TODO: This is a temporary fix for the resolution scaling issue. Use an actually correct formula here.
-                width = width / internalCameraCount;
-            }
-            else
-            {
-                width = (int)(width * ((float)renderResolutionScale / 100f));
-                height = (int)(height * ((float)renderResolutionScale / 100f));
-            }
+            width = (int)(width * ((float)renderResolutionScale / 100f));
+            height = (int)(height * ((float)renderResolutionScale / 100f));
 
             renderTextures[i] = new RenderTexture(width, height, 0)
             {

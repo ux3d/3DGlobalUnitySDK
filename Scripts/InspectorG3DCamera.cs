@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -11,11 +12,17 @@ public class InspectorG3DCamera : Editor
 
     private PropertyField modeField;
 
-    private VisualElement dioramaInspector;
-    private VisualElement multiviewInspector;
+    private PropertyField calibrationFileField;
+
+    private Label calibInfoLabel;
+
+    private static bool isAdvancedSettingsVisible = false;
+    private Foldout advancedSettingsFoldout;
 
     public override VisualElement CreateInspectorGUI()
     {
+        G3DCamera camera = (G3DCamera)target;
+
         // Create a new VisualElement to be the root of our Inspector UI.
         VisualElement mainInspector = new VisualElement();
 
@@ -36,36 +43,41 @@ public class InspectorG3DCamera : Editor
             (evt) =>
             {
                 G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
-                setDisplayMode(newMode);
+                if (newMode == G3DCameraMode.DIORAMA)
+                {
+                    calibrationFileField.style.display = DisplayStyle.None;
+                    calibInfoLabel.style.display = DisplayStyle.Flex;
+                }
+                else
+                {
+                    calibrationFileField.style.display = DisplayStyle.Flex;
+                    calibInfoLabel.style.display = DisplayStyle.None;
+                }
             }
         );
 
-        dioramaInspector = mainInspector.Q<VisualElement>("Diorama");
-        multiviewInspector = mainInspector.Q<VisualElement>("Multiview");
+        calibrationFileField = mainInspector.Q<PropertyField>("calibrationFile");
+
+        advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
+        advancedSettingsFoldout.value = isAdvancedSettingsVisible;
+        advancedSettingsFoldout.RegisterValueChangedCallback(
+            (evt) =>
+            {
+                isAdvancedSettingsVisible = evt.newValue;
+            }
+        );
+        string calibrationPath = System.Environment.GetFolderPath(
+            Environment.SpecialFolder.CommonDocuments
+        );
+        calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
+        calibInfoLabel = mainInspector.Q<Label>("DioramaCalibrationInfoText");
+        calibInfoLabel.text =
+            "The headtracking library will search for display calibrations in this folder:\n"
+            + calibrationPath;
 
         // setup UI
-        setDisplayMode((target as G3DCamera).mode);
 
         return mainInspector;
-    }
-
-    private void setDisplayMode(G3DCameraMode mode)
-    {
-        if (mode == G3DCameraMode.DIORAMA)
-        {
-            dioramaInspector.style.display = DisplayStyle.Flex;
-            multiviewInspector.style.display = DisplayStyle.None;
-        }
-        else if (mode == G3DCameraMode.MULTIVIEW)
-        {
-            dioramaInspector.style.display = DisplayStyle.None;
-            multiviewInspector.style.display = DisplayStyle.Flex;
-        }
-        else
-        {
-            dioramaInspector.style.display = DisplayStyle.None;
-            multiviewInspector.style.display = DisplayStyle.None;
-        }
     }
 }
 #endif
