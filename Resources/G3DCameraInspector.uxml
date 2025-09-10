@@ -16,4 +16,5 @@
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
     </ui:Foldout>
+    <ui:Label text="See readme for details." style="margin-top: 10px; -unity-font-style: bold;" />
 </ui:UXML>

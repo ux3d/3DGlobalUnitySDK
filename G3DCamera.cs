@@ -103,7 +103,9 @@ public class G3DCamera
     [Min(0.000001f)]
     public float sceneScaleFactor = 1.0f;
 
-    [Tooltip("If set to true, the views will be flipped horizontally.")]
+    [Tooltip(
+        "If set to true, the views will be flipped horizontally. This is necessary for holoboxes."
+    )]
     public bool mirrorViews = false;
 
     [Tooltip(

@@ -25,14 +25,6 @@ In general it renders two or more camera views per frame and combines them into 
 | Dolly zoom         | Mimics a dolly zoom effect.                                                                                                  |
 | View offset scale  | Scales the view disparity (e.g pushes 3d cameras closer together/ further apart).                                            |
 
-### Calibration files
-
-These files are used to calibrate the 3d effect for the connected display. It always has to be set for this plugin to work properly. It only accepts txt files. For this plugin to work properly you have to use the calibration file corresponding to your 3d Global display.
-
-You can find calibration files in the "Multiview Display Calibrations" folder of this repository.
-
-If you want to use the diorama mode you have to set the "Calibration Path" parameter the folder with the 3d Global calibration files (e.g. C:\Users\Public\Documents\3D Global\calibrations). This is necessary since head tracking requires calibration files specific to each individual display (multiview mode works with a single calibration file shared across all displays of the same type).
-
 ### Scene scale factor
 
 The plugin is build to work in a 1:1 scale with the display. This value can be used to scale the plugin to fit larger scenes. It scales the camera position, the field of view of the cameras, etc.
@@ -59,6 +51,20 @@ Mimics a dolly zoom effect by scaling the camera position and field of view. Thi
 100% corresponds to the native resolution of the display. i.e. each camera renders at the native resolution of the display.
 
 This value can be used to increase performance by reducing the resolution of the individual camera render textures. You can go as low as 20% - 40% without losing too much quality. It does not affect the resolution of the final image displayed on the 3D Global autostereo display.
+
+## Modes explained
+
+### Diorama mode
+
+This mode uses a head tracking camera integrated into a 3d Global display to adjust the view based on the viewer's head position. It only works properly if the display has a head tracking camera.
+
+#### Diorama Calibration files
+
+It requires the displays calibration files to be copied to "C:\Users\Public\Documents\3D Global\calibrations" (Windows). Each individual physical display has its own calibration files. These can be found on the display. The calibration for one display is contained in a folder named after the used head tracking camera (e.g "HimaxD2XX#DK0HLRO3"). Inside this folder are two files (one ini file and one image file). Copy this entire folder to the calibration folder mentioned earlier.
+
+### Multiview mode
+
+In this mode the plugin renders multiple views without any head tracking and spreads them equally accross the displays available views. This mode works on all 3D Global displays. This mode only requires general calibration information contained in the calibration.ini file. Therefore you can reuse the same calibration file on multiple displays of the same type.
 
 # Functionality
 
