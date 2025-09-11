@@ -72,6 +72,17 @@ The plugin renders the scene from newly created cameras (usually one for each ey
 The camera the script is attached to is used as the main camera and displays the final image, but does not render anything itself.
 The new cameras are created as children of the main camera at runtime.
 
+The created cameras all shift their FOV such that they overlap on the focus plane. The focus plane is the virtual plane in the scene where the real life monitor is located. Objects on this plane appear at the same depth as the display. Objects in front of this plane appear to pop out of the display and objects behind this plane appear to be inside the display.
+
+![Annotations](./documentation/annotations.png)
+
+When using diorama mode the cameras the created cameras follow the same movement pattern relative to the focus plane, as the head performs infront of the display. In addition the FOV of the cameras is adjusted such that they always overlap on the focus plane.
+
+Example for shifted FOV in diorama mode:
+| | |
+| -------------------------------------------- | -------------------------------------------- |
+| ![Annotations](./documentation/diorama2.png) | ![Annotations](./documentation/diorama3.png) |
+
 # Switching render pipelines
 
 If you switch between render pipelines (e.g. from URP to built-in) you need to ensure the old render pipeline package is removed from the project. Otherwise this plugin will show wrong behavior.
