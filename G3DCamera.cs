@@ -98,7 +98,7 @@ public class G3DCamera
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
     [Tooltip(
-        "This value can be used to scale the real world values used to calibrate the extension. For example if your scene is 10 times larger than the real world, you can set this value to 10. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
+        "This value can be used to scale the real world values used to calibrate the extension. For example if your scene is 10 times larger than the real world, you can set this value to 10. Do NOT change this while the game is already running!"
     )]
     [Min(0.000001f)]
     public float sceneScaleFactor = 1.0f;
