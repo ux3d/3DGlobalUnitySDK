@@ -1,7 +1,8 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
     <uie:PropertyField binding-path="mode" name="mode" />
-    <ui:Label text="The head tracking library will search for " name="DioramaCalibrationInfoText" style="-unity-font-style: bold-and-italic; -unity-text-align: upper-center;" />
+    <ui:Label text="The head tracking library will search for " name="DioramaCalibrationFolder" style="-unity-font-style: bold-and-italic; -unity-text-align: upper-center; white-space: normal; margin-bottom: 8px;" />
     <uie:PropertyField name="calibrationFile" binding-path="calibrationFile" />
+    <ui:Label text="In diorama mode this might not be the calibration file actually used during play  as diorama mode chooses its calibration file from the folder shown in the text above based o the connected display." name="DioramaCalibFileInfo" style="-unity-font-style: italic; font-size: 12px; margin-left: 15px; white-space: normal;" />
     <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
     <uie:PropertyField name="sceneScaleFactor" binding-path="sceneScaleFactor" />
     <ui:Label text="Camera placement" name="CameraPlacement" style="margin-top: 10px; -unity-font-style: bold;" />

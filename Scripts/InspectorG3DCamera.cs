@@ -13,8 +13,10 @@ public class InspectorG3DCamera : Editor
     private PropertyField modeField;
 
     private PropertyField calibrationFileField;
+    private PropertyField headtrackingScaleField;
 
-    private Label calibInfoLabel;
+    private Label calibFolderLabel;
+    private Label DioramaCalibFileInfo;
 
     private static bool isAdvancedSettingsVisible = false;
     private Foldout advancedSettingsFoldout;
@@ -45,18 +47,18 @@ public class InspectorG3DCamera : Editor
                 G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
                 if (newMode == G3DCameraMode.DIORAMA)
                 {
-                    calibrationFileField.style.display = DisplayStyle.None;
-                    calibInfoLabel.style.display = DisplayStyle.Flex;
+                    calibFolderLabel.style.display = DisplayStyle.Flex;
+                    headtrackingScaleField.style.display = DisplayStyle.Flex;
+                    DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
                 }
                 else
                 {
-                    calibrationFileField.style.display = DisplayStyle.Flex;
-                    calibInfoLabel.style.display = DisplayStyle.None;
+                    calibFolderLabel.style.display = DisplayStyle.None;
+                    headtrackingScaleField.style.display = DisplayStyle.None;
+                    DioramaCalibFileInfo.style.display = DisplayStyle.None;
                 }
             }
         );
-
-        calibrationFileField = mainInspector.Q<PropertyField>("calibrationFile");
 
         advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
         advancedSettingsFoldout.value = isAdvancedSettingsVisible;
@@ -66,14 +68,19 @@ public class InspectorG3DCamera : Editor
                 isAdvancedSettingsVisible = evt.newValue;
             }
         );
+
+        headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
+
         string calibrationPath = System.Environment.GetFolderPath(
             Environment.SpecialFolder.CommonDocuments
         );
         calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
-        calibInfoLabel = mainInspector.Q<Label>("DioramaCalibrationInfoText");
-        calibInfoLabel.text =
+        calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
+        calibFolderLabel.text =
             "The headtracking library will search for display calibrations in this folder:\n"
             + calibrationPath;
+
+        DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
 
         // setup UI
 
