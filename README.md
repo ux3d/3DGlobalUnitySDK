@@ -45,7 +45,7 @@ Example for shifted FOV in diorama mode:
 
 ### Calibration file
 
-This takes an ini file (the same ini files as can be found in the displays calibration folder) that contains the calibration data for the display. This is only needed in multiview mode. In diorama mode the calibration files are read from the default calibration folder of 3D Global.
+This takes an ini file (the same ini files as can be found in the displays calibration folder) that contains the calibration data for the display. This is only needed in multiview mode. In diorama mode the calibration files are read from the default calibration folder of 3D Global. You can still provide a calibration file in diorama mode. It will only be used for drawing the helper gizmos in the scene view. During play it will not be used (in diorama mode).
 
 Unfortunatly for now unity does not support "\*.ini" files as TextAsset. Therefore you have to rename the file extension to "\*.txt" to be able to use it in Unity.
 
