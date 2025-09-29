@@ -101,11 +101,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
         int viewIndex = 0;
         for (int channel = 0; channel < 3; channel++) {
-            if(isBGR != 0) {
-                viewIndex = viewIndices[2 - channel];
-            } else {
-                viewIndex = viewIndices[channel];
-            }
+            viewIndex = viewIndices[channel];
 
             if (test != 0) {
                 if (viewIndex == 0) {
