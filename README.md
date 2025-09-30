@@ -62,7 +62,7 @@ Mimics a dolly zoom effect by scaling the camera position and field of view. Thi
 | Name                | Description                                                                   |
 | ------------------- | ----------------------------------------------------------------------------- |
 | Mirror views        | Mirrors the individual views horizontally (e.g. needed for Holobox displays). |
-| Head tracking scale | Scales the strength of head tracking.                                         |
+| Head tracking scale | Scales the strength of head tracking. (Only shown in diorama mode.)           |
 | Show gizmos         | Render helper gizmos in scene.                                                |
 | Gizmo size          | Size of the gizmos.                                                           |
 
