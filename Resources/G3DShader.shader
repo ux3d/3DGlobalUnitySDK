@@ -4,53 +4,7 @@ Shader "G3D/Autostereo"
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch
 
-    int  nativeViewCount;      // Anzahl nativer Views
-    int  zwinkel;        // Winkelzähler
-    int  nwinkel;        // Winkelnenner
-    int  isleft;         // links(1) oder rechts(0) geneigtes Lentikular
-    int  test;           // Rot/Schwarz (1)ein, (0)aus
-    int  stest;          // Streifen Rot/Schwarz (1)ein, (0)aus
-    int  testgap;        // Breite der Lücke im Testbild
-    int  track;          // Trackingshift
-    int  mstart;         // Viewshift permanent Offset
-    int  hqview;         // hqViewCount
-    int  hviews1;          // hqview - 1
-    int  hviews2;       // hqview / 2
-    
-    int  bls;            // black left start (start and end points of left and right "eye" window)
-    int  ble;         // black left end 
-    int  brs;          // black right start
-    int  bre;      // black right end 
-    
-    int  s_height;       // screen height
-    int  v_pos_x;        // horizontal viewport position
-    int  v_pos_y;        // vertical viewport position
-    int  tvx;            // zCorrectionValue
-    int  zkom;           // zCompensationValue, kompensiert den Shift der durch die Z-Korrektur entsteht
-    
-    // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
-    // to do this we need the actual viewport height
-    int viewportHeight;
-    
-    int mirror; // 1: mirror from left to right, 0: no mirror
-
-    // unused parameters -> only here for so that this shader overlaps with the multiview shader
-    // amount of render targets
-    int cameraCount;
-    int isBGR; // 0 = RGB, 1 = BGR
-    
-
-    // unused parameters
-    int  bborder;        // blackBorder schwarz verblendung zwischen den views?
-    int  bspace;         // blackSpace
-    int  s_width;        // screen width
-    int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
-
-    struct v2f
-    {
-        float2 uv : TEXCOORD0;
-        float4 screenPos : SV_POSITION;
-    };
+    #include "G3D_ShaderBasics.hlsl"
 
 
     Texture2D texture0;
