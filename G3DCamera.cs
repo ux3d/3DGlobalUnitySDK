@@ -389,7 +389,7 @@ public class G3DCamera
         )
         {
             previousCalibrationFile = calibrationFile;
-            setupCameras();
+            setupCameras(true);
         }
 
         if (previousMode != mode)
@@ -467,10 +467,10 @@ public class G3DCamera
     ///
     /// Updates calibration file as well.
     /// </summary>
-    public void setupCameras(TextAsset calibrationFile)
+    public void setupCameras(TextAsset calibrationFile, bool calledFromValidate = false)
     {
         this.calibrationFile = calibrationFile;
-        setupCameras();
+        setupCameras(calledFromValidate);
     }
 
     /// <summary>
@@ -479,13 +479,13 @@ public class G3DCamera
     ///
     /// Does not update calibration file.
     /// </summary>
-    public void setupCameras()
+    public void setupCameras(bool calledFromValidate = false)
     {
         if (mainCamera == null)
         {
             mainCamera = GetComponent<Camera>();
         }
-        if (Application.isPlaying)
+        if (Application.isPlaying && !calledFromValidate)
         {
             // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
             initCamerasAndParents();
@@ -502,7 +502,10 @@ public class G3DCamera
             {
                 viewSeparation = 0.031f;
             }
-            focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+            if (focusPlaneObject != null)
+            {
+                focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+            }
             return;
         }
 
@@ -543,8 +546,14 @@ public class G3DCamera
         if (Application.isPlaying)
         {
             // update focus plane distance
-            focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
-            cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+            if (focusPlaneObject != null)
+            {
+                focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+            }
+            if (cameraParent != null)
+            {
+                cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+            }
         }
 
         halfCameraWidthAtStart =

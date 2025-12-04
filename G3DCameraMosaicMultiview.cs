@@ -156,7 +156,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     #region Updates
     private TextAsset previousCalibrationFile = null;
-    private G3DCameraMode previousMode = G3DCameraMode.DIORAMA;
 
     /// <summary>
     /// OnValidate gets called every time the script is changed in the editor.
