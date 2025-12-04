@@ -1,3 +1,5 @@
+#pragma warning disable 0618
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -5,14 +7,14 @@ using IniParser.Model.Configuration;
 
 namespace IniParser.Model.Formatting
 {
-    
     public class DefaultIniDataFormatter : IIniDataFormatter
     {
         IniParserConfiguration _configuration;
-        
+
         #region Initialization
-        public DefaultIniDataFormatter():this(new IniParserConfiguration()) {}
-        
+        public DefaultIniDataFormatter()
+            : this(new IniParserConfiguration()) { }
+
         public DefaultIniDataFormatter(IniParserConfiguration configuration)
         {
             if (configuration == null)
@@ -20,7 +22,7 @@ namespace IniParser.Model.Formatting
             this.Configuration = configuration;
         }
         #endregion
-        
+
         public virtual string IniDataToString(IniData iniData)
         {
             var sb = new StringBuilder();
@@ -40,7 +42,7 @@ namespace IniParser.Model.Formatting
 
             return sb.ToString();
         }
-        
+
         /// <summary>
         ///     Configuration used to write an ini file with the proper
         ///     delimiter characters and data.
@@ -63,17 +65,22 @@ namespace IniParser.Model.Formatting
         private void WriteSection(SectionData section, StringBuilder sb)
         {
             // Write blank line before section, but not if it is the first line
-            if (sb.Length > 0) sb.Append(Configuration.NewLineStr);
+            if (sb.Length > 0)
+                sb.Append(Configuration.NewLineStr);
 
             // Leading comments
             WriteComments(section.LeadingComments, sb);
 
             //Write section name
-            sb.Append(string.Format("{0}{1}{2}{3}", 
-                Configuration.SectionStartChar, 
-                section.SectionName, 
-                Configuration.SectionEndChar, 
-                Configuration.NewLineStr));
+            sb.Append(
+                string.Format(
+                    "{0}{1}{2}{3}",
+                    Configuration.SectionStartChar,
+                    section.SectionName,
+                    Configuration.SectionEndChar,
+                    Configuration.NewLineStr
+                )
+            );
 
             WriteKeyValueData(section.Keys, sb);
 
@@ -83,32 +90,43 @@ namespace IniParser.Model.Formatting
 
         private void WriteKeyValueData(KeyDataCollection keyDataCollection, StringBuilder sb)
         {
-
             foreach (KeyData keyData in keyDataCollection)
             {
                 // Add a blank line if the key value pair has comments
-                if (keyData.Comments.Count > 0) sb.Append(Configuration.NewLineStr);
+                if (keyData.Comments.Count > 0)
+                    sb.Append(Configuration.NewLineStr);
 
                 // Write key comments
                 WriteComments(keyData.Comments, sb);
 
                 //Write key and value
-                sb.Append(string.Format("{0}{3}{1}{3}{2}{4}", 
-                    keyData.KeyName,
-                    Configuration.KeyValueAssigmentChar, 
-                    keyData.Value, 
-                    Configuration.AssigmentSpacer, 
-                    Configuration.NewLineStr));
+                sb.Append(
+                    string.Format(
+                        "{0}{3}{1}{3}{2}{4}",
+                        keyData.KeyName,
+                        Configuration.KeyValueAssigmentChar,
+                        keyData.Value,
+                        Configuration.AssigmentSpacer,
+                        Configuration.NewLineStr
+                    )
+                );
             }
         }
 
         private void WriteComments(List<string> comments, StringBuilder sb)
         {
             foreach (string comment in comments)
-                sb.Append(string.Format("{0}{1}{2}", Configuration.CommentString, comment, Configuration.NewLineStr));
+                sb.Append(
+                    string.Format(
+                        "{0}{1}{2}",
+                        Configuration.CommentString,
+                        comment,
+                        Configuration.NewLineStr
+                    )
+                );
         }
         #endregion
-        
     }
-    
-} 
+}
+
+#pragma warning restore 0618
