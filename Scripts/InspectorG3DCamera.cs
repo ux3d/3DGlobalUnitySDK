@@ -15,6 +15,8 @@ public class InspectorG3DCamera : Editor
     private PropertyField calibrationFileField;
     private PropertyField headtrackingScaleField;
 
+    private PropertyField viewOffsetField;
+
     private Label calibFolderLabel;
     private Label DioramaCalibFileInfo;
 
@@ -50,12 +52,14 @@ public class InspectorG3DCamera : Editor
                     calibFolderLabel.style.display = DisplayStyle.Flex;
                     headtrackingScaleField.style.display = DisplayStyle.Flex;
                     DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
+                    viewOffsetField.style.display = DisplayStyle.None;
                 }
                 else
                 {
                     calibFolderLabel.style.display = DisplayStyle.None;
                     headtrackingScaleField.style.display = DisplayStyle.None;
                     DioramaCalibFileInfo.style.display = DisplayStyle.None;
+                    viewOffsetField.style.display = DisplayStyle.Flex;
                 }
             }
         );
@@ -70,6 +74,8 @@ public class InspectorG3DCamera : Editor
         );
 
         headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
+
+        viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
 
         string calibrationPath = System.Environment.GetFolderPath(
             Environment.SpecialFolder.CommonDocuments

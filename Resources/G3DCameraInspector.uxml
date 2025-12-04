@@ -5,6 +5,7 @@
     <ui:Label text="In diorama mode this might not be the calibration file actually used during play  as diorama mode chooses its calibration file from the folder shown in the text above based o the connected display." name="DioramaCalibFileInfo" style="-unity-font-style: italic; font-size: 12px; margin-left: 15px; white-space: normal;" />
     <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
     <uie:PropertyField name="sceneScaleFactor" binding-path="sceneScaleFactor" />
+    <uie:PropertyField binding-path="viewOffset" name="viewOffset" />
     <ui:Label text="Camera placement" name="CameraPlacement" style="margin-top: 10px; -unity-font-style: bold;" />
     <uie:PropertyField name="dollyZoom" binding-path="dollyZoom" />
     <uie:PropertyField binding-path="viewOffsetScale" name="viewOffsetScale" />

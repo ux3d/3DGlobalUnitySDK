@@ -126,6 +126,12 @@ public class G3DCamera
     [Range(0.0f, 5.0f)]
     public float viewOffsetScale = 1.0f; // scale the view offset to the focus distance. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
 
+    /// <summary>
+    /// Shifts the individual views to the left or right by the specified number of views.
+    /// </summary>
+    [Tooltip("Shifts the individual views to the left or right by the specified number of views.")]
+    public int viewOffset = 0;
+
     [Tooltip(
         "Scales the strength of the head tracking effect. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance."
     )]
@@ -909,6 +915,11 @@ public class G3DCamera
             material?.SetInt(Shader.PropertyToID("cameraCount"), internalCameraCount);
 
             material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
+
+            if (mode == G3DCameraMode.MULTIVIEW)
+            {
+                material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+            }
         }
     }
 
