@@ -23,7 +23,6 @@ public class InspectorG3DCamera : Editor
 
     private static bool isAdvancedSettingsVisible = false;
     private Foldout advancedSettingsFoldout;
-
     private VisualElement viewGenerationContainer;
 
     public override VisualElement CreateInspectorGUI()
@@ -102,7 +101,6 @@ public class InspectorG3DCamera : Editor
         );
 
         // setup UI
-        setDisplayMode((target as G3DCamera).mode);
         setViewgenerationDisplay((target as G3DCamera).generateViews);
 
         return mainInspector;
@@ -117,25 +115,6 @@ public class InspectorG3DCamera : Editor
         else
         {
             viewGenerationContainer.style.display = DisplayStyle.None;
-        }
-    }
-
-    private void setDisplayMode(G3DCameraMode mode)
-    {
-        if (mode == G3DCameraMode.DIORAMA)
-        {
-            dioramaInspector.style.display = DisplayStyle.Flex;
-            multiviewInspector.style.display = DisplayStyle.None;
-        }
-        else if (mode == G3DCameraMode.MULTIVIEW)
-        {
-            dioramaInspector.style.display = DisplayStyle.None;
-            multiviewInspector.style.display = DisplayStyle.Flex;
-        }
-        else
-        {
-            dioramaInspector.style.display = DisplayStyle.None;
-            multiviewInspector.style.display = DisplayStyle.None;
         }
     }
 }

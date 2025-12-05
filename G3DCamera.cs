@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
@@ -1287,16 +1288,8 @@ public class G3DCamera
         int width = Screen.width;
         int height = Screen.height;
 
-        if (adaptRenderResolutionToViews)
-        {
-            // TODO: This is a temporary fix for the resolution scaling issue. Use an actually correct formula here.
-            width = width / internalCameraCount;
-        }
-        else
-        {
-            width = (int)(width * ((float)renderResolutionScale / 100f));
-            height = (int)(height * ((float)renderResolutionScale / 100f));
-        }
+        width = (int)(width * ((float)renderResolutionScale / 100f));
+        height = (int)(height * ((float)renderResolutionScale / 100f));
 
         renderTextures[renderTextureIndex] = new RenderTexture(width, height, 0)
         {
