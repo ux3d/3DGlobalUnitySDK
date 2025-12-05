@@ -1,3 +1,5 @@
+#pragma warning disable 0618
+
 using System;
 using System.Collections.Generic;
 
@@ -10,13 +12,12 @@ namespace IniParser.Model
     public class SectionData : ICloneable
     {
         IEqualityComparer<string> _searchComparer;
+
         #region Initialization
 
         public SectionData(string sectionName)
-            :this(sectionName, EqualityComparer<string>.Default)
-        {
-            
-        }
+            : this(sectionName, EqualityComparer<string>.Default) { }
+
         /// <summary>
         ///     Initializes a new instance of the <see cref="SectionData"/> class.
         /// </summary>
@@ -32,7 +33,6 @@ namespace IniParser.Model
             SectionName = sectionName;
         }
 
-
         /// <summary>
         ///     Initializes a new instance of the <see cref="SectionData"/> class
         ///     from a previous instance of <see cref="SectionData"/>.
@@ -41,7 +41,7 @@ namespace IniParser.Model
         ///     Data is deeply copied
         /// </remarks>
         /// <param name="ori">
-        ///     The instance of the <see cref="SectionData"/> class 
+        ///     The instance of the <see cref="SectionData"/> class
         ///     used to create the new instance.
         /// </param>
         /// <param name="searchComparer">
@@ -53,12 +53,15 @@ namespace IniParser.Model
 
             _searchComparer = searchComparer;
             _leadingComments = new List<string>(ori._leadingComments);
-            _keyDataCollection = new KeyDataCollection(ori._keyDataCollection, searchComparer ?? ori._searchComparer);
+            _keyDataCollection = new KeyDataCollection(
+                ori._keyDataCollection,
+                searchComparer ?? ori._searchComparer
+            );
         }
 
         #endregion
 
-		#region Operations
+        #region Operations
 
         /// <summary>
         ///     Deletes all comments in this section and key/value pairs
@@ -73,10 +76,10 @@ namespace IniParser.Model
         /// <summary>
         /// Deletes all the key-value pairs in this section.
         /// </summary>
-		public void ClearKeyData()
-		{
-			Keys.RemoveAllKeys();
-		}
+        public void ClearKeyData()
+        {
+            Keys.RemoveAllKeys();
+        }
 
         /// <summary>
         ///     Merges otherSection into this, adding new keys if they don't exists
@@ -89,16 +92,16 @@ namespace IniParser.Model
         /// <param name="toMergeSection"></param>
         public void Merge(SectionData toMergeSection)
         {
-            foreach (var comment in toMergeSection.LeadingComments) 
+            foreach (var comment in toMergeSection.LeadingComments)
                 LeadingComments.Add(comment);
-                
+
             Keys.Merge(toMergeSection.Keys);
 
-            foreach(var comment in toMergeSection.TrailingComments) 
+            foreach (var comment in toMergeSection.TrailingComments)
                 TrailingComments.Add(comment);
         }
 
-		#endregion
+        #endregion
 
         #region Properties
 
@@ -110,11 +113,7 @@ namespace IniParser.Model
         /// </value>
         public string SectionName
         {
-            get
-            {
-                return _sectionName;
-            }
-
+            get { return _sectionName; }
             set
             {
                 if (!string.IsNullOrEmpty(value))
@@ -122,19 +121,11 @@ namespace IniParser.Model
             }
         }
 
-
-		[Obsolete("Do not use this property, use property Comments instead")]
+        [Obsolete("Do not use this property, use property Comments instead")]
         public List<string> LeadingComments
         {
-            get
-            {
-                return _leadingComments;
-            }
-
-            internal set
-            {
-                _leadingComments = new List<string>(value);
-            }
+            get { return _leadingComments; }
+            internal set { _leadingComments = new List<string>(value); }
         }
 
         /// <summary>
@@ -145,27 +136,16 @@ namespace IniParser.Model
         /// </value>
         public List<string> Comments
         {
-            get
-            {
-				return _leadingComments;
-            }
-
-
+            get { return _leadingComments; }
         }
 
-		[Obsolete("Do not use this property, use property Comments instead")]
+        [Obsolete("Do not use this property, use property Comments instead")]
         public List<string> TrailingComments
         {
-            get
-            {
-                return _trailingComments;
-            }
-
-            internal set
-            {
-                _trailingComments = new List<string>(value);
-            }
+            get { return _trailingComments; }
+            internal set { _trailingComments = new List<string>(value); }
         }
+
         /// <summary>
         ///     Gets or sets the keys associated to this section.
         /// </summary>
@@ -174,15 +154,8 @@ namespace IniParser.Model
         /// </value>
         public KeyDataCollection Keys
         {
-            get
-            {
-                return _keyDataCollection;
-            }
-
-            set
-            {
-                _keyDataCollection = value;
-            }
+            get { return _keyDataCollection; }
+            set { _keyDataCollection = value; }
         }
 
         #endregion
@@ -213,8 +186,7 @@ namespace IniParser.Model
 
         private string _sectionName;
         #endregion
-
-
-
     }
 }
+
+#pragma warning restore 0618

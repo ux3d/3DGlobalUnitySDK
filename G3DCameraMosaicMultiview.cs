@@ -36,6 +36,11 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     public int mosaicColumnCount = 3;
     #endregion
 
+    /// <summary>
+    /// Shifts the individual views to the left or right by the specified number of views.
+    /// </summary>
+    [Tooltip("Shifts the individual views to the left or right by the specified number of views.")]
+    public int viewOffset = 0;
     public RenderTexture mosaicTexture;
 
     #region 3D Effect settings
@@ -157,7 +162,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     #region Updates
     private TextAsset previousCalibrationFile = null;
-    private G3DCameraMode previousMode = G3DCameraMode.DIORAMA;
 
     /// <summary>
     /// OnValidate gets called every time the script is changed in the editor.
@@ -264,6 +268,8 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRowCount);
         material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumnCount);
+
+        material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
     }
 
     private bool windowResized()

@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable 0618
+
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using IniParser.Exceptions;
@@ -495,3 +497,5 @@ namespace IniParser.Parser
         #endregion
     }
 }
+
+#pragma warning restore 0618

@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -12,13 +13,23 @@ public class InspectorG3DCamera : Editor
     private PropertyField modeField;
     private PropertyField generateViewsField;
 
-    private VisualElement dioramaInspector;
-    private VisualElement multiviewInspector;
+    private PropertyField calibrationFileField;
+    private PropertyField headtrackingScaleField;
+
+    private PropertyField viewOffsetField;
+
+    private Label calibFolderLabel;
+    private Label DioramaCalibFileInfo;
+
+    private static bool isAdvancedSettingsVisible = false;
+    private Foldout advancedSettingsFoldout;
 
     private VisualElement viewGenerationContainer;
 
     public override VisualElement CreateInspectorGUI()
     {
+        G3DCamera camera = (G3DCamera)target;
+
         // Create a new VisualElement to be the root of our Inspector UI.
         VisualElement mainInspector = new VisualElement();
 
@@ -39,12 +50,46 @@ public class InspectorG3DCamera : Editor
             (evt) =>
             {
                 G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
-                setDisplayMode(newMode);
+                if (newMode == G3DCameraMode.DIORAMA)
+                {
+                    calibFolderLabel.style.display = DisplayStyle.Flex;
+                    headtrackingScaleField.style.display = DisplayStyle.Flex;
+                    DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
+                    viewOffsetField.style.display = DisplayStyle.None;
+                }
+                else
+                {
+                    calibFolderLabel.style.display = DisplayStyle.None;
+                    headtrackingScaleField.style.display = DisplayStyle.None;
+                    DioramaCalibFileInfo.style.display = DisplayStyle.None;
+                    viewOffsetField.style.display = DisplayStyle.Flex;
+                }
             }
         );
 
-        dioramaInspector = mainInspector.Q<VisualElement>("Diorama");
-        multiviewInspector = mainInspector.Q<VisualElement>("Multiview");
+        advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
+        advancedSettingsFoldout.value = isAdvancedSettingsVisible;
+        advancedSettingsFoldout.RegisterValueChangedCallback(
+            (evt) =>
+            {
+                isAdvancedSettingsVisible = evt.newValue;
+            }
+        );
+
+        headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
+
+        viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
+
+        string calibrationPath = System.Environment.GetFolderPath(
+            Environment.SpecialFolder.CommonDocuments
+        );
+        calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
+        calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
+        calibFolderLabel.text =
+            "The headtracking library will search for display calibrations in this folder:\n"
+            + calibrationPath;
+
+        DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
 
         viewGenerationContainer = mainInspector.Q<VisualElement>("viewGenerationContainer");
         generateViewsField = mainInspector.Q<PropertyField>("generateViews");

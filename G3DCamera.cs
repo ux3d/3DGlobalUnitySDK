@@ -89,19 +89,21 @@ public class G3DCamera
     [Tooltip(
         "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
     )]
-    public string calibrationPath = "";
+    public string calibrationPathOverwrite = "";
 
     #region 3D Effect settings
     public G3DCameraMode mode = G3DCameraMode.DIORAMA;
     public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
     [Tooltip(
-        "This value can be used to scale the real world values used to calibrate the extension. For example if your scene is 10 times larger than the real world, you can set this value to 10. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
+        "This value can be used to scale the real world values used to calibrate the extension. For example if your scene is 10 times larger than the real world, you can set this value to 10. Do NOT change this while the game is already running!"
     )]
     [Min(0.000001f)]
     public float sceneScaleFactor = 1.0f;
 
-    [Tooltip("If set to true, the views will be flipped horizontally.")]
+    [Tooltip(
+        "If set to true, the views will be flipped horizontally. This is necessary for holoboxes."
+    )]
     public bool mirrorViews = false;
 
     #region Performance
@@ -137,6 +139,12 @@ public class G3DCamera
     [Range(0.0f, 5.0f)]
     public float viewOffsetScale = 1.0f; // scale the view offset to the focus distance. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
 
+    /// <summary>
+    /// Shifts the individual views to the left or right by the specified number of views.
+    /// </summary>
+    [Tooltip("Shifts the individual views to the left or right by the specified number of views.")]
+    public int viewOffset = 0;
+
     [Tooltip(
         "Scales the strength of the head tracking effect. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance."
     )]
@@ -146,17 +154,12 @@ public class G3DCamera
 
     #region Advanced settings
     [Tooltip(
-        "If set to true, the render targets for the individual views will be adapted to the resolution actually visible on screen. e.g. for two views each render target will have half the screen width. Overwrites Render Resolution Scale."
-    )]
-    private bool adaptRenderResolutionToViews = false;
-
-    [Tooltip(
         "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
-    private Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
-    private LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
+    public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
+    public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
-    [Tooltip("If set to true, the library will print debug messages to the console.")]
+    [Tooltip("If set to true, the head tracking library will print debug messages to the console.")]
     public bool debugMessages = false;
 
     [Tooltip(
@@ -178,6 +181,8 @@ public class G3DCamera
     #region Private variables
 
     private LibInterface libInterface;
+
+    private string calibrationPath;
 
     // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
     private float viewSeparation = 0.065f;
@@ -276,6 +281,15 @@ public class G3DCamera
 
     void Start()
     {
+        calibrationPath = System.Environment.GetFolderPath(
+            Environment.SpecialFolder.CommonDocuments
+        );
+        calibrationPath = Path.Combine(calibrationPath, "3D Global", "calibrations");
+        if (!string.IsNullOrEmpty(calibrationPathOverwrite))
+        {
+            calibrationPath = calibrationPathOverwrite;
+        }
+
         mainCamera = GetComponent<Camera>();
         oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
@@ -524,7 +538,7 @@ public class G3DCamera
         )
         {
             previousCalibrationFile = calibrationFile;
-            setupCameras();
+            setupCameras(true);
         }
 
         if (previousMode != mode)
@@ -604,10 +618,10 @@ public class G3DCamera
     ///
     /// Updates calibration file as well.
     /// </summary>
-    public void setupCameras(TextAsset calibrationFile)
+    public void setupCameras(TextAsset calibrationFile, bool calledFromValidate = false)
     {
         this.calibrationFile = calibrationFile;
-        setupCameras();
+        setupCameras(calledFromValidate);
     }
 
     /// <summary>
@@ -616,13 +630,13 @@ public class G3DCamera
     ///
     /// Does not update calibration file.
     /// </summary>
-    public void setupCameras()
+    public void setupCameras(bool calledFromValidate = false)
     {
         if (mainCamera == null)
         {
             mainCamera = GetComponent<Camera>();
         }
-        if (Application.isPlaying)
+        if (Application.isPlaying && !calledFromValidate)
         {
             // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
             initCamerasAndParents();
@@ -639,7 +653,6 @@ public class G3DCamera
             {
                 viewSeparation = 0.031f;
             }
-
             if (focusPlaneObject != null)
             {
                 focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
@@ -686,8 +699,14 @@ public class G3DCamera
         if (Application.isPlaying)
         {
             // update focus plane distance
-            focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
-            cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+            if (focusPlaneObject != null)
+            {
+                focusPlaneObject.transform.localPosition = new Vector3(0, 0, scaledFocusDistance);
+            }
+            if (cameraParent != null)
+            {
+                cameraParent.transform.localPosition = new Vector3(0, 0, -scaledFocusDistance);
+            }
         }
 
         halfCameraWidthAtStart =
@@ -1088,6 +1107,10 @@ public class G3DCamera
 
             material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
 
+            if (mode == G3DCameraMode.MULTIVIEW)
+            {
+                material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+            }
             material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
             material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
         }

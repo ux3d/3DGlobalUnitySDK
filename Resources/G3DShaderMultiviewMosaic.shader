@@ -4,41 +4,12 @@ Shader "G3D/AutostereoMultiviewMosaic"
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch
 
-    int  nativeViewCount;      // Anzahl nativer Views
-    int  zwinkel;        // Winkelzähler
-    int  nwinkel;        // Winkelnenner
-    int  isleft;         // links(1) oder rechts(0) geneigtes Lentikular
-    int  test;           // Rot/Schwarz (1)ein, (0)aus
-    int  hqview;         // hqhqViewCount
-    int  mstart;         // Viewshift permanent Offset
-    
-    
-    int  screen_height;       // screen height
-    int  viewport_pos_x;        // horizontal viewport position
-    int  viewport_pos_y;        // vertical viewport position
-    
-    // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
-    // to do this we need the actual viewport height
-    int viewportHeight;
-    
-    // amount of render targets
-    int cameraCount;
-    
-    int mirror; // 1: mirror from left to right, 0: no mirror
-    
-    // unused parameter -> only here for so that this shader overlaps with the multiview shader
-    int isBGR; // 0 = RGB, 1 = BGR
+    #include "G3D_ShaderBasics.hlsl"
 
     // mosaic video parameters
     int mosaic_rows = 1; // number of rows in the mosaic
     int mosaic_columns = 1; // number of columns in the mosaic
     
-    struct v2f
-    {
-        float2 uv : TEXCOORD0;
-        float4 screenPos : SV_POSITION;
-    };
-
 
     Texture2D _colorMosaic;
     SamplerState sampler_colorMosaic;
@@ -68,22 +39,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
         return scaledUV + cellSize * moasicIndex;
     }
 
-
-    int3 getSubPixelViewIndices(float2 screenPos)
-    {
-        int direction = isleft == 1 ? 1 : -1;
-        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount) * direction) + float(nativeViewCount)) + mstart;
-        int3 viewIndices = int3(view, view, view);
-
-        viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));
-
-        viewIndices.x = viewIndices.x % nativeViewCount;
-        viewIndices.y = viewIndices.y % nativeViewCount;
-        viewIndices.z = viewIndices.z % nativeViewCount;
-
-        return viewIndices;
-    }
-
     float4 frag (v2f i) : SV_Target
     {
         float yPos = screen_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
@@ -101,11 +56,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
         int viewIndex = 0;
         for (int channel = 0; channel < 3; channel++) {
-            if(isBGR != 0) {
-                viewIndex = viewIndices[2 - channel];
-            } else {
-                viewIndex = viewIndices[channel];
-            }
+            viewIndex = viewIndices[channel];
 
             if (test != 0) {
                 if (viewIndex == 0) {

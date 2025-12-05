@@ -4,53 +4,7 @@ Shader "G3D/AutostereoMultiview"
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone vulkan metal switch
 
-    int  nativeViewCount;      // Anzahl nativer Views
-    int  zwinkel;        // Winkelzähler
-    int  nwinkel;        // Winkelnenner
-    int  isleft;         // links(1) oder rechts(0) geneigtes Lentikular
-    int  test;           // Rot/Schwarz (1)ein, (0)aus
-    int  track;          // Trackingshift
-    int  mstart;         // Viewshift permanent Offset
-    int  hqview;         // hqhqViewCount
-    
-    int  screen_height;       // screen height
-    int  viewport_pos_x;        // horizontal viewport position
-    int  viewport_pos_y;        // vertical viewport position
-    
-    // This shader was originally implemented for OpenGL, so we need to invert the y axis to make it work in Unity.
-    // to do this we need the actual viewport height
-    int viewportHeight;
-    
-    // amount of render targets
-    int cameraCount;
-    
-    int mirror; // 1: mirror from left to right, 0: no mirror
-    
-    // unused parameter -> only here for so that this shader overlaps with the multiview shader
-    int isBGR; // 0 = RGB, 1 = BGR
-    
-    // unused parameters -> only here for so that this shader overlaps with the multiview shader
-    int  screen_width;        // screen width
-    int  bborder;        // blackBorder schwarz verblendung zwischen den views?
-    int  bspace;         // blackSpace
-    int  tvx;            // zCorrectionValue
-    int  zkom;           // zCompensationValue, kompensiert den Shift der durch die Z-Korrektur entsteht
-    int  hviews1;          // hqview - 1
-    int  hviews2;       // hqview / 2
-    int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
-    int  testgap;        // Breite der Lücke im Testbild
-    int  stest;          // Streifen Rot/Schwarz (1)ein, (0)aus
-    int  bls;            // black left start (start and end points of left and right "eye" window)
-    int  ble;         // black left end 
-    int  brs;          // black right start
-    int  bre;      // black right end 
-    
-    struct v2f
-    {
-        float2 uv : TEXCOORD0;
-        float4 screenPos : SV_POSITION;
-    };
-
+    #include "G3D_ShaderBasics.hlsl"
 
     Texture2D texture0;
     SamplerState samplertexture0;
@@ -130,25 +84,6 @@ Shader "G3D/AutostereoMultiview"
         return float4(0, 0, 0, 0);
     }
 
-    int3 getSubPixelViewIndices(float2 screenPos)
-    {
-        int direction = isleft == 1 ? 1 : -1;
-        uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount) * direction) + float(nativeViewCount)) + mstart;
-        int3 viewIndices = int3(view, view, view);
-
-        viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));
-
-        viewIndices.x = viewIndices.x % nativeViewCount;
-        viewIndices.y = viewIndices.y % nativeViewCount;
-        viewIndices.z = viewIndices.z % nativeViewCount;
-
-        // invert view indices cause the camera order was inverted
-        viewIndices.x = nativeViewCount - viewIndices.x - 1;
-        viewIndices.y = nativeViewCount - viewIndices.y - 1;
-        viewIndices.z = nativeViewCount - viewIndices.z - 1;
-        return viewIndices;
-    }
-
     float4 frag (v2f i) : SV_Target
     {
         return sampleFromView(nativeViewCount - 0 - 1, i.uv);
@@ -168,11 +103,7 @@ Shader "G3D/AutostereoMultiview"
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
         int viewIndex = 0;
         for (int channel = 0; channel < 3; channel++) {
-            if(isBGR != 0) {
-                viewIndex = viewIndices[2 - channel];
-            } else {
-                viewIndex = viewIndices[channel];
-            }
+            viewIndex = viewIndices[channel];
 
             if (test != 0) {
                 if (viewIndex == 0) {
