@@ -26,12 +26,12 @@ Shader "G3D/Autostereo"
     float4 frag (v2f i) : SV_Target
     {
         // Start der Berechnung von dynamische Daten
-        int  xScreenCoords = int(i.screenPos.x) + viewport_pos_x;     // transform x position from viewport to screen coordinates
+        int  xScreenCoords = int(i.screenPos.x) + v_pos_x;     // transform x position from viewport to screen coordinates
         // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
         // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
-        int  yScreenCoords = int(i.screenPos.y) + viewport_pos_y;     // transform y position from viewport to screen coordinates
+        int  yScreenCoords = int(i.screenPos.y) + v_pos_y;     // transform y position from viewport to screen coordinates
         if (isleft == 0) {
-            yScreenCoords = screen_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
+            yScreenCoords = s_height - yScreenCoords;        // invertieren für rechts geneigte Linse
         }
         int  yw = int(yScreenCoords * zwinkel) / nwinkel;        // Winkelberechnung für die Renderberechnung
 

@@ -88,9 +88,9 @@ Shader "G3D/AutostereoMultiview"
     {
         return sampleFromView(nativeViewCount - 0 - 1, i.uv);
 
-        float yPos = screen_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
+        float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
         
-        float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(viewport_pos_x, viewport_pos_y);
+        float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
         int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
         
         float2 uvCoords = i.uv;

@@ -439,7 +439,7 @@ public class G3DCamera
                 RenderTexture depthTexture = new RenderTexture(
                     (int)width,
                     (int)height,
-                    0,
+                    16,
                     RenderTextureFormat.Depth
                 );
                 depthTexture.Create();
