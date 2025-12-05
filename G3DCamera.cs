@@ -778,6 +778,7 @@ public class G3DCamera
         return new Vector2Int(HorizontalResolution, VerticalResolution);
     }
 
+#if G3D_HDRP
     private AntialiasingMode getCameraAAMode()
     {
         AntialiasingMode aaMode = AntialiasingMode.None;
@@ -796,6 +797,7 @@ public class G3DCamera
         }
         return aaMode;
     }
+#endif
 
     private void initLibrary()
     {
