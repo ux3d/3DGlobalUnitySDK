@@ -77,13 +77,26 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         setAntiAliasingMode(mode);
     }
 
+    public void updateRenderResolution(Vector2Int resolution)
+    {
+        if (renderResolution.x == resolution.x && renderResolution.y == resolution.y)
+        {
+            return;
+        }
+
+        renderResolution = resolution;
+        CreateComputeShaderResultTexture();
+
+        if (antialiasingMode == AntialiasingMode.SMAA)
+        {
+            CreateSMAATextures(renderResolution.x, renderResolution.y);
+        }
+    }
+
     private void CreateComputeShaderResultTexture()
     {
         // release old texture if it exists
-        if (computeShaderResultTexture)
-        {
-            computeShaderResultTexture?.Release();
-        }
+        computeShaderResultTexture?.Release();
         computeShaderResultTextureHandle?.Release();
 
         computeShaderResultTexture = new RenderTexture(
@@ -96,6 +109,11 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         computeShaderResultTexture.enableRandomWrite = true;
         computeShaderResultTexture.Create();
         computeShaderResultTextureHandle = RTHandles.Alloc(computeShaderResultTexture);
+
+        if (blitMaterial != null)
+        {
+            blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);
+        }
     }
 
     private void CreateSMAATextures(int width, int height)
@@ -148,14 +166,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
     private void releaseSMAATextures()
     {
-        if (smaaEdgesTex)
-        {
-            smaaEdgesTex?.Release();
-        }
-        if (smaaBlendTex)
-        {
-            smaaBlendTex?.Release();
-        }
+        smaaEdgesTex?.Release();
+        smaaBlendTex?.Release();
         smaaBlendTexHandle?.Release();
         smaaEdgesTexHandle?.Release();
     }

@@ -274,7 +274,16 @@ public class G3DCamera
     private Material viewGenerationMaterial;
 #if G3D_HDRP
     private G3DHDRPViewGenerationPass viewGenerationPass;
+    private G3DHDRPDepthMapPrePass depthMosaicPass;
+
+    /// <summary>
+    /// Used for view generation mosaic rendering.
+    /// </summary>
+    private RenderTexture mosaicTexture;
+    private RTHandle rtHandleMosaic;
 #endif
+
+    private RenderTexture[] colorRenderTextures = null;
 
     // TODO Handle viewport resizing/ moving
 
@@ -419,32 +428,13 @@ public class G3DCamera
         if (generateViews)
         {
             // add depth mosaic generation pass
-            G3DHDRPDepthMapPrePass depthMosaicPass =
+            depthMosaicPass =
                 customPassVolume.AddPassOfType(typeof(G3DHDRPDepthMapPrePass))
                 as G3DHDRPDepthMapPrePass;
             depthMosaicPass.cameras = cameras;
             depthMosaicPass.internalCameraCount = internalCameraCount;
 
-            depthMosaicPass.indivDepthTextures = new RenderTexture[internalCameraCount];
-            for (int i = 0; i < internalCameraCount; i++)
-            {
-                // TODO update render texture sizes when screen size changes
-
-                float width = Screen.width;
-                float height = Screen.height;
-
-                width = width * (renderResolutionScale / 100f);
-                height = height * (renderResolutionScale / 100f);
-
-                RenderTexture depthTexture = new RenderTexture(
-                    (int)width,
-                    (int)height,
-                    16,
-                    RenderTextureFormat.Depth
-                );
-                depthTexture.Create();
-                depthMosaicPass.indivDepthTextures[i] = depthTexture;
-            }
+            recreateDepthTextures();
 
             // add multiview generation pass
             viewGenerationPass =
@@ -477,14 +467,7 @@ public class G3DCamera
             );
 
             // add autostereo mosaic generation pass
-            RenderTexture mosaicTexture = new RenderTexture(
-                mainCamera.pixelWidth,
-                mainCamera.pixelHeight,
-                0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.sRGB
-            );
-            mosaicTexture.enableRandomWrite = true;
+            recreateMosaicTexture();
 
             if (debugRendering == false)
             {
@@ -494,10 +477,6 @@ public class G3DCamera
                 finalAutostereoGeneration.fullscreenPassMaterial = material;
                 finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
             }
-
-            RTHandle rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
-            material.SetTexture("_colorMosaic", rtHandleMosaic);
-            viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
         }
         else
         {
@@ -506,6 +485,64 @@ public class G3DCamera
             customPass.fullscreenPassMaterial = material;
             customPass.materialPassName = "G3DFullScreen3D";
         }
+    }
+
+    private void recreateDepthTextures()
+    {
+        if (depthMosaicPass.indivDepthTextures != null)
+        {
+            for (int i = 0; i < depthMosaicPass.indivDepthTextures.Length; i++)
+            {
+                if (depthMosaicPass.indivDepthTextures[i] != null)
+                {
+                    depthMosaicPass.indivDepthTextures[i].Release();
+                }
+            }
+        }
+
+        depthMosaicPass.indivDepthTextures = new RenderTexture[internalCameraCount];
+        for (int i = 0; i < internalCameraCount; i++)
+        {
+            float width = Screen.width;
+            float height = Screen.height;
+
+            width = width * (renderResolutionScale / 100f);
+            height = height * (renderResolutionScale / 100f);
+
+            RenderTexture depthTexture = new RenderTexture(
+                (int)width,
+                (int)height,
+                16,
+                RenderTextureFormat.Depth
+            );
+            depthTexture.Create();
+            depthMosaicPass.indivDepthTextures[i] = depthTexture;
+        }
+    }
+
+    private void recreateMosaicTexture()
+    {
+        if (mosaicTexture != null)
+        {
+            mosaicTexture.Release();
+        }
+
+        mosaicTexture = new RenderTexture(
+            mainCamera.pixelWidth,
+            mainCamera.pixelHeight,
+            0,
+            RenderTextureFormat.ARGB32,
+            RenderTextureReadWrite.sRGB
+        );
+        mosaicTexture.enableRandomWrite = true;
+
+        if (rtHandleMosaic != null)
+        {
+            RTHandles.Release(rtHandleMosaic);
+        }
+        rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
+        material.SetTexture("_colorMosaic", rtHandleMosaic);
+        viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
     }
 #endif
 
@@ -1324,20 +1361,40 @@ public class G3DCamera
         for (int i = 0; i < MAX_CAMERAS; i++)
             cameras[i].targetTexture?.Release();
 
-        RenderTexture[] renderTextures = new RenderTexture[internalCameraCount];
+        for (int i = 0; i < colorRenderTextures?.Length; i++)
+        {
+            if (colorRenderTextures[i] != null)
+                colorRenderTextures[i].Release();
+        }
+
+        colorRenderTextures = new RenderTexture[internalCameraCount];
 
         if (generateViews)
         {
-            addRenderTextureToCamera(renderTextures, 0, 0, "_leftCamTex"); // left camera
-            addRenderTextureToCamera(renderTextures, 1, internalCameraCount / 2, "_middleCamTex"); // middle camera
-            addRenderTextureToCamera(renderTextures, 2, internalCameraCount - 1, "_rightCamTex"); // right camera
+            addRenderTextureToCamera(colorRenderTextures, 0, 0, "_leftCamTex"); // left camera
+            addRenderTextureToCamera(
+                colorRenderTextures,
+                1,
+                internalCameraCount / 2,
+                "_middleCamTex"
+            ); // middle camera
+            addRenderTextureToCamera(
+                colorRenderTextures,
+                2,
+                internalCameraCount - 1,
+                "_rightCamTex"
+            ); // right camera
+
+            recreateDepthTextures();
+            recreateMosaicTexture();
+            viewGenerationPass.updateRenderResolution(new Vector2Int(Screen.width, Screen.height));
         }
         else
         {
             //set only those we need
             for (int i = 0; i < internalCameraCount; i++)
             {
-                addRenderTextureToCamera(renderTextures, i, i);
+                addRenderTextureToCamera(colorRenderTextures, i, i);
             }
         }
     }
