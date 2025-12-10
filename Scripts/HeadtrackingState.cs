@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class HeadtrackingState
+public class HeadtrackingHandler
 {
     private float prevEyeSeparation = 0.0f;
 
@@ -26,7 +26,7 @@ public class HeadtrackingState
 
     private HeadTrackingState prevHeadTrackingState = HeadTrackingState.LOST;
 
-    public HeadtrackingState(float focusDistance)
+    public HeadtrackingHandler(float focusDistance)
     {
         lastHeadPosition = new Vector3(0, 0, -focusDistance);
     }

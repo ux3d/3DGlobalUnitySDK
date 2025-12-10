@@ -218,7 +218,7 @@ public class G3DCamera
 
     private Queue<string> headPositionLog;
 
-    private HeadtrackingState headtrackingState;
+    private HeadtrackingHandler headtrackingHandler;
 
     /// <summary>
     /// This calue is calculated based on the calibration file
@@ -354,7 +354,7 @@ public class G3DCamera
         mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
 #endif
 
-        headtrackingState = new HeadtrackingState(focusDistance);
+        headtrackingHandler = new HeadtrackingHandler(focusDistance);
 
         updateCameras();
         updateShaderRenderTextures();
@@ -946,7 +946,7 @@ public class G3DCamera
                 headPosition = getHeadPosition();
             }
 
-            headtrackingState.handleHeadTrackingState(
+            headtrackingHandler.handleHeadTrackingState(
                 ref headPosition,
                 ref targetPosition,
                 ref targetViewSeparation,
@@ -1559,10 +1559,10 @@ public class G3DCamera
 
         try
         {
-            HeadTrackingStatus headTrackingState = libInterface.getHeadTrackingStatus();
-            if (headTrackingState.hasTrackingDevice)
+            HeadTrackingStatus headtrackingHandler = libInterface.getHeadTrackingStatus();
+            if (headtrackingHandler.hasTrackingDevice)
             {
-                if (!headTrackingState.isTrackingActive)
+                if (!headtrackingHandler.isTrackingActive)
                 {
                     libInterface.startHeadTracking();
                 }
