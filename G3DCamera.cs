@@ -218,6 +218,8 @@ public class G3DCamera
 
     private Queue<string> headPositionLog;
 
+    private HeadtrackingState headtrackingState;
+
     /// <summary>
     /// This calue is calculated based on the calibration file
     /// </summary>
@@ -351,6 +353,8 @@ public class G3DCamera
         antialiasingMode = mainCamera.GetUniversalAdditionalCameraData().antialiasing;
         mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
 #endif
+
+        headtrackingState = new HeadtrackingState(focusDistance);
 
         updateCameras();
         updateShaderRenderTextures();
@@ -941,18 +945,15 @@ public class G3DCamera
             {
                 headPosition = getHeadPosition();
             }
-            // head detected
-            if (headPosition.headDetected)
-            {
-                Vector3 headPositionWorld = new Vector3(
-                    (float)headPosition.worldPosX,
-                    (float)headPosition.worldPosY,
-                    (float)headPosition.worldPosZ
-                );
 
-                targetPosition = headPositionWorld;
-                targetViewSeparation = scaledViewSeparation;
-            }
+            headtrackingState.handleHeadTrackingState(
+                ref headPosition,
+                ref targetPosition,
+                ref targetViewSeparation,
+                scaledViewSeparation,
+                scaledFocusDistance,
+                cameraParent.transform.localPosition
+            );
         }
         else if (mode == G3DCameraMode.MULTIVIEW)
         {
