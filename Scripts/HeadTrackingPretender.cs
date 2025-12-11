@@ -11,21 +11,18 @@ public class HeadTrackingPretender : MonoBehaviour
     public G3DCamera g3dCamera;
     public bool headDetected = true;
 
+    public float initialOffsetZ = 0.7f;
+
     // Start is called before the first frame update
     void Start() { }
 
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.T))
-        {
-            headDetected = !headDetected;
-        }
-
         Vector3 headPosition = transform.localPosition;
         headPosition = -headPosition;
         headPosition = headPosition * 1000;
-        headPosition.z += 700;
+        headPosition.z += initialOffsetZ * 1000;
         ((ITNewHeadPositionCallback)g3dCamera).NewHeadPositionCallback(
             headDetected,
             true,
