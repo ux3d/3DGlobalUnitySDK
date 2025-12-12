@@ -225,6 +225,8 @@ public class G3DCamera
     /// </summary>
     private float baseFieldOfView = 16.0f;
 
+    private bool showTestFrame = false;
+
     /// <summary>
     /// Focus distance scaled by scene scale factor.
     /// </summary>
@@ -897,7 +899,7 @@ public class G3DCamera
             material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
 
             // test frame and stripe
-            material?.SetInt(shaderHandles.showTestFrame, 0);
+            material?.SetInt(shaderHandles.showTestFrame, showTestFrame ? 1 : 0);
             material?.SetInt(shaderHandles.showTestStripe, shaderParameters.showTestStripe);
 
             material?.SetInt(shaderHandles.testGapWidth, shaderParameters.testGapWidth);
@@ -1543,6 +1545,11 @@ public class G3DCamera
         {
             Debug.LogError("Failed to shift view to right: " + e.Message);
         }
+    }
+
+    public void toggleTestFrame()
+    {
+        showTestFrame = !showTestFrame;
     }
 
     public void toggleHeadTracking()
