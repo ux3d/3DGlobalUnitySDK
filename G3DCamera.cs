@@ -381,26 +381,6 @@ public class G3DCamera
             }
         }
 
-#if G3D_HDRP
-        // init fullscreen postprocessing for hd render pipeline
-        var customPassVolume = gameObject.AddComponent<CustomPassVolume>();
-        customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
-        customPassVolume.isGlobal = true;
-        // Make the volume invisible in the inspector
-        customPassVolume.hideFlags = HideFlags.HideInInspector | HideFlags.DontSave;
-        customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
-        customPass.fullscreenPassMaterial = material;
-        customPass.materialPassName = "G3DFullScreen3D";
-
-        antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
-#endif
-
-#if G3D_URP
-        customPass = new G3DUrpScriptableRenderPass(material);
-        antialiasingMode = mainCamera.GetUniversalAdditionalCameraData().antialiasing;
-        mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
-#endif
-
         headtrackingHandler = new HeadtrackingHandler(focusDistance);
 
         updateCameras();
