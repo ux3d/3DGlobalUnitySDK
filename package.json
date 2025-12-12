@@ -1,6 +1,6 @@
 {
   "name": "com.3dglobal.core",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "displayName": "3D Global Core",
   "description": "This Module contains all the core functionality required for using a 3D Global Autostereo Display.",
   "unity": "2020.3",
