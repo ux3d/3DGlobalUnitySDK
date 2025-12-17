@@ -14,6 +14,8 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
     public bool excludeLayer = false;
     public int layerToExclude = 3;
 
+    public int cullingMask = -1;
+
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
@@ -23,6 +25,8 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
         {
             return;
         }
+
+        LayerMask depthLayerMask = (LayerMask)cullingMask;
 
         // render depth maps
         for (int i = 0; i < internalCameraCount; i++)
@@ -56,8 +60,8 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
                 bakingCamera,
                 indivDepthTextures[i],
                 ClearFlag.Depth,
-                bakingCamera.cullingMask,
-                overrideRenderState: overrideDepthTest
+                depthLayerMask
+            // overrideRenderState: overrideDepthTest
             );
         }
     }

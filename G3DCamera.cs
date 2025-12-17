@@ -288,6 +288,7 @@ public class G3DCamera
 #endif
 
     private RenderTexture[] colorRenderTextures = null;
+    private int mainCamCullingMask = -1;
 
     // TODO Handle viewport resizing/ moving
 
@@ -305,6 +306,7 @@ public class G3DCamera
         }
 
         mainCamera = GetComponent<Camera>();
+        mainCamCullingMask = mainCamera.cullingMask;
         oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
 
@@ -437,6 +439,7 @@ public class G3DCamera
             depthMosaicPass =
                 customPassVolume.AddPassOfType(typeof(G3DHDRPDepthMapPrePass))
                 as G3DHDRPDepthMapPrePass;
+            depthMosaicPass.cullingMask = mainCamCullingMask;
             depthMosaicPass.cameras = cameras;
             depthMosaicPass.internalCameraCount = internalCameraCount;
 
@@ -797,6 +800,7 @@ public class G3DCamera
                 cameras[i].clearFlags = mainCamera.clearFlags;
                 cameras[i].backgroundColor = mainCamera.backgroundColor;
                 cameras[i].targetDisplay = mainCamera.targetDisplay;
+                cameras[i].cullingMask = mainCamera.cullingMask;
 
 #if G3D_HDRP
                 cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
