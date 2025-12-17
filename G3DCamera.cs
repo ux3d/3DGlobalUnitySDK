@@ -1389,6 +1389,14 @@ public class G3DCamera
             ); // right camera
 
             recreateDepthTextures();
+            for (int i = 0; i < internalCameraCount; i++)
+            {
+                viewGenerationPass.fullscreenPassMaterial.SetTexture(
+                    "_depthMap" + i,
+                    depthMosaicPass.indivDepthTextures[i],
+                    RenderTextureSubElement.Depth
+                );
+            }
             recreateMosaicTexture();
             viewGenerationPass.updateRenderResolution(new Vector2Int(Screen.width, Screen.height));
         }
