@@ -158,6 +158,8 @@ public class G3DCamera
     [Range(0.005f, 1.0f)]
     public float gizmoSize = 0.2f;
 
+    public bool invertViewsInDiorama = false;
+
     #endregion
 
     #region Private variables
@@ -925,6 +927,17 @@ public class G3DCamera
             if (mode == G3DCameraMode.MULTIVIEW)
             {
                 material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+            }
+            else
+            {
+                if (invertViewsInDiorama)
+                {
+                    material.SetInt(Shader.PropertyToID("invertViews"), 1);
+                }
+                else
+                {
+                    material.SetInt(Shader.PropertyToID("invertViews"), 0);
+                }
             }
         }
     }

@@ -17,6 +17,7 @@
         <ui:Label text="Debug settings" name="DebuggingSettings" style="-unity-font-style: bold; margin-top: 13px; margin-right: 2px; margin-bottom: 4px;" />
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
+        <uie:PropertyField name="invertViewsInDiorama" binding-path="invertViewsInDiorama" />
     </ui:Foldout>
     <ui:Label text="See readme for details." style="margin-top: 10px; -unity-font-style: bold;" />
 </ui:UXML>
