@@ -177,6 +177,8 @@ public class G3DCamera
     [Range(0.005f, 1.0f)]
     public float gizmoSize = 0.2f;
 
+    public bool invertViewsInDiorama = false;
+
     #endregion
 
     #region Private variables
@@ -1159,6 +1161,17 @@ public class G3DCamera
             {
                 material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
             }
+            else
+            {
+                if (invertViewsInDiorama)
+                {
+                    material.SetInt(Shader.PropertyToID("invertViews"), 1);
+                }
+                else
+                {
+                    material.SetInt(Shader.PropertyToID("invertViews"), 0);
+                }
+            }
             material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
             material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
         }
@@ -1905,6 +1918,14 @@ public class G3DCamera
         catch (Exception e)
         {
             Debug.LogError("Failed to toggle head tracking status: " + e.Message);
+        }
+    }
+
+    public G3DShaderParameters GetShaderParameters()
+    {
+        lock (shaderLock)
+        {
+            return shaderParameters;
         }
     }
 }

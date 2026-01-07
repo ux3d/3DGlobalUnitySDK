@@ -12,6 +12,8 @@ Shader "G3D/Autostereo"
     Texture2D texture1;
     SamplerState samplertexture1;
 
+    int invertViews;
+
     float4 sampleFromView(int viewIndex, float2 uv) {
         switch (viewIndex) {
         case 0:
@@ -73,8 +75,9 @@ Shader "G3D/Autostereo"
         }
 
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
-        float4 colorLeft = sampleFromView(0, uvCoords);              // Pixeldaten linkes Bild
-        float4 colorRight = sampleFromView(1, uvCoords);             // Pixeldaten rechtes Bild
+        
+        float4 colorLeft = sampleFromView((1 + invertViews) % 2, uvCoords);              // Pixeldaten linkes Bild
+        float4 colorRight = sampleFromView((0 + invertViews) % 2, uvCoords);             // Pixeldaten rechtes Bild
         float cor=0.0, cog=0.0, cob=0.0;
 
         
