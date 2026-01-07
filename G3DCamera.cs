@@ -1597,4 +1597,12 @@ public class G3DCamera
             Debug.LogError("Failed to toggle head tracking status: " + e.Message);
         }
     }
+
+    public G3DShaderParameters GetShaderParameters()
+    {
+        lock (shaderLock)
+        {
+            return shaderParameters;
+        }
+    }
 }
