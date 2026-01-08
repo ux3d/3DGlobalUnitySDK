@@ -452,8 +452,6 @@ public class G3DCamera
                 customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationPass))
                 as G3DHDRPViewGenerationPass;
             viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
-            viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 4);
-            viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 4);
 
             viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
             viewGenerationPass.materialPassName = "G3DViewGeneration";
@@ -1020,8 +1018,29 @@ public class G3DCamera
     #endregion
 
     #region Updates
+    private bool mainCamInactiveLastFrame = false;
+
     void Update()
     {
+        if (mainCamera.enabled == false)
+        {
+            // enable all cameras if main camera is disabled
+            for (int i = 0; i < internalCameraCount; i++)
+            {
+                cameras[i].gameObject.SetActive(false);
+            }
+            mainCamInactiveLastFrame = true;
+            return;
+        }
+
+        if (mainCamInactiveLastFrame)
+        {
+            // recreate shader render textures when main camera was inactive last frame
+            updateShaderRenderTextures();
+        }
+
+        mainCamInactiveLastFrame = false;
+
         // update the shader parameters (only in diorama mode)
         if (mode == G3DCameraMode.DIORAMA)
         {
@@ -1174,6 +1193,12 @@ public class G3DCamera
             }
             material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
             material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
+
+            if (generateViews)
+            {
+                viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 4);
+                viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 4);
+            }
         }
     }
 
@@ -1408,7 +1433,7 @@ public class G3DCamera
             recreateDepthTextures();
             for (int i = 0; i < internalCameraCount; i++)
             {
-                viewGenerationPass.fullscreenPassMaterial.SetTexture(
+                viewGenerationMaterial.SetTexture(
                     "_depthMap" + i,
                     depthMosaicPass.indivDepthTextures[i],
                     RenderTextureSubElement.Depth
