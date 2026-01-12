@@ -86,8 +86,6 @@ Shader "G3D/AutostereoMultiview"
 
     float4 frag (v2f i) : SV_Target
     {
-        return sampleFromView(nativeViewCount - 0 - 1, i.uv);
-
         float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
         
         float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
