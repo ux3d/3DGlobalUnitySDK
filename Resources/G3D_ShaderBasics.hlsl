@@ -40,6 +40,8 @@ int  bspace;         // blackSpace
 int  s_width;        // screen width
 int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
 
+int[16] index_map = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+
 struct v2f
 {
     float2 uv : TEXCOORD0;
@@ -52,6 +54,10 @@ int finalizeViewIndex(int viewIndex)
 {
     int result = viewIndex + viewOffset;
     result = result % nativeViewCount;
+
+    // apply index map
+    result = index_map[result];
+
     return result;
 }
 

@@ -56,6 +56,11 @@ Shader "G3D/AutostereoMultiviewMosaic"
         int viewIndex = 0;
         for (int channel = 0; channel < 3; channel++) {
             viewIndex = viewIndices[channel];
+            
+            // 250 corresponds to a black view
+            if(viewIndex == 250) {
+                continue;
+            }
 
             if (test != 0) {
                 if (viewIndex == 0) {
