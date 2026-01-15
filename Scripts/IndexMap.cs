@@ -20,6 +20,8 @@ public class IndexMap
     private int BLANK_VIEW = 250; // corresponds to a black view
     public Dictionary<string, int[]> maps;
 
+    public int[] currentMap = new int[] { 0 };
+
     public void generateDefaultMaps()
     {
         maps = new Dictionary<string, int[]>();
@@ -813,6 +815,8 @@ public class IndexMap
     }
 
     /// <summary>
+    /// Updates the internal index map stored in "currentMap".
+    /// Also returns the generated index map.
     /// Creates a new index map and adds it to the internal dictionary with the given key.
     /// DANGEROUS: if the key already exists, the existing map will not be overwritten
     /// if the parameter overwrite is false!
@@ -824,7 +828,7 @@ public class IndexMap
     /// <param name="invert">if true, the final index map will be inverted</param>
     /// <param name="overwrite">if true, the internal map in the internal dictionary will be overwritten</param>
     /// <returns></returns>
-    public int[] GetIndexMap(
+    public int[] UpdateIndexMapFromKey(
         string key,
         int availableViews,
         int contentViews,
@@ -836,9 +840,44 @@ public class IndexMap
     {
         if (maps.ContainsKey(key) && !overwrite)
         {
-            return maps[key]; // key found, return the loaded map
+            // TODO: also check for parameters
+            // key found, return the loaded map
+            currentMap = maps[key];
         }
+        else
+        {
+            // key not found -> generate a map and return a pointer to that one
+            int[] mapArray = GetIndexMapTemp(
+                availableViews,
+                contentViews,
+                yoyoStart,
+                invert,
+                invertIndices
+            );
+            maps[key] = mapArray;
+            currentMap = mapArray;
+        }
+        return currentMap;
+    }
 
+    /// <summary>
+    /// Updates the internal index map stored in "currentMap".
+    /// Also returns the generated index map.
+    /// </summary>
+    /// <param name="availableViews">number of available views on the display. has to be larger than 0</param>
+    /// <param name="contentViews">number of views your content has. has to be larger than 0</param>
+    /// <param name="yoyoStart">set the percentage where the inversion will start (e.g. 0, 1,2,3,2,1,0); will be clamped between 0.0 and 1.0</param>
+    /// <param name="invert">if true, the final index map will be inverted</param>
+    /// <param name="overwrite">if true, the internal map in the internal dictionary will be overwritten</param>
+    /// <returns></returns>
+    public int[] UpdateIndexMap(
+        int availableViews,
+        int contentViews,
+        float yoyoStart,
+        bool invert,
+        bool invertIndices = false
+    )
+    {
         int[] mapArray = GetIndexMapTemp(
             availableViews,
             contentViews,
@@ -846,9 +885,8 @@ public class IndexMap
             invert,
             invertIndices
         );
-        maps[key] = mapArray;
-        // key not found -> generate a map and return a pointer to that one
-        return mapArray;
+        currentMap = mapArray;
+        return currentMap;
     }
 
     /// <summary>
@@ -878,5 +916,20 @@ public class IndexMap
             invertIndices
         );
         return mapArray;
+    }
+
+    public float[] convertToFloatArray(in int[] intArray)
+    {
+        float[] floatArray = new float[intArray.Length];
+        for (int i = 0; i < intArray.Length; i++)
+        {
+            floatArray[i] = intArray[i];
+        }
+        return floatArray;
+    }
+
+    public float[] currentMapAsFloatArray()
+    {
+        return convertToFloatArray(currentMap);
     }
 }
