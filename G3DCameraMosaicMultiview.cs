@@ -14,8 +14,6 @@ using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.Rendering.Universal;
 #endif
 
-// TODO handle index maps
-
 /// <summary>
 /// Replaces the image the camera this script is attached to sees with the rendertexture.
 /// The texture should contain a mosaic image with several views.
