@@ -322,6 +322,14 @@ public class G3DCamera
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
         headPositionLog = new Queue<string>(10000);
+
+        indexMap.UpdateIndexMap(
+            internalCameraCount,
+            internalCameraCount,
+            indexMapYoyoStart,
+            invertIndexMap,
+            invertIndexMapIndices
+        );
     }
 
     void OnApplicationQuit()
@@ -895,10 +903,7 @@ public class G3DCamera
             if (mode == G3DCameraMode.MULTIVIEW)
             {
                 material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
-                material.SetFloatArray(
-                    Shader.PropertyToID("index_map"),
-                    indexMap.currentMapAsFloatArray()
-                );
+                material.SetFloatArray(Shader.PropertyToID("index_map"), getPaddedIndexMapArray());
 
                 material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
             }
@@ -914,6 +919,24 @@ public class G3DCamera
                 }
             }
         }
+    }
+
+    private float[] getPaddedIndexMapArray()
+    {
+        float[] paddedArray = new float[256];
+        float[] indexMapArray = indexMap.currentMapAsFloatArray();
+        for (int i = 0; i < paddedArray.Length; i++)
+        {
+            if (i < indexMapArray.Length)
+            {
+                paddedArray[i] = indexMapArray[i];
+            }
+            else
+            {
+                paddedArray[i] = 0.0f;
+            }
+        }
+        return paddedArray;
     }
 
     void updateCameras()
