@@ -103,11 +103,16 @@ public class G3DCamera
 
     public bool invertViewsInDiorama = false;
 
+    [Min(0.0f)]
+    public float indexMapYoyoStart = 0.0f;
+    public bool invertIndexMap = false;
+    public bool invertIndexMapIndices = false;
+
     #endregion
 
     #region Private variables
-
     private PreviousValues previousValues;
+    private IndexMap indexMap = IndexMap.Instance;
     private LibInterface libInterface;
 
     private string calibrationPath;
@@ -208,6 +213,8 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
+        previousValues.init();
+
         calibrationPath = System.Environment.GetFolderPath(
             Environment.SpecialFolder.CommonDocuments
         );
@@ -325,9 +332,7 @@ public class G3DCamera
     /// <summary>
     /// this variable is onle here to track changes made to the public calibration file from the editor.
     /// </summary>
-    private TextAsset previousCalibrationFile = null;
-    private G3DCameraMode previousMode = G3DCameraMode.DIORAMA;
-    private float previousSceneScaleFactor = 1.0f;
+
 
     /// <summary>
     /// OnValidate gets called every time the script is changed in the editor.
@@ -366,6 +371,25 @@ public class G3DCamera
                 internalCameraCount = 2;
                 viewSeparation = 0.065f;
             }
+        }
+
+        if (
+            previousValues.indexMapYoyoStart != indexMapYoyoStart
+            || previousValues.invertIndexMap != invertIndexMap
+            || previousValues.invertIndexMapIndices != invertIndexMapIndices
+        )
+        {
+            previousValues.indexMapYoyoStart = indexMapYoyoStart;
+            previousValues.invertIndexMap = invertIndexMap;
+            previousValues.invertIndexMapIndices = invertIndexMapIndices;
+
+            indexMap.UpdateIndexMap(
+                internalCameraCount,
+                internalCameraCount,
+                indexMapYoyoStart,
+                invertIndexMap,
+                invertIndexMapIndices
+            );
         }
     }
 
@@ -870,6 +894,12 @@ public class G3DCamera
 
             if (mode == G3DCameraMode.MULTIVIEW)
             {
+                material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+                material.SetFloatArray(
+                    Shader.PropertyToID("index_map"),
+                    indexMap.currentMapAsFloatArray()
+                );
+
                 material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
             }
             else
