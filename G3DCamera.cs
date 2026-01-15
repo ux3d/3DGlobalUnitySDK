@@ -103,9 +103,16 @@ public class G3DCamera
 
     public bool invertViewsInDiorama = false;
 
+    [Tooltip(
+        "Where the views start to yoyo in the index map. Index map contains the order of views."
+    )]
     [Min(0.0f)]
     public float indexMapYoyoStart = 0.0f;
+
+    [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
     public bool invertIndexMap = false;
+
+    [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
     public bool invertIndexMapIndices = false;
 
     #endregion
