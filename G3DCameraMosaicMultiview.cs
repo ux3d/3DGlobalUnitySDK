@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
-using UnityEditor.EditorTools;
 using UnityEngine.Video;
 
 #endif
@@ -15,6 +13,8 @@ using UnityEngine.Rendering.HighDefinition;
 #if G3D_URP
 using UnityEngine.Rendering.Universal;
 #endif
+
+// TODO handle index maps
 
 /// <summary>
 /// Replaces the image the camera this script is attached to sees with the rendertexture.
