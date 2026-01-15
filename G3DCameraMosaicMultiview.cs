@@ -129,7 +129,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         customPass = new G3DUrpScriptableRenderPass(material);
 #endif
 
-        // Do his last to ensure custom passes are already set up
+        // Do this last to ensure custom passes are already set up
         CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
             calibrationFile.text
         );
