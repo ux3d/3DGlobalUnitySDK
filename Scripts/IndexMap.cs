@@ -932,4 +932,22 @@ public class IndexMap
     {
         return convertToFloatArray(currentMap);
     }
+
+    public float[] getPaddedIndexMapArray()
+    {
+        float[] paddedArray = new float[256];
+        float[] indexMapArray = currentMapAsFloatArray();
+        for (int i = 0; i < paddedArray.Length; i++)
+        {
+            if (i < indexMapArray.Length)
+            {
+                paddedArray[i] = indexMapArray[i];
+            }
+            else
+            {
+                paddedArray[i] = 0.0f;
+            }
+        }
+        return paddedArray;
+    }
 }

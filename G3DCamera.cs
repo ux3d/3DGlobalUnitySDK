@@ -106,7 +106,7 @@ public class G3DCamera
     [Tooltip(
         "Where the views start to yoyo in the index map. Index map contains the order of views."
     )]
-    [Min(0.0f)]
+    [Range(0.0f, 1.0f)]
     public float indexMapYoyoStart = 0.0f;
 
     [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
@@ -910,7 +910,10 @@ public class G3DCamera
             if (mode == G3DCameraMode.MULTIVIEW)
             {
                 material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
-                material.SetFloatArray(Shader.PropertyToID("index_map"), getPaddedIndexMapArray());
+                material.SetFloatArray(
+                    Shader.PropertyToID("index_map"),
+                    indexMap.getPaddedIndexMapArray()
+                );
 
                 material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
             }
@@ -926,24 +929,6 @@ public class G3DCamera
                 }
             }
         }
-    }
-
-    private float[] getPaddedIndexMapArray()
-    {
-        float[] paddedArray = new float[256];
-        float[] indexMapArray = indexMap.currentMapAsFloatArray();
-        for (int i = 0; i < paddedArray.Length; i++)
-        {
-            if (i < indexMapArray.Length)
-            {
-                paddedArray[i] = indexMapArray[i];
-            }
-            else
-            {
-                paddedArray[i] = 0.0f;
-            }
-        }
-        return paddedArray;
     }
 
     void updateCameras()

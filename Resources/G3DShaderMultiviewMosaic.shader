@@ -74,8 +74,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
             }
         }
 
-        return float4(1.0, 0.4, 0.2, 1.0);
-
         return color;
     }
     ENDHLSL
