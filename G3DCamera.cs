@@ -615,6 +615,8 @@ public class G3DCamera
             return 2;
         }
 
+        // TODO do not recreate the calibration provider every time
+        // This gets called every frame in UpdateCameraCountBasedOnMode
         CalibrationProvider calibration = CalibrationProvider.getFromString(calibrationFile.text);
         return getCameraCountFromCalibrationFile(calibration);
     }
