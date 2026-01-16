@@ -133,7 +133,7 @@ public class G3DCamera
     /// </summary>
     private float focusDistance = 0.7f;
 
-    private const int MAX_CAMERAS = 19; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
+    private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
     private int internalCameraCount = 2;
     private int oldRenderResolutionScale = 100;
 
@@ -331,7 +331,7 @@ public class G3DCamera
         headPositionLog = new Queue<string>(10000);
 
         indexMap.UpdateIndexMap(
-            internalCameraCount,
+            getCameraCountFromCalibrationFile(),
             internalCameraCount,
             indexMapYoyoStart,
             invertIndexMap,
@@ -378,14 +378,14 @@ public class G3DCamera
                 CalibrationProvider calibration = CalibrationProvider.getFromString(
                     calibrationFile.text
                 );
-                internalCameraCount = getCameraCountFromCalibrationFile(calibration);
                 loadMultiviewViewSeparationFromCalibration(calibration);
             }
             else
             {
-                internalCameraCount = 2;
                 viewSeparation = 0.065f;
             }
+
+            updateCameraCountBasedOnMode();
         }
 
         if (
@@ -399,7 +399,7 @@ public class G3DCamera
             previousValues.invertIndexMapIndices = invertIndexMapIndices;
 
             indexMap.UpdateIndexMap(
-                internalCameraCount,
+                getCameraCountFromCalibrationFile(),
                 internalCameraCount,
                 indexMapYoyoStart,
                 invertIndexMap,
@@ -531,13 +531,13 @@ public class G3DCamera
         if (mode == G3DCameraMode.MULTIVIEW)
         {
             loadMultiviewViewSeparationFromCalibration(calibration);
-            internalCameraCount = NativeViewcount;
         }
         else
         {
             viewSeparation = 0.065f;
-            internalCameraCount = 2;
         }
+
+        updateCameraCountBasedOnMode();
 
         // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
         if (Application.isPlaying)

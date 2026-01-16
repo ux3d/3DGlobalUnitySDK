@@ -73,12 +73,6 @@ Shader "G3D/AutostereoMultiview"
             return texture14.Sample(samplertexture14, uv);
         case 15:
             return texture15.Sample(samplertexture15, uv);
-        case 16:
-            return texture0.Sample(samplertexture0, uv);
-        case 17:
-            return texture1.Sample(samplertexture1, uv);
-        case 18:
-            return texture2.Sample(samplertexture2, uv);
         }
 
         return float4(0, 0, 0, 0);
