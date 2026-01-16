@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if UNITY_EDITOR
-using UnityEditor.EditorTools;
 using UnityEngine.Video;
 
 #endif
@@ -34,6 +32,21 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     [Min(1)]
     public int mosaicColumnCount = 3;
+
+    [Space(10)]
+    [Tooltip(
+        "Where the views start to yoyo in the index map. Index map contains the order of views."
+    )]
+    [Range(0.0f, 1.0f)]
+    public float indexMapYoyoStart = 0.0f;
+
+    [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+    public bool invertIndexMap = false;
+
+    [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+    public bool invertIndexMapIndices = false;
+
+    [Space(10)]
     #endregion
 
     /// <summary>
@@ -51,7 +64,8 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
 
     #region Private variables
-
+    private PreviousValues previousValues = new PreviousValues();
+    private IndexMap indexMap = IndexMap.Instance;
     private Camera mainCamera;
     private Material material;
 #if G3D_HDRP
@@ -115,12 +129,22 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         customPass = new G3DUrpScriptableRenderPass(material);
 #endif
 
-        // Dot his last to ensure custom passes are already set up
+        // Do this last to ensure custom passes are already set up
         CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
             calibrationFile.text
         );
         shaderParameters = defaultCalibrationProvider.getShaderParameters();
         reinitializeShader();
+
+        previousValues.init();
+
+        indexMap.UpdateIndexMap(
+            shaderParameters.nativeViewCount,
+            mosaicColumnCount * mosaicRowCount,
+            indexMapYoyoStart,
+            invertIndexMap,
+            invertIndexMapIndices
+        );
     }
 
     public void reinitializeShader()
@@ -160,7 +184,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     #endregion
 
     #region Updates
-    private TextAsset previousCalibrationFile = null;
 
     /// <summary>
     /// OnValidate gets called every time the script is changed in the editor.
@@ -174,10 +197,29 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             return;
         }
 
-        if (calibrationFile != previousCalibrationFile)
+        if (calibrationFile != previousValues.calibrationFile)
         {
-            previousCalibrationFile = calibrationFile;
+            previousValues.calibrationFile = calibrationFile;
             updateShaderFromCalibrationFile();
+        }
+
+        if (
+            previousValues.indexMapYoyoStart != indexMapYoyoStart
+            || previousValues.invertIndexMap != invertIndexMap
+            || previousValues.invertIndexMapIndices != invertIndexMapIndices
+        )
+        {
+            previousValues.indexMapYoyoStart = indexMapYoyoStart;
+            previousValues.invertIndexMap = invertIndexMap;
+            previousValues.invertIndexMapIndices = invertIndexMapIndices;
+
+            indexMap.UpdateIndexMap(
+                shaderParameters.nativeViewCount,
+                mosaicColumnCount * mosaicRowCount,
+                indexMapYoyoStart,
+                invertIndexMap,
+                invertIndexMapIndices
+            );
         }
     }
 
@@ -267,6 +309,9 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumnCount);
 
         material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+
+        material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+        material.SetFloatArray(Shader.PropertyToID("index_map"), indexMap.getPaddedIndexMapArray());
     }
 
     private bool windowResized()

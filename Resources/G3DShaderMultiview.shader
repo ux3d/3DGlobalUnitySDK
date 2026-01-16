@@ -73,12 +73,6 @@ Shader "G3D/AutostereoMultiview"
             return texture14.Sample(samplertexture14, uv);
         case 15:
             return texture15.Sample(samplertexture15, uv);
-        case 16:
-            return texture0.Sample(samplertexture0, uv);
-        case 17:
-            return texture1.Sample(samplertexture1, uv);
-        case 18:
-            return texture2.Sample(samplertexture2, uv);
         }
 
         return float4(0, 0, 0, 0);
@@ -99,27 +93,24 @@ Shader "G3D/AutostereoMultiview"
 
         //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
-        int viewIndex = 0;
-        for (int channel = 0; channel < 3; channel++) {
-            viewIndex = viewIndices[channel];
-
-            if (test != 0) {
-                if (viewIndex == 0) {
-                    color[channel] = 1.0;
-                }
-                continue;
+        if(test != 0) {
+            color.x = 1.0;
+        } else {
+            // 250 corresponds to a black view
+            if(viewIndices.x != 250) {
+                float4 tmpColorX = sampleFromView(viewIndices.x, uvCoords);
+                color.x = tmpColorX.x;
             }
-
-            float4 tmpColor = sampleFromView(viewIndex, uvCoords);
-
-            if(channel == 0) {
-                color.x = tmpColor.x;
-            } else if(channel == 1) {
-                color.y = tmpColor.y;
-            } else if(channel == 2) {
-                color.z = tmpColor.z;
+            if(viewIndices.y != 250) {
+                float4 tmpColorY = sampleFromView(viewIndices.y, uvCoords);
+                color.y = tmpColorY.y;
+            }
+            if(viewIndices.z != 250) {
+                float4 tmpColorZ = sampleFromView(viewIndices.z, uvCoords);
+                color.z = tmpColorZ.z;
             }
         }
+
         
         return color;
     }

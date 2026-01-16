@@ -18,6 +18,10 @@
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
         <uie:PropertyField name="invertViewsInDiorama" binding-path="invertViewsInDiorama" />
+        <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
+        <uie:PropertyField name="indexMapYoyoStart" binding-path="indexMapYoyoStart" />
+        <uie:PropertyField name="invertIndexMap" binding-path="invertIndexMap" />
+        <uie:PropertyField name="invertIndexMapIndices" binding-path="invertIndexMapIndices" />
     </ui:Foldout>
     <ui:Label text="See readme for details." style="margin-top: 10px; -unity-font-style: bold;" />
 </ui:UXML>

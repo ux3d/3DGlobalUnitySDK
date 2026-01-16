@@ -17,63 +17,6 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 #endif
 
-public struct HeadPosition
-{
-    public bool headDetected;
-    public bool imagePosIsValid;
-    public int imagePosX;
-    public int imagePosY;
-    public double worldPosX;
-    public double worldPosY;
-    public double worldPosZ;
-}
-
-public enum G3DCameraMode
-{
-    DIORAMA,
-    MULTIVIEW
-}
-
-/// <summary>
-/// This struct is used to store the shader parameter handles for the individual shader parameters.
-/// Its members should always be updated when the G3DShaderParameters struct changes.
-/// </summary>
-struct ShaderHandles
-{
-    // Viewport properties
-    public int leftViewportPosition; //< The left   position of the viewport in screen coordinates
-    public int bottomViewportPosition; //< The bottom position of the viewport in screen coordinates
-
-    // Monitor properties
-    public int screenWidth; //< The screen width in pixels
-    public int screenHeight; //< The screen height in pixels
-
-    public int nativeViewCount;
-    public int angleRatioNumerator;
-    public int angleRatioDenominator;
-    public int leftLensOrientation;
-    public int BGRPixelLayout;
-
-    public int mstart;
-    public int showTestFrame;
-    public int showTestStripe;
-    public int testGapWidth;
-    public int track;
-    public int hqViewCount;
-    public int hviews1;
-    public int hviews2;
-    public int blur;
-    public int blackBorder;
-    public int blackSpace;
-    public int bls;
-    public int ble;
-    public int brs;
-    public int bre;
-
-    public int zCorrectionValue;
-    public int zCompensationValue;
-}
-
 /// <summary>
 /// IMPORTANT: This script must not be attached to a camera already using a G3D camera script.
 /// </summary>
@@ -160,10 +103,23 @@ public class G3DCamera
 
     public bool invertViewsInDiorama = false;
 
+    [Tooltip(
+        "Where the views start to yoyo in the index map. Index map contains the order of views."
+    )]
+    [Range(0.0f, 1.0f)]
+    public float indexMapYoyoStart = 0.0f;
+
+    [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+    public bool invertIndexMap = false;
+
+    [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+    public bool invertIndexMapIndices = false;
+
     #endregion
 
     #region Private variables
-
+    private PreviousValues previousValues;
+    private IndexMap indexMap = IndexMap.Instance;
     private LibInterface libInterface;
 
     private string calibrationPath;
@@ -177,7 +133,7 @@ public class G3DCamera
     /// </summary>
     private float focusDistance = 0.7f;
 
-    private const int MAX_CAMERAS = 19; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
+    private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
     private int internalCameraCount = 2;
     private int oldRenderResolutionScale = 100;
 
@@ -264,6 +220,8 @@ public class G3DCamera
     #region Initialization
     void Start()
     {
+        previousValues.init();
+
         calibrationPath = System.Environment.GetFolderPath(
             Environment.SpecialFolder.CommonDocuments
         );
@@ -371,6 +329,14 @@ public class G3DCamera
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
         headPositionLog = new Queue<string>(10000);
+
+        indexMap.UpdateIndexMap(
+            getCameraCountFromCalibrationFile(),
+            internalCameraCount,
+            indexMapYoyoStart,
+            invertIndexMap,
+            invertIndexMapIndices
+        );
     }
 
     void OnApplicationQuit()
@@ -381,9 +347,7 @@ public class G3DCamera
     /// <summary>
     /// this variable is onle here to track changes made to the public calibration file from the editor.
     /// </summary>
-    private TextAsset previousCalibrationFile = null;
-    private G3DCameraMode previousMode = G3DCameraMode.DIORAMA;
-    private float previousSceneScaleFactor = 1.0f;
+
 
     /// <summary>
     /// OnValidate gets called every time the script is changed in the editor.
@@ -398,30 +362,49 @@ public class G3DCamera
         }
 
         if (
-            calibrationFile != previousCalibrationFile
-            || previousSceneScaleFactor != sceneScaleFactor
+            calibrationFile != previousValues.calibrationFile
+            || previousValues.sceneScaleFactor != sceneScaleFactor
         )
         {
-            previousCalibrationFile = calibrationFile;
+            previousValues.calibrationFile = calibrationFile;
             setupCameras(true);
         }
 
-        if (previousMode != mode)
+        if (previousValues.mode != mode)
         {
-            previousMode = mode;
+            previousValues.mode = mode;
             if (mode == G3DCameraMode.MULTIVIEW)
             {
                 CalibrationProvider calibration = CalibrationProvider.getFromString(
                     calibrationFile.text
                 );
-                internalCameraCount = getCameraCountFromCalibrationFile(calibration);
                 loadMultiviewViewSeparationFromCalibration(calibration);
             }
             else
             {
-                internalCameraCount = 2;
                 viewSeparation = 0.065f;
             }
+
+            updateCameraCountBasedOnMode();
+        }
+
+        if (
+            previousValues.indexMapYoyoStart != indexMapYoyoStart
+            || previousValues.invertIndexMap != invertIndexMap
+            || previousValues.invertIndexMapIndices != invertIndexMapIndices
+        )
+        {
+            previousValues.indexMapYoyoStart = indexMapYoyoStart;
+            previousValues.invertIndexMap = invertIndexMap;
+            previousValues.invertIndexMapIndices = invertIndexMapIndices;
+
+            indexMap.UpdateIndexMap(
+                getCameraCountFromCalibrationFile(),
+                internalCameraCount,
+                indexMapYoyoStart,
+                invertIndexMap,
+                invertIndexMapIndices
+            );
         }
     }
 
@@ -548,13 +531,13 @@ public class G3DCamera
         if (mode == G3DCameraMode.MULTIVIEW)
         {
             loadMultiviewViewSeparationFromCalibration(calibration);
-            internalCameraCount = NativeViewcount;
         }
         else
         {
             viewSeparation = 0.065f;
-            internalCameraCount = 2;
         }
+
+        updateCameraCountBasedOnMode();
 
         // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
         if (Application.isPlaying)
@@ -632,6 +615,8 @@ public class G3DCamera
             return 2;
         }
 
+        // TODO do not recreate the calibration provider every time
+        // This gets called every frame in UpdateCameraCountBasedOnMode
         CalibrationProvider calibration = CalibrationProvider.getFromString(calibrationFile.text);
         return getCameraCountFromCalibrationFile(calibration);
     }
@@ -926,6 +911,12 @@ public class G3DCamera
 
             if (mode == G3DCameraMode.MULTIVIEW)
             {
+                material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+                material.SetFloatArray(
+                    Shader.PropertyToID("index_map"),
+                    indexMap.getPaddedIndexMapArray()
+                );
+
                 material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
             }
             else
