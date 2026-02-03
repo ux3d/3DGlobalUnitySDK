@@ -1,0 +1,20 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <uie:PropertyField name="calibrationFile" binding-path="calibrationFile" />
+    <uie:PropertyField name="mosaicRowCount" binding-path="mosaicRowCount" />
+    <uie:PropertyField name="mosaicColumnCount" binding-path="mosaicColumnCount" />
+    <uie:PropertyField name="dimensionsFromFilename" binding-path="dimensionsFromFilename" />
+    <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
+    <uie:PropertyField name="mosaicMode" binding-path="mosaicMode" />
+    <uie:PropertyField name="renderTexture" binding-path="renderTexture" />
+    <uie:PropertyField name="image" binding-path="image" />
+    <uie:PropertyField name="videoClip" binding-path="videoClip" />
+    <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
+    <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings" style="margin-top: 10px;">
+        <uie:PropertyField name="mirrorViews" binding-path="mirrorViews" />
+        <uie:PropertyField name="viewOffset" binding-path="viewOffset" />
+        <uie:PropertyField name="indexMapYoyoStart" binding-path="indexMapYoyoStart" />
+        <uie:PropertyField name="invertIndexMap" binding-path="invertIndexMap" />
+        <uie:PropertyField name="invertIndexMapIndices" binding-path="invertIndexMapIndices" />
+    </ui:Foldout>
+    <ui:Label text="See readme for details." style="margin-top: 10px; -unity-font-style: bold;" />
+</ui:UXML>

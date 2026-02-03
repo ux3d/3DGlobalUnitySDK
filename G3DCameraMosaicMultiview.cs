@@ -14,6 +14,13 @@ using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.Rendering.Universal;
 #endif
 
+public enum MosaicMode
+{
+    Image,
+    Video,
+    RenderTexture
+}
+
 /// <summary>
 /// Replaces the image the camera this script is attached to sees with the rendertexture.
 /// The texture should contain a mosaic image with several views.
@@ -32,6 +39,11 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     [Min(1)]
     public int mosaicColumnCount = 3;
+
+    [Tooltip(
+        "If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3 ONLY WORKS FOR IMAGE AND VIDEO MODES"
+    )]
+    public bool dimensionsFromFilename = false;
 
     [Space(10)]
     [Tooltip(
@@ -54,7 +66,12 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     /// </summary>
     [Tooltip("Shifts the individual views to the left or right by the specified number of views.")]
     public int viewOffset = 0;
-    public RenderTexture mosaicTexture;
+
+    public MosaicMode mosaicMode = MosaicMode.RenderTexture;
+    public RenderTexture renderTexture;
+    public Texture2D image;
+
+    public VideoClip videoClip;
 
     #region 3D Effect settings
     [Header("3D Effect settings")]
@@ -80,6 +97,8 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     private Vector2Int cachedWindowPosition;
     private Vector2Int cachedWindowSize;
+
+    public VideoPlayer internalVideoPlayer { get; private set; }
 
     #endregion
 
@@ -134,6 +153,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             calibrationFile.text
         );
         shaderParameters = defaultCalibrationProvider.getShaderParameters();
+        setupTextureMode();
         reinitializeShader();
 
         previousValues.init();
@@ -145,12 +165,119 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             invertIndexMap,
             invertIndexMapIndices
         );
+
+        if (dimensionsFromFilename)
+        {
+            extractDimensionsFromFile();
+        }
+    }
+
+    private void extractDimensionsFromFile()
+    {
+        string name = "";
+        switch (mosaicMode)
+        {
+            case MosaicMode.Image:
+                if (image != null)
+                {
+                    name = image.name;
+                }
+                break;
+            case MosaicMode.Video:
+                if (videoClip != null)
+                {
+                    name = videoClip.name;
+                }
+                break;
+            case MosaicMode.RenderTexture:
+                // cannot extract dimensions from render texture
+                return;
+        }
+        dimensionsFromString(name, out mosaicRowCount, out mosaicColumnCount);
+    }
+
+    private void dimensionsFromString(string name, out int rows, out int columns)
+    {
+        rows = 1;
+        columns = 1;
+
+        string[] parts = name.Split('.');
+        if (parts.Length < 3 || parts[1] != "mosaic")
+        {
+            Debug.LogError("Invalid mosaic video file name format: " + name);
+            return;
+        }
+
+        string rowsStr = parts[2];
+        string[] tmp = rowsStr.Split('x');
+        if (tmp.Length != 2)
+        {
+            Debug.LogError("Invalid mosaic video rows format: " + rowsStr);
+            return;
+        }
+        string columnsStr = tmp[0]; // e.g. 3x3 -> 3
+        string rowsStrOnly = tmp[1]; // e.g. 3x3 -> 3
+        if (!int.TryParse(columnsStr, out columns) || !int.TryParse(rowsStrOnly, out rows))
+        {
+            Debug.LogError("Could not parse mosaic video rows and columns from: " + rowsStr);
+            return;
+        }
+    }
+
+    private void setupTextureMode()
+    {
+        switch (mosaicMode)
+        {
+            case MosaicMode.RenderTexture:
+                // nothing to do here, render texture is already assigned
+                break;
+            case MosaicMode.Video:
+                setupVideoPlayer();
+                break;
+            case MosaicMode.Image:
+                // nothing to do here, image is already assigned
+                break;
+        }
+    }
+
+    private void setupVideoPlayer()
+    {
+        if (internalVideoPlayer == null)
+        {
+            internalVideoPlayer = gameObject.AddComponent<VideoPlayer>();
+            internalVideoPlayer.playOnAwake = true;
+            internalVideoPlayer.isLooping = true;
+        }
+        internalVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
+        if (renderTexture == null)
+        {
+            renderTexture = new RenderTexture(1920, 1080, 0);
+        }
+        internalVideoPlayer.targetTexture = renderTexture;
+        internalVideoPlayer.clip = videoClip;
+        internalVideoPlayer.Play();
+    }
+
+    private void setCorrectMosaicTexture()
+    {
+        switch (mosaicMode)
+        {
+            case MosaicMode.RenderTexture:
+                material.SetTexture("mosaictexture", renderTexture, RenderTextureSubElement.Color);
+                break;
+            case MosaicMode.Video:
+                material.SetTexture("mosaictexture", renderTexture, RenderTextureSubElement.Color);
+                break;
+            case MosaicMode.Image:
+                material.SetTexture("mosaictexture", image);
+                break;
+        }
     }
 
     public void reinitializeShader()
     {
         material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
-        material.SetTexture("mosaictexture", mosaicTexture, RenderTextureSubElement.Color);
+        setCorrectMosaicTexture();
 
         updateScreenViewportProperties();
         updateShaderParameters();
