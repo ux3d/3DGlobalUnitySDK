@@ -40,6 +40,8 @@ int  bspace;         // blackSpace
 int  s_width;        // screen width
 int  blur;           // je größer der Wert umso mehr wird verwischt 0-1000 sinnvoll
 
+int use_hq_views; // 1: use hq views, 0: use native views
+
 float index_map[256];
 int indexMapLength;
 
@@ -65,8 +67,22 @@ int finalizeViewIndex(int viewIndex)
 
 int3 getSubPixelViewIndices(float2 screenPos)
 {
+    int vc = nativeViewCount;
+    int stride = 1;
+    float angle = float(zwinkel) / float(nwinkel);
+    if(use_hq_views != 0) {
+        vc = nativeViewCount * nwinkel;
+        stride = nwinkel;
+        angle = float(zwinkel);
+    }
+
     int direction = isleft == 1 ? 1 : -1;
-    uint view = uint(screenPos.x * 3.f + ((screenPos.y * (float(zwinkel) / float(nwinkel))) % float(nativeViewCount) * direction) + float(nativeViewCount)) + mstart;
+
+    // float angle = float(angleCounter) / float(angleDenominator);
+    // int startIndex = int(float(screenPos.y) * angle + 0.5) * (direction * -1) + screenPos.y * vc + screenPos.x * 3 * stride;
+    // int startIndex = int(float(screenPos.y) * angle + 0.5) * (direction * -1) + screenPos.y * nativeViewCount + screenPos.x * 3;
+
+    uint view = uint(screenPos.x * 3.f + ((screenPos.y * angle) % float(vc) * direction) + float(vc)) + mstart;
     int3 viewIndices = int3(view, view, view);
 
     viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));
