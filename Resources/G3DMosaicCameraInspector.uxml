@@ -4,6 +4,8 @@
     <uie:PropertyField name="mosaicColumnCount" binding-path="mosaicColumnCount" />
     <uie:PropertyField name="dimensionsFromFilename" binding-path="dimensionsFromFilename" />
     <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
+    <uie:PropertyField name="useHQViews" binding-path="useHQViews" />
+    <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
     <uie:PropertyField name="mosaicMode" binding-path="mosaicMode" />
     <uie:PropertyField name="renderTexture" binding-path="renderTexture" />
     <uie:PropertyField name="image" binding-path="image" />

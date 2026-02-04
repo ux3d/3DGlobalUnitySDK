@@ -1,8 +1,9 @@
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
-#if UNITY_EDITOR
 using UnityEngine.Video;
+#if UNITY_EDITOR
+using UnityEditor.EditorTools;
 
 #endif
 
@@ -41,9 +42,14 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     public int mosaicColumnCount = 3;
 
     [Tooltip(
-        "If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3 ONLY WORKS FOR IMAGE AND VIDEO MODES"
+        "If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3\nONLY WORKS FOR IMAGE AND VIDEO MODES"
     )]
     public bool dimensionsFromFilename = false;
+
+    [Tooltip(
+        "Does not check if the amount of HQ views specified in the calibration file fits the provided mosaic."
+    )]
+    public bool useHQViews = false;
 
     [Space(10)]
     [Tooltip(
@@ -158,18 +164,29 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         previousValues.init();
 
+        if (dimensionsFromFilename)
+        {
+            extractDimensionsFromFile();
+        }
+
+        updateIndexMap();
+    }
+
+    private void updateIndexMap()
+    {
+        int availableViews = shaderParameters.nativeViewCount;
+        if (useHQViews)
+        {
+            availableViews = shaderParameters.hqViewCount;
+        }
+
         indexMap.UpdateIndexMap(
-            shaderParameters.nativeViewCount,
+            availableViews,
             mosaicColumnCount * mosaicRowCount,
             indexMapYoyoStart,
             invertIndexMap,
             invertIndexMapIndices
         );
-
-        if (dimensionsFromFilename)
-        {
-            extractDimensionsFromFile();
-        }
     }
 
     private void extractDimensionsFromFile()
@@ -409,7 +426,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             shaderParameters.bottomViewportPosition
         );
         material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
-        material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
         material?.SetInt(shaderHandles.angleRatioNumerator, shaderParameters.angleRatioNumerator);
         material?.SetInt(
             shaderHandles.angleRatioDenominator,
@@ -439,6 +455,16 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
         material.SetFloatArray(Shader.PropertyToID("index_map"), indexMap.getPaddedIndexMapArray());
+
+        material?.SetInt(Shader.PropertyToID("use_hq_views"), useHQViews ? 1 : 0);
+        if (useHQViews)
+        {
+            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.hqViewCount);
+        }
+        else
+        {
+            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
+        }
     }
 
     private bool windowResized()
