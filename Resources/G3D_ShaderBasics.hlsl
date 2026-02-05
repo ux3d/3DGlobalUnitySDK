@@ -56,7 +56,17 @@ int viewOffset = 0;
 int finalizeViewIndex(int viewIndex)
 {
     int result = viewIndex + viewOffset;
-    result = result % nativeViewCount;
+
+    if(use_hq_views == 1)
+    {
+        // for hq views we need to wrap around the number of hq views
+        result = result % hqview;
+    }
+    else
+    {
+        // for native views we need to wrap around the number of native views
+        result = result % nativeViewCount;
+    }
 
     // apply index map
     result = clamp(result, 0, indexMapLength - 1);
@@ -68,21 +78,10 @@ int finalizeViewIndex(int viewIndex)
 int3 getSubPixelViewIndices(float2 screenPos)
 {
     int vc = nativeViewCount;
-    int stride = 1;
     float angle = float(zwinkel) / float(nwinkel);
-    if(use_hq_views != 0) {
-        vc = nativeViewCount * nwinkel;
-        stride = nwinkel;
-        angle = float(zwinkel);
-    }
-
     int direction = isleft == 1 ? 1 : -1;
 
-    // float angle = float(angleCounter) / float(angleDenominator);
-    // int startIndex = int(float(screenPos.y) * angle + 0.5) * (direction * -1) + screenPos.y * vc + screenPos.x * 3 * stride;
-    // int startIndex = int(float(screenPos.y) * angle + 0.5) * (direction * -1) + screenPos.y * nativeViewCount + screenPos.x * 3;
-
-    uint view = uint(screenPos.x * 3.f + ((screenPos.y * angle) % float(vc) * direction) + float(vc)) + mstart;
+    uint view = uint(screenPos.x * 3.f + ((screenPos.y * angle) % float(nativeViewCount) * direction) + float(nativeViewCount)) + mstart;
     int3 viewIndices = int3(view, view, view);
 
     viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));
@@ -90,6 +89,28 @@ int3 getSubPixelViewIndices(float2 screenPos)
     viewIndices.x = finalizeViewIndex(viewIndices.x);
     viewIndices.y = finalizeViewIndex(viewIndices.y);
     viewIndices.z = finalizeViewIndex(viewIndices.z);
+
+    return viewIndices;
+}
+
+float customMod(float x, float y)
+{
+    return x - y * floor(x / y);
+}
+
+int3 getHQViewIndices(float2 screenPos)
+{
+    float numHQViews = float(hqview);
+
+    int direction = isleft == 1 ? 1 : -1;
+    int vc = nativeViewCount * nwinkel;
+    int stride = nwinkel;
+    float angle = float(zwinkel);
+
+    int startIndex = int(float(screenPos.y) * angle + 0.5) * direction + screenPos.y * vc + screenPos.x * 3 * stride;
+    int3 viewIndices = int3(startIndex, startIndex, startIndex);
+    viewIndices += int3(0, stride, stride + stride);
+    viewIndices = (vc-1) - (viewIndices % vc);
 
     return viewIndices;
 }

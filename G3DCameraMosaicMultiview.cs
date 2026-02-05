@@ -431,6 +431,7 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             shaderHandles.angleRatioDenominator,
             shaderParameters.angleRatioDenominator
         );
+        material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
         material?.SetInt(shaderHandles.leftLensOrientation, shaderParameters.leftLensOrientation);
         material?.SetInt(shaderHandles.showTestFrame, 0);
         material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
@@ -457,14 +458,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         material.SetFloatArray(Shader.PropertyToID("index_map"), indexMap.getPaddedIndexMapArray());
 
         material?.SetInt(Shader.PropertyToID("use_hq_views"), useHQViews ? 1 : 0);
-        if (useHQViews)
-        {
-            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.hqViewCount);
-        }
-        else
-        {
-            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
-        }
     }
 
     private bool windowResized()
