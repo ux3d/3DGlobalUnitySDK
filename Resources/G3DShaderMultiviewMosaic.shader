@@ -44,7 +44,13 @@ Shader "G3D/AutostereoMultiviewMosaic"
         float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
         
         float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
-        int3 viewIndices = getSubPixelViewIndices(computedScreenPos);
+        int3 viewIndices;
+        
+        if(use_hq_views != 0) {
+            viewIndices = getHQViewIndices(computedScreenPos);
+        } else {
+            viewIndices = getSubPixelViewIndices(computedScreenPos);
+        }
         
         float2 uvCoords = i.uv;
         // mirror the image if necessary
@@ -54,28 +60,27 @@ Shader "G3D/AutostereoMultiviewMosaic"
         
          //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
-        int viewIndex = 0;
-        for (int channel = 0; channel < 3; channel++) {
-            viewIndex = viewIndices[channel];
-
-            if (test != 0) {
-                if (viewIndex == 0) {
-                    color[channel] = 1.0;
-                }
-                continue;
+        if(test != 0) {
+            color.x = 1.0;
+        } else {
+            // 250 corresponds to a black view
+            if(viewIndices.x != 250) {
+                float2 mappedUVCoords = calculateUVForMosaic(viewIndices.x, uvCoords);
+                float4 tmpColorX = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                color.x = tmpColorX.x;
             }
-            
-            float2 mappedUVCoords = calculateUVForMosaic(viewIndex, uvCoords);
-            float4 tmpColor = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
-
-            if(channel == 0) {
-                color.x = tmpColor.x;
-            } else if(channel == 1) {
-                color.y = tmpColor.y;
-            } else if(channel == 2) {
-                color.z = tmpColor.z;
+            if(viewIndices.y != 250) {
+                float2 mappedUVCoords = calculateUVForMosaic(viewIndices.y, uvCoords);
+                float4 tmpColorY = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                color.y = tmpColorY.y;
+            }
+            if(viewIndices.z != 250) {
+                float2 mappedUVCoords = calculateUVForMosaic(viewIndices.z, uvCoords);
+                float4 tmpColorZ = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                color.z = tmpColorZ.z;
             }
         }
+
         return color;
     }
     ENDHLSL

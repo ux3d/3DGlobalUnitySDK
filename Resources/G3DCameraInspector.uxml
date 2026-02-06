@@ -18,6 +18,11 @@
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
         <uie:PropertyField name="invertViewsInDiorama" binding-path="invertViewsInDiorama" />
+        <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
+        <uie:PropertyField name="indexMapYoyoStart" binding-path="indexMapYoyoStart" />
+        <uie:PropertyField name="invertIndexMap" binding-path="invertIndexMap" />
+        <uie:PropertyField name="invertIndexMapIndices" binding-path="invertIndexMapIndices" />
+        <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
         <uie:PropertyField name="generateViews" binding-path="generateViews" />
         <ui:VisualElement name="viewGenerationContainer" style="flex-grow: 1; margin-bottom: 15px;">
             <uie:PropertyField name="isFillingHoles" binding-path="isFillingHoles" label="fill holes" />

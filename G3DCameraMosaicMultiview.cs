@@ -1,10 +1,9 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Video;
 #if UNITY_EDITOR
 using UnityEditor.EditorTools;
-using UnityEngine.Video;
 
 #endif
 
@@ -15,6 +14,13 @@ using UnityEngine.Rendering.HighDefinition;
 #if G3D_URP
 using UnityEngine.Rendering.Universal;
 #endif
+
+public enum MosaicMode
+{
+    Image,
+    Video,
+    RenderTexture
+}
 
 /// <summary>
 /// Replaces the image the camera this script is attached to sees with the rendertexture.
@@ -34,6 +40,31 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     [Min(1)]
     public int mosaicColumnCount = 3;
+
+    [Tooltip(
+        "If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3\nONLY WORKS FOR IMAGE AND VIDEO MODES"
+    )]
+    public bool dimensionsFromFilename = false;
+
+    [Tooltip(
+        "Does not check if the amount of HQ views specified in the calibration file fits the provided mosaic."
+    )]
+    public bool useHQViews = false;
+
+    [Space(10)]
+    [Tooltip(
+        "Where the views start to yoyo in the index map. Index map contains the order of views."
+    )]
+    [Range(0.0f, 1.0f)]
+    public float indexMapYoyoStart = 0.0f;
+
+    [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+    public bool invertIndexMap = false;
+
+    [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+    public bool invertIndexMapIndices = false;
+
+    [Space(10)]
     #endregion
 
     /// <summary>
@@ -41,7 +72,12 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     /// </summary>
     [Tooltip("Shifts the individual views to the left or right by the specified number of views.")]
     public int viewOffset = 0;
-    public RenderTexture mosaicTexture;
+
+    public MosaicMode mosaicMode = MosaicMode.RenderTexture;
+    public RenderTexture renderTexture;
+    public Texture2D image;
+
+    public VideoClip videoClip;
 
     #region 3D Effect settings
     [Header("3D Effect settings")]
@@ -51,7 +87,8 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
 
     #region Private variables
-
+    private PreviousValues previousValues = new PreviousValues();
+    private IndexMap indexMap = IndexMap.Instance;
     private Camera mainCamera;
     private Material material;
 #if G3D_HDRP
@@ -66,6 +103,8 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     private Vector2Int cachedWindowPosition;
     private Vector2Int cachedWindowSize;
+
+    public VideoPlayer internalVideoPlayer { get; private set; }
 
     #endregion
 
@@ -116,17 +155,147 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         customPass = new G3DUrpScriptableRenderPass(material);
 #endif
 
-        // Dot his last to ensure custom passes are already set up
+        // Do this last to ensure custom passes are already set up
         CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
             calibrationFile.text
         );
         shaderParameters = defaultCalibrationProvider.getShaderParameters();
+        setupTextureMode();
         reinitializeShader();
+
+        previousValues.init();
+
+        if (dimensionsFromFilename)
+        {
+            extractDimensionsFromFile();
+        }
+
+        updateIndexMap();
+    }
+
+    private void updateIndexMap()
+    {
+        int availableViews = shaderParameters.nativeViewCount;
+        if (useHQViews)
+        {
+            availableViews = shaderParameters.hqViewCount;
+        }
+
+        indexMap.UpdateIndexMap(
+            availableViews,
+            mosaicColumnCount * mosaicRowCount,
+            indexMapYoyoStart,
+            invertIndexMap,
+            invertIndexMapIndices
+        );
+    }
+
+    private void extractDimensionsFromFile()
+    {
+        string name = "";
+        switch (mosaicMode)
+        {
+            case MosaicMode.Image:
+                if (image != null)
+                {
+                    name = image.name;
+                }
+                break;
+            case MosaicMode.Video:
+                if (videoClip != null)
+                {
+                    name = videoClip.name;
+                }
+                break;
+            case MosaicMode.RenderTexture:
+                // cannot extract dimensions from render texture
+                return;
+        }
+        dimensionsFromString(name, out mosaicRowCount, out mosaicColumnCount);
+    }
+
+    private void dimensionsFromString(string name, out int rows, out int columns)
+    {
+        rows = 1;
+        columns = 1;
+
+        string[] parts = name.Split('.');
+        if (parts.Length < 3 || parts[1] != "mosaic")
+        {
+            Debug.LogError("Invalid mosaic video file name format: " + name);
+            return;
+        }
+
+        string rowsStr = parts[2];
+        string[] tmp = rowsStr.Split('x');
+        if (tmp.Length != 2)
+        {
+            Debug.LogError("Invalid mosaic video rows format: " + rowsStr);
+            return;
+        }
+        string columnsStr = tmp[0]; // e.g. 3x3 -> 3
+        string rowsStrOnly = tmp[1]; // e.g. 3x3 -> 3
+        if (!int.TryParse(columnsStr, out columns) || !int.TryParse(rowsStrOnly, out rows))
+        {
+            Debug.LogError("Could not parse mosaic video rows and columns from: " + rowsStr);
+            return;
+        }
+    }
+
+    private void setupTextureMode()
+    {
+        switch (mosaicMode)
+        {
+            case MosaicMode.RenderTexture:
+                // nothing to do here, render texture is already assigned
+                break;
+            case MosaicMode.Video:
+                setupVideoPlayer();
+                break;
+            case MosaicMode.Image:
+                // nothing to do here, image is already assigned
+                break;
+        }
+    }
+
+    private void setupVideoPlayer()
+    {
+        if (internalVideoPlayer == null)
+        {
+            internalVideoPlayer = gameObject.AddComponent<VideoPlayer>();
+            internalVideoPlayer.playOnAwake = true;
+            internalVideoPlayer.isLooping = true;
+        }
+        internalVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
+        if (renderTexture == null)
+        {
+            renderTexture = new RenderTexture(1920, 1080, 0);
+        }
+        internalVideoPlayer.targetTexture = renderTexture;
+        internalVideoPlayer.clip = videoClip;
+        internalVideoPlayer.Play();
+    }
+
+    private void setCorrectMosaicTexture()
+    {
+        switch (mosaicMode)
+        {
+            case MosaicMode.RenderTexture:
+                material.SetTexture("mosaictexture", renderTexture, RenderTextureSubElement.Color);
+                break;
+            case MosaicMode.Video:
+                material.SetTexture("mosaictexture", renderTexture, RenderTextureSubElement.Color);
+                break;
+            case MosaicMode.Image:
+                material.SetTexture("mosaictexture", image);
+                break;
+        }
     }
 
     public void reinitializeShader()
     {
         material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
+        setCorrectMosaicTexture();
         material.SetTexture("_colorMosaic", mosaicTexture, RenderTextureSubElement.Color);
 
         updateScreenViewportProperties();
@@ -161,7 +330,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     #endregion
 
     #region Updates
-    private TextAsset previousCalibrationFile = null;
 
     /// <summary>
     /// OnValidate gets called every time the script is changed in the editor.
@@ -175,10 +343,29 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
             return;
         }
 
-        if (calibrationFile != previousCalibrationFile)
+        if (calibrationFile != previousValues.calibrationFile)
         {
-            previousCalibrationFile = calibrationFile;
+            previousValues.calibrationFile = calibrationFile;
             updateShaderFromCalibrationFile();
+        }
+
+        if (
+            previousValues.indexMapYoyoStart != indexMapYoyoStart
+            || previousValues.invertIndexMap != invertIndexMap
+            || previousValues.invertIndexMapIndices != invertIndexMapIndices
+        )
+        {
+            previousValues.indexMapYoyoStart = indexMapYoyoStart;
+            previousValues.invertIndexMap = invertIndexMap;
+            previousValues.invertIndexMapIndices = invertIndexMapIndices;
+
+            indexMap.UpdateIndexMap(
+                shaderParameters.nativeViewCount,
+                mosaicColumnCount * mosaicRowCount,
+                indexMapYoyoStart,
+                invertIndexMap,
+                invertIndexMapIndices
+            );
         }
     }
 
@@ -243,12 +430,12 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         );
         material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
         material?.SetInt(shaderHandles.screenWidth, shaderParameters.screenWidth);
-        material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
         material?.SetInt(shaderHandles.angleRatioNumerator, shaderParameters.angleRatioNumerator);
         material?.SetInt(
             shaderHandles.angleRatioDenominator,
             shaderParameters.angleRatioDenominator
         );
+        material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
         material?.SetInt(shaderHandles.leftLensOrientation, shaderParameters.leftLensOrientation);
         material?.SetInt(shaderHandles.showTestFrame, 0);
         material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
@@ -270,6 +457,11 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumnCount);
 
         material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+
+        material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+        material.SetFloatArray(Shader.PropertyToID("index_map"), indexMap.getPaddedIndexMapArray());
+
+        material?.SetInt(Shader.PropertyToID("use_hq_views"), useHQViews ? 1 : 0);
     }
 
     private bool windowResized()
