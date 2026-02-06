@@ -112,5 +112,9 @@ int3 getHQViewIndices(float2 screenPos)
     viewIndices += int3(0, stride, stride + stride);
     viewIndices = (vc-1) - (viewIndices % vc);
 
+    viewIndices.x = finalizeViewIndex(viewIndices.x);
+    viewIndices.y = finalizeViewIndex(viewIndices.y);
+    viewIndices.z = finalizeViewIndex(viewIndices.z);
+
     return viewIndices;
 }
