@@ -282,12 +282,15 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         {
             case MosaicMode.RenderTexture:
                 material.SetTexture("mosaictexture", renderTexture, RenderTextureSubElement.Color);
+                material.SetTexture("_colorMosaic", renderTexture, RenderTextureSubElement.Color);
                 break;
             case MosaicMode.Video:
                 material.SetTexture("mosaictexture", renderTexture, RenderTextureSubElement.Color);
+                material.SetTexture("_colorMosaic", renderTexture, RenderTextureSubElement.Color);
                 break;
             case MosaicMode.Image:
                 material.SetTexture("mosaictexture", image);
+                material.SetTexture("_colorMosaic", image);
                 break;
         }
     }
@@ -296,7 +299,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     {
         material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
         setCorrectMosaicTexture();
-        material.SetTexture("_colorMosaic", mosaicTexture, RenderTextureSubElement.Color);
 
         updateScreenViewportProperties();
         updateShaderParameters();
