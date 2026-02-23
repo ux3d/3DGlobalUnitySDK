@@ -1420,10 +1420,11 @@ public class G3DCamera
                 internalCameraCount - 1,
                 "_rightCamTex"
             ); // right camera
-
+#if G3D_HDRP
             recreateDepthTextures();
             recreateMosaicTexture();
             viewGenerationPass.updateRenderResolution(new Vector2Int(Screen.width, Screen.height));
+#endif
         }
         else
         {
