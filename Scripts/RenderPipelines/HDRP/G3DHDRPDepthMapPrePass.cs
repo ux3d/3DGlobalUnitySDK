@@ -9,7 +9,7 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
     public List<Camera> cameras;
     public int internalCameraCount = 16;
 
-    public RenderTexture[] indivDepthTextures;
+    public RTHandle[] indivDepthTextures;
 
     public bool excludeLayer = false;
     public int layerToExclude = 3;
@@ -17,6 +17,11 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
     public int cullingMask = -1;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
+
+    protected override void Cleanup()
+    {
+        cleanupDepthTextures();
+    }
 
     protected override void Execute(CustomPassContext ctx)
     {
@@ -36,7 +41,7 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
             // We need to be careful about the aspect ratio of render textures when doing the culling, otherwise it could result in objects poping:
             bakingCamera.aspect = Mathf.Max(
                 bakingCamera.aspect,
-                indivDepthTextures[i].width / (float)indivDepthTextures[i].height
+                indivDepthTextures[i].referenceSize.x / (float)indivDepthTextures[i].referenceSize.y
             );
             bakingCamera.TryGetCullingParameters(out var cullingParams);
             cullingParams.cullingOptions = CullingOptions.None;
@@ -63,6 +68,47 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
                 depthLayerMask
             // overrideRenderState: overrideDepthTest
             );
+        }
+    }
+
+    private void cleanupDepthTextures()
+    {
+        if (indivDepthTextures == null)
+        {
+            return;
+        }
+        for (int i = 0; i < indivDepthTextures.Length; i++)
+        {
+            if (indivDepthTextures[i] == null)
+            {
+                continue;
+            }
+            G3DHDRPCustomPass.GetRTHandleSystem().Release(indivDepthTextures[i]);
+        }
+    }
+
+    public void recreateDepthTextures(float renderResolutionScale = 1.0f)
+    {
+        cleanupDepthTextures();
+
+        indivDepthTextures = new RTHandle[internalCameraCount];
+        for (int i = 0; i < internalCameraCount; i++)
+        {
+            float width = Screen.width;
+            float height = Screen.height;
+
+            width = width * (renderResolutionScale / 100f);
+            height = height * (renderResolutionScale / 100f);
+
+            RenderTexture depthTexture = new RenderTexture(
+                (int)width,
+                (int)height,
+                16,
+                RenderTextureFormat.Depth
+            );
+            depthTexture.Create();
+            RTHandle handle = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(depthTexture);
+            indivDepthTextures[i] = handle;
         }
     }
 
@@ -95,8 +141,6 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
 
         return true;
     }
-
-    protected override void Cleanup() { }
 }
 
 

@@ -40,7 +40,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
     private Material blitMaterial;
 
-    public RenderTexture[] indivDepthMaps;
+    public RTHandle[] indivDepthMaps;
 
     private ComputeShader fxaaCompShader;
     private int fxaaKernel;
@@ -105,10 +105,14 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             0,
             RenderTextureFormat.ARGB32,
             RenderTextureReadWrite.Linear
-        );
-        computeShaderResultTexture.enableRandomWrite = true;
+        )
+        {
+            enableRandomWrite = true
+        };
         computeShaderResultTexture.Create();
-        computeShaderResultTextureHandle = RTHandles.Alloc(computeShaderResultTexture);
+        computeShaderResultTextureHandle = G3DHDRPCustomPass
+            .GetRTHandleSystem()
+            .Alloc(computeShaderResultTexture);
 
         if (blitMaterial != null)
         {
@@ -126,11 +130,13 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             0,
             RenderTextureFormat.ARGB32,
             RenderTextureReadWrite.Linear
-        );
-        smaaEdgesTex.name = "SMAAEdgesTex";
-        smaaEdgesTex.enableRandomWrite = true;
+        )
+        {
+            name = "SMAAEdgesTex",
+            enableRandomWrite = true
+        };
         smaaEdgesTex.Create();
-        smaaEdgesTexHandle = RTHandles.Alloc(smaaEdgesTex);
+        smaaEdgesTexHandle = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(smaaEdgesTex);
 
         smaaBlendTex = new RenderTexture(
             width,
@@ -138,11 +144,13 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             0,
             RenderTextureFormat.ARGB32,
             RenderTextureReadWrite.Linear
-        );
-        smaaBlendTex.name = "SMAABlendTex";
-        smaaBlendTex.enableRandomWrite = true;
+        )
+        {
+            name = "SMAABlendTex",
+            enableRandomWrite = true
+        };
         smaaBlendTex.Create();
-        smaaBlendTexHandle = RTHandles.Alloc(smaaBlendTex);
+        smaaBlendTexHandle = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(smaaBlendTex);
     }
 
     public void setAntiAliasingMode(AntialiasingMode mode)

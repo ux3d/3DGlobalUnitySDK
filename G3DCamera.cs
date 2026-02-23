@@ -364,7 +364,7 @@ public class G3DCamera
             invertIndexMap,
             invertIndexMapIndices
         );
-        
+
         if (useVectorMapViewGeneration)
         {
             int invert = shaderParameters.leftLensOrientation == 1 ? 1 : -1;
@@ -411,8 +411,6 @@ public class G3DCamera
             depthMosaicPass.cameras = cameras;
             depthMosaicPass.internalCameraCount = internalCameraCount;
 
-            recreateDepthTextures();
-
             // add multiview generation pass
             viewGenerationPass =
                 customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationPass))
@@ -423,14 +421,8 @@ public class G3DCamera
             viewGenerationPass.materialPassName = "G3DViewGeneration";
             viewGenerationPass.cameras = cameras;
             viewGenerationPass.internalCameraCount = internalCameraCount;
-            for (int i = 0; i < internalCameraCount; i++)
-            {
-                viewGenerationPass.fullscreenPassMaterial.SetTexture(
-                    "_depthMap" + i,
-                    depthMosaicPass.indivDepthTextures[i],
-                    RenderTextureSubElement.Depth
-                );
-            }
+
+            recreateDepthTextures();
             viewGenerationPass.indivDepthMaps = depthMosaicPass.indivDepthTextures;
             viewGenerationPass.debugRendering = debugRendering;
             viewGenerationPass.fillHoles = isFillingHoles;
@@ -464,34 +456,15 @@ public class G3DCamera
 
     private void recreateDepthTextures()
     {
-        if (depthMosaicPass.indivDepthTextures != null)
-        {
-            for (int i = 0; i < depthMosaicPass.indivDepthTextures.Length; i++)
-            {
-                if (depthMosaicPass.indivDepthTextures[i] != null)
-                {
-                    depthMosaicPass.indivDepthTextures[i].Release();
-                }
-            }
-        }
+        depthMosaicPass.recreateDepthTextures(renderResolutionScale);
 
-        depthMosaicPass.indivDepthTextures = new RenderTexture[internalCameraCount];
         for (int i = 0; i < internalCameraCount; i++)
         {
-            float width = Screen.width;
-            float height = Screen.height;
-
-            width = width * (renderResolutionScale / 100f);
-            height = height * (renderResolutionScale / 100f);
-
-            RenderTexture depthTexture = new RenderTexture(
-                (int)width,
-                (int)height,
-                16,
-                RenderTextureFormat.Depth
+            viewGenerationPass.fullscreenPassMaterial.SetTexture(
+                "_depthMap" + i,
+                depthMosaicPass.indivDepthTextures[i],
+                RenderTextureSubElement.Depth
             );
-            depthTexture.Create();
-            depthMosaicPass.indivDepthTextures[i] = depthTexture;
         }
     }
 
@@ -513,9 +486,9 @@ public class G3DCamera
 
         if (rtHandleMosaic != null)
         {
-            RTHandles.Release(rtHandleMosaic);
+            G3DHDRPCustomPass.GetRTHandleSystem().Release(rtHandleMosaic);
         }
-        rtHandleMosaic = RTHandles.Alloc(mosaicTexture);
+        rtHandleMosaic = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(mosaicTexture);
         material.SetTexture("_colorMosaic", rtHandleMosaic);
         viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
     }
@@ -591,6 +564,14 @@ public class G3DCamera
                 invertIndexMapIndices
             );
         }
+    }
+
+    /// <summary>
+    /// Us this to run OnValidate after parameters changed from a script.
+    /// </summary>
+    public void Validate()
+    {
+        OnValidate();
     }
 
     public void loadShaderParametersFromCalibrationFile()
@@ -1006,9 +987,14 @@ public class G3DCamera
 
     #region Updates
     private bool mainCamInactiveLastFrame = false;
+    private bool windowMovedLastFrame = false;
+    private bool windowResizedLastFrame = false;
 
     void Update()
     {
+        windowMovedLastFrame = windowMoved();
+        windowResizedLastFrame = windowResized();
+
         if (mainCamera.enabled == false)
         {
             // enable all cameras if main camera is disabled
@@ -1042,20 +1028,32 @@ public class G3DCamera
         updateCameras();
         updateShaderParameters();
 
-        bool screenSizeChanged = false;
-        if (windowResized() || windowMoved())
+        if (windowResizedLastFrame || windowMovedLastFrame)
         {
             updateScreenViewportProperties();
-            screenSizeChanged = true;
         }
 
-        if (
-            screenSizeChanged
-            || cameraCountChanged
-            || oldRenderResolutionScale != renderResolutionScale
-        )
+        bool recreatedRenderTextures = false;
+
+        if (windowResizedLastFrame)
+        {
+            recreatedRenderTextures = true;
+#if G3D_HDRP
+            G3DHDRPCustomPass.GetRTHandleSystem().ResetReferenceSize(Screen.width, Screen.height);
+            // TODO this is only needed to reset the size of the cameras internal render targets
+            // Find a way to avoid this line...
+            RTHandles.ResetReferenceSize(Screen.width, Screen.height);
+#endif
+        }
+
+        if (cameraCountChanged || oldRenderResolutionScale != renderResolutionScale)
         {
             oldRenderResolutionScale = renderResolutionScale;
+            recreatedRenderTextures = true;
+        }
+
+        if (recreatedRenderTextures)
+        {
             updateShaderRenderTextures();
         }
 
@@ -1424,14 +1422,6 @@ public class G3DCamera
             ); // right camera
 
             recreateDepthTextures();
-            for (int i = 0; i < internalCameraCount; i++)
-            {
-                viewGenerationMaterial.SetTexture(
-                    "_depthMap" + i,
-                    depthMosaicPass.indivDepthTextures[i],
-                    RenderTextureSubElement.Depth
-                );
-            }
             recreateMosaicTexture();
             viewGenerationPass.updateRenderResolution(new Vector2Int(Screen.width, Screen.height));
         }

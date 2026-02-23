@@ -5,6 +5,18 @@ using UnityEngine.Rendering.HighDefinition;
 
 internal class G3DHDRPCustomPass : FullScreenCustomPass
 {
+    private static RTHandleSystem m_RTHandleSystem;
+
+    public static RTHandleSystem GetRTHandleSystem()
+    {
+        if (m_RTHandleSystem == null)
+        {
+            m_RTHandleSystem = new RTHandleSystem();
+            m_RTHandleSystem.Initialize(Screen.width, Screen.height);
+        }
+        return m_RTHandleSystem;
+    }
+
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
     protected override void Execute(CustomPassContext ctx)
