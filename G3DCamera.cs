@@ -247,6 +247,8 @@ public class G3DCamera
 
     private RenderTexture[] colorRenderTextures = null;
     private int mainCamCullingMask = -1;
+    private float originalMainFOV;
+    private CameraClearFlags originalMainClearFlags;
 
     // TODO Handle viewport resizing/ moving
 
@@ -265,19 +267,9 @@ public class G3DCamera
             calibrationPath = calibrationPathOverwrite;
         }
 
-        mainCamera = GetComponent<Camera>();
-        mainCamCullingMask = mainCamera.cullingMask;
+        InitMainCamera();
         oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
-
-        // create a focus plane object at focus distance from camera.
-        // then parent the camera parent to that object
-        // this way we can place the camera parent relative to the focus plane
-
-        // disable rendering on main camera after other cameras have been created and settings have been copied over
-        // otherwise the secondary cameras are initialized wrong
-        mainCamera.cullingMask = 0; //disable rendering of the main camera
-        mainCamera.clearFlags = CameraClearFlags.Color;
 
         reinitializeShader();
 #if G3D_HDRP
@@ -391,6 +383,18 @@ public class G3DCamera
         }
     }
 
+    private void InitMainCamera()
+    {
+        if (mainCamera != null)
+        {
+            return;
+        }
+        mainCamera = GetComponent<Camera>();
+        mainCamCullingMask = mainCamera.cullingMask;
+        originalMainFOV = mainCamera.fieldOfView;
+        originalMainClearFlags = mainCamera.clearFlags;
+    }
+
 #if G3D_HDRP
     private void initCustomPass()
     {
@@ -498,6 +502,51 @@ public class G3DCamera
     {
         deinitLibrary();
     }
+
+    private void OnEnable()
+    {
+        InitMainCamera();
+
+        mainCamera.cullingMask = 0; //disable rendering of the main camera
+        mainCamera.clearFlags = CameraClearFlags.Color;
+
+#if G3D_URP
+        RenderPipelineManager.beginCameraRendering += OnBeginCamera;
+#endif
+    }
+
+    private void OnDisable()
+    {
+        // disable all cameras when the script is disabled
+        for (int i = 0; i < MAX_CAMERAS; i++)
+        {
+            cameras[i].gameObject.SetActive(false);
+        }
+
+        mainCamera.cullingMask = mainCamCullingMask;
+        mainCamera.fieldOfView = originalMainFOV;
+        mainCamera.clearFlags = originalMainClearFlags;
+
+#if G3D_URP
+        RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
+#endif
+    }
+
+#if G3D_URP
+    private void OnBeginCamera(ScriptableRenderContext context, Camera cam)
+    {
+        // Use the EnqueuePass method to inject a custom render pass
+        cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
+
+        if (mainCamera.GetUniversalAdditionalCameraData().renderPostProcessing)
+        {
+            for (int i = 0; i < MAX_CAMERAS; i++)
+            {
+                cameras[i].GetUniversalAdditionalCameraData().renderPostProcessing = true;
+            }
+        }
+    }
+#endif
 
     /// <summary>
     /// this variable is onle here to track changes made to the public calibration file from the editor.
@@ -646,7 +695,7 @@ public class G3DCamera
     {
         if (mainCamera == null)
         {
-            mainCamera = GetComponent<Camera>();
+            InitMainCamera();
         }
         if (Application.isPlaying && !calledFromValidate)
         {
@@ -763,10 +812,10 @@ public class G3DCamera
                 cameras[i].transform.SetParent(cameraParent.transform, true);
                 cameras[i].gameObject.SetActive(false);
                 cameras[i].transform.localRotation = Quaternion.identity;
-                cameras[i].clearFlags = mainCamera.clearFlags;
+                cameras[i].clearFlags = originalMainClearFlags;
                 cameras[i].backgroundColor = mainCamera.backgroundColor;
                 cameras[i].targetDisplay = mainCamera.targetDisplay;
-                cameras[i].cullingMask = mainCamera.cullingMask;
+                cameras[i].cullingMask = mainCamCullingMask;
 
 #if G3D_HDRP
                 cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
@@ -956,33 +1005,6 @@ public class G3DCamera
             material = new Material(Shader.Find("G3D/Autostereo"));
         }
     }
-
-#if G3D_URP
-    private void OnEnable()
-    {
-        RenderPipelineManager.beginCameraRendering += OnBeginCamera;
-    }
-
-    private void OnDisable()
-    {
-        RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
-    }
-
-    private void OnBeginCamera(ScriptableRenderContext context, Camera cam)
-    {
-        // Use the EnqueuePass method to inject a custom render pass
-        cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
-
-        if (mainCamera.GetUniversalAdditionalCameraData().renderPostProcessing)
-        {
-            for (int i = 0; i < MAX_CAMERAS; i++)
-            {
-                cameras[i].GetUniversalAdditionalCameraData().renderPostProcessing = true;
-            }
-        }
-    }
-#endif
-
     #endregion
 
     #region Updates
@@ -1006,10 +1028,12 @@ public class G3DCamera
             return;
         }
 
+        bool recreatedRenderTextures = false;
+
         if (mainCamInactiveLastFrame)
         {
             // recreate shader render textures when main camera was inactive last frame
-            updateShaderRenderTextures();
+            recreatedRenderTextures = true;
         }
 
         mainCamInactiveLastFrame = false;
@@ -1032,8 +1056,6 @@ public class G3DCamera
         {
             updateScreenViewportProperties();
         }
-
-        bool recreatedRenderTextures = false;
 
         if (windowResizedLastFrame)
         {
@@ -1704,7 +1726,7 @@ public class G3DCamera
 
         if (mainCamera == null)
         {
-            mainCamera = GetComponent<Camera>();
+            InitMainCamera();
             if (mainCamera == null)
             {
                 Debug.LogError(
