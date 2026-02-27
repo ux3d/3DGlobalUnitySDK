@@ -18,10 +18,7 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
-    protected override void Cleanup()
-    {
-        cleanupDepthTextures();
-    }
+    protected override void Cleanup() { }
 
     protected override void Execute(CustomPassContext ctx)
     {
