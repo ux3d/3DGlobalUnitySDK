@@ -819,22 +819,6 @@ public class G3DCamera
 
 #if G3D_HDRP
                 cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
-
-                HDAdditionalCameraData hdData = cameras[i].GetComponent<HDAdditionalCameraData>();
-                HDAdditionalCameraData hdDataMain =
-                    mainCamera.GetComponent<HDAdditionalCameraData>();
-
-                hdData.allowDynamicResolution = hdDataMain.allowDynamicResolution;
-                hdData.allowDeepLearningSuperSampling = hdDataMain.allowDeepLearningSuperSampling;
-                hdData.deepLearningSuperSamplingUseCustomQualitySettings =
-                    hdDataMain.deepLearningSuperSamplingUseCustomQualitySettings;
-                hdData.deepLearningSuperSamplingQuality =
-                    hdDataMain.deepLearningSuperSamplingQuality;
-                hdData.deepLearningSuperSamplingUseCustomAttributes =
-                    hdDataMain.deepLearningSuperSamplingUseCustomAttributes;
-                hdData.deepLearningSuperSamplingUseOptimalSettings =
-                    hdDataMain.deepLearningSuperSamplingUseOptimalSettings;
-
 #endif
             }
         }
