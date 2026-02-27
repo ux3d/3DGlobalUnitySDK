@@ -515,7 +515,7 @@ public class G3DCamera
 #endif
     }
 
-    private void OnDisable()
+    public void OnDisable()
     {
         // disable all cameras when the script is disabled
         for (int i = 0; i < MAX_CAMERAS; i++)
@@ -819,6 +819,22 @@ public class G3DCamera
 
 #if G3D_HDRP
                 cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
+
+                HDAdditionalCameraData hdData = cameras[i].GetComponent<HDAdditionalCameraData>();
+                HDAdditionalCameraData hdDataMain =
+                    mainCamera.GetComponent<HDAdditionalCameraData>();
+
+                hdData.allowDynamicResolution = hdDataMain.allowDynamicResolution;
+                hdData.allowDeepLearningSuperSampling = hdDataMain.allowDeepLearningSuperSampling;
+                hdData.deepLearningSuperSamplingUseCustomQualitySettings =
+                    hdDataMain.deepLearningSuperSamplingUseCustomQualitySettings;
+                hdData.deepLearningSuperSamplingQuality =
+                    hdDataMain.deepLearningSuperSamplingQuality;
+                hdData.deepLearningSuperSamplingUseCustomAttributes =
+                    hdDataMain.deepLearningSuperSamplingUseCustomAttributes;
+                hdData.deepLearningSuperSamplingUseOptimalSettings =
+                    hdDataMain.deepLearningSuperSamplingUseOptimalSettings;
+
 #endif
             }
         }
