@@ -381,6 +381,20 @@ public class G3DCamera
             }
             material?.SetFloatArray("indexMap", indexMap);
         }
+        
+        int currentIndex = QualitySettings.GetQualityLevel();
+        HDRenderPipelineAsset pipelineAsset =  QualitySettings.GetRenderPipelineAssetAt(currentIndex) as HDRenderPipelineAsset;
+        var settings = pipelineAsset.currentPlatformRenderPipelineSettings;
+        settings.hdShadowInitParams.cachedAreaLightShadowAtlas = 8192;
+        settings.hdShadowInitParams.areaLightShadowAtlas.shadowAtlasResolution = 8192;
+        settings.hdShadowInitParams.areaLightShadowAtlas.shadowAtlasDepthBits = DepthBits.Depth16;
+        settings.hdShadowInitParams.cachedPunctualLightShadowAtlas = 8192;
+        settings.hdShadowInitParams.punctualLightShadowAtlas.shadowAtlasResolution = 8192;
+        settings.hdShadowInitParams.punctualLightShadowAtlas.shadowAtlasDepthBits = DepthBits.Depth16;
+        pipelineAsset.currentPlatformRenderPipelineSettings = settings;
+        //TODO reset on shutdown
+
+
 
         Light[] lights = FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         for (int i = 0; i < lights.Length; i++)
