@@ -381,6 +381,23 @@ public class G3DCamera
             }
             material?.SetFloatArray("indexMap", indexMap);
         }
+
+        Light[] lights = FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < lights.Length; i++)
+        {
+            Light l = lights[i];
+            if (l.type != LightType.Directional)
+            {
+                HDAdditionalLightData hld = l.gameObject.GetComponent<HDAdditionalLightData>();
+                if (hld != null)
+                {
+                    hld.SetShadowUpdateMode(ShadowUpdateMode.OnDemand);
+                    hld.updateUponLightMovement = true;
+                    hld.RequestShadowMapRendering();
+                }
+            }
+        }
+        
     }
 
     private void InitMainCamera()
