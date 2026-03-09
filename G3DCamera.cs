@@ -381,22 +381,37 @@ public class G3DCamera
             }
             material?.SetFloatArray("indexMap", indexMap);
         }
-        
+
+#if G3D_HDRP
         int currentIndex = QualitySettings.GetQualityLevel();
-        HDRenderPipelineAsset pipelineAsset =  QualitySettings.GetRenderPipelineAssetAt(currentIndex) as HDRenderPipelineAsset;
+        HDRenderPipelineAsset pipelineAsset =
+            QualitySettings.GetRenderPipelineAssetAt(currentIndex) as HDRenderPipelineAsset;
         var settings = pipelineAsset.currentPlatformRenderPipelineSettings;
         settings.hdShadowInitParams.cachedAreaLightShadowAtlas = 8192;
         settings.hdShadowInitParams.areaLightShadowAtlas.shadowAtlasResolution = 8192;
         settings.hdShadowInitParams.areaLightShadowAtlas.shadowAtlasDepthBits = DepthBits.Depth16;
         settings.hdShadowInitParams.cachedPunctualLightShadowAtlas = 8192;
         settings.hdShadowInitParams.punctualLightShadowAtlas.shadowAtlasResolution = 8192;
-        settings.hdShadowInitParams.punctualLightShadowAtlas.shadowAtlasDepthBits = DepthBits.Depth16;
+        settings.hdShadowInitParams.punctualLightShadowAtlas.shadowAtlasDepthBits =
+            DepthBits.Depth16;
         pipelineAsset.currentPlatformRenderPipelineSettings = settings;
         //TODO reset on shutdown
 
+        SetAllSceneShadowsToOnDemand();
+#endif
+    }
 
-
-        Light[] lights = FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+#if G3D_HDRP
+    /// <summary>
+    /// Sets all shadows in the scene to on demand.
+    /// This also forces a shadow map update/ caching step
+    /// </summary>
+    public void SetAllSceneShadowsToOnDemand()
+    {
+        Light[] lights = FindObjectsByType<Light>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None
+        );
         for (int i = 0; i < lights.Length; i++)
         {
             Light l = lights[i];
@@ -411,8 +426,8 @@ public class G3DCamera
                 }
             }
         }
-        
     }
+#endif
 
     private void InitMainCamera()
     {
