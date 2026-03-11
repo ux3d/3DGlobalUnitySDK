@@ -517,10 +517,13 @@ public class G3DCamera
 
     public void OnDisable()
     {
-        // disable all cameras when the script is disabled
-        for (int i = 0; i < MAX_CAMERAS; i++)
+        if (cameras != null && cameras.Count > 0)
         {
-            cameras[i].gameObject.SetActive(false);
+            // disable all cameras when the script is disabled
+            for (int i = 0; i < MAX_CAMERAS; i++)
+            {
+                cameras[i]?.gameObject.SetActive(false);
+            }
         }
 
         mainCamera.cullingMask = mainCamCullingMask;
