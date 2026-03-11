@@ -408,6 +408,14 @@ public class G3DCamera
         }
     }
 
+    /// <summary>
+    /// Us this to run OnValidate after parameters changed from a script.
+    /// </summary>
+    public void Validate()
+    {
+        OnValidate();
+    }
+
     public void loadShaderParametersFromCalibrationFile()
     {
         if (calibrationFile == null)
