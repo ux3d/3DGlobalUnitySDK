@@ -254,6 +254,11 @@ public class G3DCamera
 
     #region Initialization
 
+    void Awake()
+    {
+        InitMainCamera();
+    }
+
     void Start()
     {
         previousValues.init();
@@ -267,7 +272,6 @@ public class G3DCamera
             calibrationPath = calibrationPathOverwrite;
         }
 
-        InitMainCamera();
         oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
 
@@ -585,9 +589,12 @@ public class G3DCamera
                 CalibrationProvider calibration = CalibrationProvider.getFromString(
                     calibrationFile.text
                 );
-                // internalCameraCount = getCameraCountFromCalibrationFile(calibration);
-                // TODO DO NOT HARD CODE THIS VALUE!
-                internalCameraCount = 16;
+                internalCameraCount = getCameraCountFromCalibrationFile(calibration);
+                if (generateViews)
+                {
+                    // TODO DO NOT HARD CODE THIS VALUE!
+                    internalCameraCount = 16;
+                }
                 loadMultiviewViewSeparationFromCalibration(calibration);
             }
             else
@@ -750,8 +757,14 @@ public class G3DCamera
         {
             loadMultiviewViewSeparationFromCalibration(calibration);
             // TODO DO NOT HARD CODE THIS VALUE!
-            internalCameraCount = 16; // default value for multiview mode
-            // internalCameraCount = NativeViewcount;
+            if (generateViews)
+            {
+                internalCameraCount = 16; // default value for multiview mode
+            }
+            else
+            {
+                internalCameraCount = NativeViewcount;
+            }
         }
         else
         {
@@ -1352,9 +1365,14 @@ public class G3DCamera
         }
         else if (mode == G3DCameraMode.MULTIVIEW)
         {
-            // internalCameraCount = getCameraCountFromCalibrationFile();
-            // TODO DO NOT HARD CODE THIS VALUE!
-            internalCameraCount = 16;
+            if (generateViews)
+            {
+                // TODO DO NOT HARD CODE THIS VALUE!
+                internalCameraCount = 16;
+            }
+            {
+                internalCameraCount = getCameraCountFromCalibrationFile();
+            }
             if (internalCameraCount > MAX_CAMERAS)
             {
                 internalCameraCount = MAX_CAMERAS;
@@ -1961,5 +1979,10 @@ public class G3DCamera
         {
             return shaderParameters;
         }
+    }
+
+    public void setOriginalFOV(float fov)
+    {
+        originalMainFOV = fov;
     }
 }
