@@ -179,7 +179,7 @@ public class G3DCamera
     private HeadtrackingHandler headtrackingHandler;
 
     /// <summary>
-    /// This calue is calculated based on the calibration file
+    /// This value is calculated based on the calibration file
     /// </summary>
     private float baseFieldOfView = 16.0f;
 
@@ -606,6 +606,7 @@ public class G3DCamera
                 cameras[i].backgroundColor = mainCamera.backgroundColor;
                 cameras[i].targetDisplay = mainCamera.targetDisplay;
 
+                cameras[i].depth = mainCamera.depth - 1; // make sure the main camera renders on top of the secondary cameras
 #if G3D_HDRP
                 cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
 #endif

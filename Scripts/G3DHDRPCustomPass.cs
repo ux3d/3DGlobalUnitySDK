@@ -10,7 +10,7 @@ internal class G3DHDRPCustomPass : FullScreenCustomPass
     protected override void Execute(CustomPassContext ctx)
     {
         var camera = ctx.hdCamera.camera;
-        if (performBlit(camera))
+        if (isG3DMainCamera(camera))
         {
             CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
             CoreUtils.DrawFullScreen(
@@ -28,17 +28,17 @@ internal class G3DHDRPCustomPass : FullScreenCustomPass
     /// </summary>
     /// <param name="camera"></param>
     /// <returns></returns>
-    static bool performBlit(Camera camera)
+    static bool isG3DMainCamera(Camera camera)
     {
         if (camera.cameraType != CameraType.Game)
             return false;
         bool isG3DCamera = camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera);
-        bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled;
+        bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled; // only do something if our component is enabled
 
         bool isMosaicMultiviewCamera = camera.gameObject.TryGetComponent<G3DCameraMosaicMultiview>(
             out var mosaicCamera
         );
-        bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled;
+        bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled; // same check if it is a mosaic camera
 
         if (!isG3DCameraEnabled && !isMosaicMultiviewCameraEnabled)
             return false;
