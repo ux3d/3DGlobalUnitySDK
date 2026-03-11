@@ -425,6 +425,7 @@ public class G3DCamera
             viewGenerationPass.materialPassName = "G3DViewGeneration";
             viewGenerationPass.cameras = cameras;
             viewGenerationPass.internalCameraCount = internalCameraCount;
+            viewGenerationPass.cullingMask = mainCamCullingMask;
 
             recreateDepthTextures();
             viewGenerationPass.indivDepthMaps = depthMosaicPass.indivDepthTextures;
@@ -1316,38 +1317,24 @@ public class G3DCamera
                 if (i == 0 || i == internalCameraCount / 2 || i == internalCameraCount - 1)
                 {
                     camera.gameObject.SetActive(true);
-                }
-                else
-                {
-                    //TODO find way to to this for URP
 #if G3D_HDRP
-                    camera.gameObject.SetActive(true);
                     HDAdditionalCameraData hdAdditionalCameraData = camera.GetComponent<HDAdditionalCameraData>();
                     hdAdditionalCameraData.customRenderingSettings = true;
                     uint[] frameSettings = {
-                        (uint)FrameSettingsField.OpaqueObjects,
-                        (uint)FrameSettingsField.ComputeThickness,
-                        (uint)FrameSettingsField.RayTracing,
-                        (uint)FrameSettingsField.ObjectMotionVectors,
-                        (uint)FrameSettingsField.Distortion,
-                        (uint)FrameSettingsField.ShadowMaps,
-                        (uint)FrameSettingsField.ContactShadows,
-                        (uint)FrameSettingsField.SubsurfaceScattering,
-                        (uint)FrameSettingsField.ScreenSpaceShadows,
-                        (uint)FrameSettingsField.Shadowmask,
-                        (uint)FrameSettingsField.Transmission,
-                        (uint)FrameSettingsField.LightLayers,
+                        (uint)FrameSettingsField.TransparentObjects,
+                        (uint)FrameSettingsField.TransparentsWriteMotionVector,
+                        (uint)FrameSettingsField.TransparentSSR
                     };
                     for (int j = 0; j < frameSettings.Length; j++)
                     {
                         hdAdditionalCameraData.renderingPathCustomFrameSettingsOverrideMask.mask[frameSettings[j]] = true;
                         hdAdditionalCameraData.renderingPathCustomFrameSettings.SetEnabled((FrameSettingsField)frameSettings[j], false);
                     }
-                    camera.clearFlags = CameraClearFlags.SolidColor;
-                    camera.backgroundColor = new Color(0, 0, 0, 0);
-#else
-                    camera.gameObject.SetActive(false);
 #endif
+                }
+                else
+                {
+                    camera.gameObject.SetActive(false);
                 }
             }
             else
@@ -1356,8 +1343,6 @@ public class G3DCamera
                 camera.gameObject.SetActive(true);
                 var hdAdditionalCameraData = camera.GetComponent<HDAdditionalCameraData>();
                 hdAdditionalCameraData.renderingPathCustomFrameSettingsOverrideMask.mask = new BitArray128(0, 0); // disable all overrides
-                camera.clearFlags = originalMainClearFlags;
-                //TODO restore original background color as well (need to store it first)
             }
         }
 

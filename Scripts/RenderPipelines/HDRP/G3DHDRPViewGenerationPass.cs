@@ -32,6 +32,11 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     private RenderTexture smaaBlendTex;
     private RTHandle smaaBlendTexHandle;
 
+    private RenderTexture[] transparentObjects;
+    //private RenderTexture[] transparentObjectsDepth;
+    private RTHandle[] transparentObjectsHandles;
+    //private RTHandle[] transparentObjectsDepthHandles;
+
     public int holeFillingRadius;
 
     public bool fillHoles;
@@ -39,6 +44,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     public bool debugRendering;
 
     private Material blitMaterial;
+    private Material transparentCompositeMaterial;
 
     public RTHandle[] indivDepthMaps;
 
@@ -49,6 +55,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
     private AntialiasingMode antialiasingMode = AntialiasingMode.None;
 
     public Vector2Int renderResolution = new Vector2Int(1920, 1080);
+
+    public int cullingMask = -1;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
@@ -68,6 +76,8 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
 
         blitMaterial = new Material(Shader.Find("G3D/G3DBlit"));
         blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);
+
+        transparentCompositeMaterial = new Material(Shader.Find("G3D/G3DTransparentComposite"));
     }
 
     public void init(Vector2Int resolution, AntialiasingMode mode)
@@ -75,6 +85,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         renderResolution = resolution;
         CreateComputeShaderResultTexture();
         setAntiAliasingMode(mode);
+        createTransparentObjectsTextures(internalCameraCount);
     }
 
     public void updateRenderResolution(Vector2Int resolution)
@@ -153,6 +164,49 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         smaaBlendTexHandle = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(smaaBlendTex);
     }
 
+    public void createTransparentObjectsTextures(int count)
+    {
+        transparentObjects = new RenderTexture[count];
+        transparentObjectsHandles = new RTHandle[count];
+        //transparentObjectsDepth = new RenderTexture[count];
+        //transparentObjectsDepthHandles = new RTHandle[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            transparentObjects[i] = new RenderTexture(
+                renderResolution.x,
+                renderResolution.y,
+                24,
+                RenderTextureFormat.ARGB32,
+                RenderTextureReadWrite.Linear
+            )
+            {
+                name = "TransparentObject" + i,
+                enableRandomWrite = true
+            };
+            transparentObjects[i].Create();
+            transparentObjectsHandles[i] = G3DHDRPCustomPass
+                .GetRTHandleSystem()
+                .Alloc(transparentObjects[i]);
+
+            /*transparentObjectsDepth[i] = new RenderTexture(
+                renderResolution.x,
+                renderResolution.y,
+                24,
+                RenderTextureFormat.Depth,
+                RenderTextureReadWrite.Linear
+            )
+            {
+                name = "TransparentObjectDepth" + i,
+                enableRandomWrite = false
+            };
+            transparentObjectsDepth[i].Create();
+            transparentObjectsDepthHandles[i] = G3DHDRPCustomPass
+                .GetRTHandleSystem()
+                .Alloc(transparentObjectsDepth[i]);*/
+        }
+    }
+
     public void setAntiAliasingMode(AntialiasingMode mode)
     {
         AntialiasingMode oldMode = antialiasingMode;
@@ -205,6 +259,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         {
             runReprojection(ctx);
             // color image now in mosaicImageHandle
+            runTransparentPass(ctx);
 
             runHoleFilling(ctx);
             runFXAA(ctx);
@@ -292,6 +347,74 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             fullscreenPassMaterial,
             ctx.propertyBlock,
             shaderPassId: 0
+        );
+    }
+
+    private void runTransparentPass(CustomPassContext ctx)
+    {
+        if (transparentObjectsHandles == null || indivDepthMaps == null)
+            return;
+
+        int tileWidth = mosaicImageHandle.rt.width / 4;
+        int tileHeight = mosaicImageHandle.rt.height / 4;
+
+        for (int i = 0; i < internalCameraCount; i++)
+        {
+            // Copy opaque depth into the transparent depth buffer so transparent objects
+            // are depth-tested against the already-reprojected opaque geometry.
+            //ctx.cmd.CopyTexture(indivDepthMaps[i], transparentObjectsDepthHandles[i]);
+
+            // Render transparent objects from this camera's perspective.
+            // ClearFlag.Color clears the color target while preserving the copied depth.
+
+            Camera bakingCamera = cameras[i];
+
+            // We need to be careful about the aspect ratio of render textures when doing the culling, otherwise it could result in objects poping:
+            bakingCamera.aspect = Mathf.Max(
+                bakingCamera.aspect,
+                transparentObjectsHandles[i].referenceSize.x / (float)transparentObjectsHandles[i].referenceSize.y
+            );
+            bakingCamera.TryGetCullingParameters(out var cullingParams);
+            cullingParams.cullingOptions = CullingOptions.None;
+            //camera.cullingMask &= ~(1 << bakingCamera.gameObject.layer);
+
+            // Assign the custom culling result to the context
+            // so it'll be used for the following operations
+            ctx.cullingResults = ctx.renderContext.Cull(ref cullingParams);
+
+            LayerMask mask = (LayerMask)cullingMask;
+            
+            CustomPassUtils.RenderFromCamera(
+                ctx,
+                cameras[i],
+                transparentObjects[i],
+                ClearFlag.Color,
+                mask,
+                RenderQueueType.AllTransparent
+            );
+
+            // Composite the transparent render into the corresponding tile of the mosaic
+            // (column-major layout: camera i occupies column i%4, row i/4).
+            int col = i % 4;
+            int row = i / 4;
+
+            CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
+            ctx.cmd.SetViewport(new Rect(col * tileWidth, row * tileHeight, tileWidth, tileHeight));
+            ctx.propertyBlock.SetTexture(
+                Shader.PropertyToID("_mainTex"),
+                transparentObjects[i]
+            );
+            CoreUtils.DrawFullScreen(
+                ctx.cmd,
+                transparentCompositeMaterial,
+                ctx.propertyBlock,
+                shaderPassId: 0
+            );
+        }
+        CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
+        // Restore full-mosaic viewport for subsequent passes.
+        ctx.cmd.SetViewport(
+            new Rect(0, 0, mosaicImageHandle.rt.width, mosaicImageHandle.rt.height)
         );
     }
 
@@ -485,6 +608,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         releaseSMAATextures();
         computeShaderResultTextureHandle?.Release();
         computeShaderResultTexture?.Release();
+        CoreUtils.Destroy(transparentCompositeMaterial);
     }
 }
 
