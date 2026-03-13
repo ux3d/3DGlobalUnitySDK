@@ -895,6 +895,10 @@ public class G3DCamera
         {
             aaMode = AntialiasingMode.FXAA;
         }
+        else if (antialiasingMode == HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing)
+        {
+            aaMode = AntialiasingMode.TAA;
+        }
         return aaMode;
     }
 #endif
@@ -1303,7 +1307,30 @@ public class G3DCamera
                 HDAdditionalCameraData hdAdditionalCameraData =
                     camera.gameObject.GetComponent<HDAdditionalCameraData>();
                 if (hdAdditionalCameraData != null)
+                {
+                    HDAdditionalCameraData mainData =
+                        mainCamera.GetComponent<HDAdditionalCameraData>();
                     hdAdditionalCameraData.antialiasing = antialiasingMode;
+                    if (
+                        antialiasingMode
+                        == HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing
+                    )
+                    {
+                        hdAdditionalCameraData.taaAntiFlicker = mainData.taaAntiFlicker;
+                        hdAdditionalCameraData.taaAntiHistoryRinging =
+                            mainData.taaAntiHistoryRinging;
+                        hdAdditionalCameraData.taaBaseBlendFactor = mainData.taaBaseBlendFactor;
+                        hdAdditionalCameraData.taaHistorySharpening = mainData.taaHistorySharpening;
+                        hdAdditionalCameraData.taaJitterScale = mainData.taaJitterScale;
+                        hdAdditionalCameraData.taaMotionVectorRejection =
+                            mainData.taaMotionVectorRejection;
+                        hdAdditionalCameraData.taaRingingReduction = mainData.taaRingingReduction;
+                        hdAdditionalCameraData.taaSharpenMode = mainData.taaSharpenMode;
+                        hdAdditionalCameraData.taaSharpenStrength = mainData.taaSharpenStrength;
+                        hdAdditionalCameraData.TAAQuality = mainData.TAAQuality;
+                    }
+                }
+
 #endif
             }
 

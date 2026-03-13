@@ -8,7 +8,8 @@ internal enum AntialiasingMode
 {
     None,
     FXAA,
-    SMAA
+    SMAA,
+    TAA
 }
 
 internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
@@ -162,7 +163,11 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
         }
 
         antialiasingMode = mode;
-        if (mode == AntialiasingMode.None || mode == AntialiasingMode.FXAA)
+        if (
+            mode == AntialiasingMode.None
+            || mode == AntialiasingMode.FXAA
+            || mode == AntialiasingMode.TAA
+        )
         {
             releaseSMAATextures();
         }
