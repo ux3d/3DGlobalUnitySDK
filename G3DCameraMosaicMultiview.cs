@@ -92,10 +92,10 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
     private Camera mainCamera;
     private Material material;
 #if G3D_HDRP
-    private HDRPCustomPass customPass;
+    private g3d.HDRPCustomPass customPass;
 #endif
 #if G3D_URP
-    private UrpScriptableRenderPass customPass;
+    private g3d.UrpScriptableRenderPass customPass;
 #endif
 
     private ShaderHandles shaderHandles;
@@ -146,13 +146,14 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         customPassVolume.isGlobal = true;
         // Make the volume invisible in the inspector
         customPassVolume.hideFlags = HideFlags.HideInInspector | HideFlags.DontSave;
-        customPass = customPassVolume.AddPassOfType(typeof(HDRPCustomPass)) as HDRPCustomPass;
+        customPass =
+            customPassVolume.AddPassOfType(typeof(g3d.HDRPCustomPass)) as g3d.HDRPCustomPass;
         customPass.fullscreenPassMaterial = material;
         customPass.materialPassName = "G3DFullScreen3D";
 #endif
 
 #if G3D_URP
-        customPass = new UrpScriptableRenderPass(material);
+        customPass = new g3d.UrpScriptableRenderPass(material);
 #endif
 
         // Do this last to ensure custom passes are already set up
@@ -490,8 +491,8 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
     // This function only does something when you use the SRP render pipeline.
     // when using either URP or HRDP image combination is handled in the respective renderpasses.
-    // URP -> UrpScriptableRenderPass.cs
-    // HDRP -> HDRPCustomPass.cs
+    // URP -> g3d.UrpScriptableRenderPass.cs
+    // HDRP -> g3d.HDRPCustomPass.cs
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         // This is where the material and shader are applied to the camera image.

@@ -175,7 +175,7 @@ public class G3DCamera
         .None;
 #endif
 #if G3D_URP
-    private UrpScriptableRenderPass customPass;
+    private g3d.UrpScriptableRenderPass customPass;
     private AntialiasingMode antialiasingMode = AntialiasingMode.None;
 #endif
 
@@ -231,8 +231,8 @@ public class G3DCamera
 
     private Material viewGenerationMaterial;
 #if G3D_HDRP
-    private HDRPViewGenerationPass viewGenerationPass;
-    private HDRPDepthMapPrePass depthMosaicPass;
+    private g3d.HDRPViewGenerationPass viewGenerationPass;
+    private g3d.HDRPDepthMapPrePass depthMosaicPass;
 
     /// <summary>
     /// Used for view generation mosaic rendering.
@@ -279,7 +279,7 @@ public class G3DCamera
 #endif
 
 #if G3D_URP
-        customPass = new UrpScriptableRenderPass(material);
+        customPass = new g3d.UrpScriptableRenderPass(material);
         antialiasingMode = mainCamera.GetUniversalAdditionalCameraData().antialiasing;
         mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
 #endif
@@ -409,15 +409,16 @@ public class G3DCamera
         {
             // add depth mosaic generation pass
             depthMosaicPass =
-                customPassVolume.AddPassOfType(typeof(HDRPDepthMapPrePass)) as HDRPDepthMapPrePass;
+                customPassVolume.AddPassOfType(typeof(g3d.HDRPDepthMapPrePass))
+                as g3d.HDRPDepthMapPrePass;
             depthMosaicPass.cullingMask = mainCamCullingMask;
             depthMosaicPass.cameras = cameras;
             depthMosaicPass.internalCameraCount = internalCameraCount;
 
             // add multiview generation pass
             viewGenerationPass =
-                customPassVolume.AddPassOfType(typeof(HDRPViewGenerationPass))
-                as HDRPViewGenerationPass;
+                customPassVolume.AddPassOfType(typeof(g3d.HDRPViewGenerationPass))
+                as g3d.HDRPViewGenerationPass;
             viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
 
             viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
@@ -430,7 +431,7 @@ public class G3DCamera
             viewGenerationPass.debugRendering = debugRendering;
             viewGenerationPass.fillHoles = isFillingHoles;
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
-            AntialiasingMode aaMode = getCameraAAMode();
+            g3d.AntialiasingMode aaMode = getCameraAAMode();
             viewGenerationPass.init(
                 new Vector2Int(mainCamera.pixelWidth, mainCamera.pixelHeight),
                 aaMode
@@ -441,17 +442,17 @@ public class G3DCamera
 
             if (debugRendering == false)
             {
-                G3DHDRPViewGenerationMosaicPass finalAutostereoGeneration =
-                    customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationMosaicPass))
-                    as G3DHDRPViewGenerationMosaicPass;
+                g3d.HDRPViewGenerationMosaicPass finalAutostereoGeneration =
+                    customPassVolume.AddPassOfType(typeof(g3d.HDRPViewGenerationMosaicPass))
+                    as g3d.HDRPViewGenerationMosaicPass;
                 finalAutostereoGeneration.fullscreenPassMaterial = material;
                 finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
             }
         }
         else
         {
-            HDRPCustomPass customPass =
-                customPassVolume.AddPassOfType(typeof(HDRPCustomPass)) as HDRPCustomPass;
+            g3d.HDRPCustomPass customPass =
+                customPassVolume.AddPassOfType(typeof(g3d.HDRPCustomPass)) as g3d.HDRPCustomPass;
             customPass.fullscreenPassMaterial = material;
             customPass.materialPassName = "G3DFullScreen3D";
         }
@@ -489,9 +490,9 @@ public class G3DCamera
 
         if (rtHandleMosaic != null)
         {
-            HDRPCustomPass.GetRTHandleSystem().Release(rtHandleMosaic);
+            g3d.HDRPCustomPass.GetRTHandleSystem().Release(rtHandleMosaic);
         }
-        rtHandleMosaic = HDRPCustomPass.GetRTHandleSystem().Alloc(mosaicTexture);
+        rtHandleMosaic = g3d.HDRPCustomPass.GetRTHandleSystem().Alloc(mosaicTexture);
         material.SetTexture("_colorMosaic", rtHandleMosaic);
         viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
     }
@@ -875,25 +876,25 @@ public class G3DCamera
     }
 
 #if G3D_HDRP
-    private AntialiasingMode getCameraAAMode()
+    private g3d.AntialiasingMode getCameraAAMode()
     {
-        AntialiasingMode aaMode = AntialiasingMode.None;
+        g3d.AntialiasingMode aaMode = g3d.AntialiasingMode.None;
         if (
             antialiasingMode
             == HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing
         )
         {
-            aaMode = AntialiasingMode.SMAA;
+            aaMode = g3d.AntialiasingMode.SMAA;
         }
         else if (
             antialiasingMode == HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing
         )
         {
-            aaMode = AntialiasingMode.FXAA;
+            aaMode = g3d.AntialiasingMode.FXAA;
         }
         else if (antialiasingMode == HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing)
         {
-            aaMode = AntialiasingMode.TAA;
+            aaMode = g3d.AntialiasingMode.TAA;
         }
         return aaMode;
     }
@@ -1077,7 +1078,7 @@ public class G3DCamera
         {
             recreatedRenderTextures = true;
 #if G3D_HDRP
-            HDRPCustomPass.GetRTHandleSystem().ResetReferenceSize(Screen.width, Screen.height);
+            g3d.HDRPCustomPass.GetRTHandleSystem().ResetReferenceSize(Screen.width, Screen.height);
             // TODO this is only needed to reset the size of the cameras internal render targets
             // Find a way to avoid this line...
             RTHandles.ResetReferenceSize(Screen.width, Screen.height);
@@ -1101,7 +1102,7 @@ public class G3DCamera
             viewGenerationPass.holeFillingRadius = holeFillingRadius;
             viewGenerationPass.fillHoles = isFillingHoles;
 
-            AntialiasingMode aaMode = getCameraAAMode();
+            g3d.AntialiasingMode aaMode = getCameraAAMode();
             viewGenerationPass.setAntiAliasingMode(aaMode);
         }
 #endif
@@ -1555,8 +1556,8 @@ public class G3DCamera
 
     // This function only does something when you use the SRP render pipeline.
     // when using either URP or HRDP image combination is handled in the respective renderpasses.
-    // URP -> UrpScriptableRenderPass.cs
-    // HDRP -> HDRPCustomPass.cs
+    // URP -> g3d.UrpScriptableRenderPass.cs
+    // HDRP -> g3d.HDRPCustomPass.cs
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         // This is where the material and shader are applied to the camera image.
