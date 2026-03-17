@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
+internal class HDRPDepthMapPrePass : FullScreenCustomPass
 {
     public List<Camera> cameras;
     public int internalCameraCount = 16;
@@ -80,7 +80,7 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
             {
                 continue;
             }
-            G3DHDRPCustomPass.GetRTHandleSystem().Release(indivDepthTextures[i]);
+            HDRPCustomPass.GetRTHandleSystem().Release(indivDepthTextures[i]);
         }
     }
 
@@ -104,7 +104,7 @@ internal class G3DHDRPDepthMapPrePass : FullScreenCustomPass
                 RenderTextureFormat.Depth
             );
             depthTexture.Create();
-            RTHandle handle = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(depthTexture);
+            RTHandle handle = HDRPCustomPass.GetRTHandleSystem().Alloc(depthTexture);
             indivDepthTextures[i] = handle;
         }
     }

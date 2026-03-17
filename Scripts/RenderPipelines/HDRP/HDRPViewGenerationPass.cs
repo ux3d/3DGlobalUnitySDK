@@ -12,7 +12,7 @@ internal enum AntialiasingMode
     TAA
 }
 
-internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
+internal class HDRPViewGenerationPass : FullScreenCustomPass
 {
     public RTHandle leftColorMapHandle;
     public RTHandle rightColorMapHandle;
@@ -111,7 +111,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             enableRandomWrite = true
         };
         computeShaderResultTexture.Create();
-        computeShaderResultTextureHandle = G3DHDRPCustomPass
+        computeShaderResultTextureHandle = HDRPCustomPass
             .GetRTHandleSystem()
             .Alloc(computeShaderResultTexture);
 
@@ -137,7 +137,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             enableRandomWrite = true
         };
         smaaEdgesTex.Create();
-        smaaEdgesTexHandle = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(smaaEdgesTex);
+        smaaEdgesTexHandle = HDRPCustomPass.GetRTHandleSystem().Alloc(smaaEdgesTex);
 
         smaaBlendTex = new RenderTexture(
             width,
@@ -151,7 +151,7 @@ internal class G3DHDRPViewGenerationPass : FullScreenCustomPass
             enableRandomWrite = true
         };
         smaaBlendTex.Create();
-        smaaBlendTexHandle = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(smaaBlendTex);
+        smaaBlendTexHandle = HDRPCustomPass.GetRTHandleSystem().Alloc(smaaBlendTex);
     }
 
     public void setAntiAliasingMode(AntialiasingMode mode)

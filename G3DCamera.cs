@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Rendering;
-#if UNITY_EDITOR
-
-#endif
-
 #if G3D_HDRP
 using UnityEngine.Rendering.HighDefinition;
 #endif
@@ -179,7 +175,7 @@ public class G3DCamera
         .None;
 #endif
 #if G3D_URP
-    private G3DUrpScriptableRenderPass customPass;
+    private UrpScriptableRenderPass customPass;
     private AntialiasingMode antialiasingMode = AntialiasingMode.None;
 #endif
 
@@ -235,8 +231,8 @@ public class G3DCamera
 
     private Material viewGenerationMaterial;
 #if G3D_HDRP
-    private G3DHDRPViewGenerationPass viewGenerationPass;
-    private G3DHDRPDepthMapPrePass depthMosaicPass;
+    private HDRPViewGenerationPass viewGenerationPass;
+    private HDRPDepthMapPrePass depthMosaicPass;
 
     /// <summary>
     /// Used for view generation mosaic rendering.
@@ -283,7 +279,7 @@ public class G3DCamera
 #endif
 
 #if G3D_URP
-        customPass = new G3DUrpScriptableRenderPass(material);
+        customPass = new UrpScriptableRenderPass(material);
         antialiasingMode = mainCamera.GetUniversalAdditionalCameraData().antialiasing;
         mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
 #endif
@@ -413,16 +409,15 @@ public class G3DCamera
         {
             // add depth mosaic generation pass
             depthMosaicPass =
-                customPassVolume.AddPassOfType(typeof(G3DHDRPDepthMapPrePass))
-                as G3DHDRPDepthMapPrePass;
+                customPassVolume.AddPassOfType(typeof(HDRPDepthMapPrePass)) as HDRPDepthMapPrePass;
             depthMosaicPass.cullingMask = mainCamCullingMask;
             depthMosaicPass.cameras = cameras;
             depthMosaicPass.internalCameraCount = internalCameraCount;
 
             // add multiview generation pass
             viewGenerationPass =
-                customPassVolume.AddPassOfType(typeof(G3DHDRPViewGenerationPass))
-                as G3DHDRPViewGenerationPass;
+                customPassVolume.AddPassOfType(typeof(HDRPViewGenerationPass))
+                as HDRPViewGenerationPass;
             viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
 
             viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
@@ -455,8 +450,8 @@ public class G3DCamera
         }
         else
         {
-            G3DHDRPCustomPass customPass =
-                customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
+            HDRPCustomPass customPass =
+                customPassVolume.AddPassOfType(typeof(HDRPCustomPass)) as HDRPCustomPass;
             customPass.fullscreenPassMaterial = material;
             customPass.materialPassName = "G3DFullScreen3D";
         }
@@ -494,9 +489,9 @@ public class G3DCamera
 
         if (rtHandleMosaic != null)
         {
-            G3DHDRPCustomPass.GetRTHandleSystem().Release(rtHandleMosaic);
+            HDRPCustomPass.GetRTHandleSystem().Release(rtHandleMosaic);
         }
-        rtHandleMosaic = G3DHDRPCustomPass.GetRTHandleSystem().Alloc(mosaicTexture);
+        rtHandleMosaic = HDRPCustomPass.GetRTHandleSystem().Alloc(mosaicTexture);
         material.SetTexture("_colorMosaic", rtHandleMosaic);
         viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
     }
@@ -1082,7 +1077,7 @@ public class G3DCamera
         {
             recreatedRenderTextures = true;
 #if G3D_HDRP
-            G3DHDRPCustomPass.GetRTHandleSystem().ResetReferenceSize(Screen.width, Screen.height);
+            HDRPCustomPass.GetRTHandleSystem().ResetReferenceSize(Screen.width, Screen.height);
             // TODO this is only needed to reset the size of the cameras internal render targets
             // Find a way to avoid this line...
             RTHandles.ResetReferenceSize(Screen.width, Screen.height);
@@ -1560,8 +1555,8 @@ public class G3DCamera
 
     // This function only does something when you use the SRP render pipeline.
     // when using either URP or HRDP image combination is handled in the respective renderpasses.
-    // URP -> G3DUrpScriptableRenderPass.cs
-    // HDRP -> G3DHDRPCustomPass.cs
+    // URP -> UrpScriptableRenderPass.cs
+    // HDRP -> HDRPCustomPass.cs
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         // This is where the material and shader are applied to the camera image.

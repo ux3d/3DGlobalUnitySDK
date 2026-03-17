@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
-internal class G3DUrpScriptableRenderPass : ScriptableRenderPass
+internal class UrpScriptableRenderPass : ScriptableRenderPass
 {
     Material m_Material;
 
@@ -16,7 +16,7 @@ internal class G3DUrpScriptableRenderPass : ScriptableRenderPass
         internal Material blitMaterial;
     }
 
-    public G3DUrpScriptableRenderPass(Material material)
+    public UrpScriptableRenderPass(Material material)
     {
         m_Material = material;
         renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;

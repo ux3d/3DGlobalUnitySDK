@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-internal class G3DHDRPCustomPass : FullScreenCustomPass
+internal class HDRPCustomPass : FullScreenCustomPass
 {
     private static RTHandleSystem m_RTHandleSystem;
 
