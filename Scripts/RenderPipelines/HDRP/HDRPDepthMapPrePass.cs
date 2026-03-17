@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-namespace g3d
+namespace G3D.RenderPass
 {
     internal class HDRPDepthMapPrePass : FullScreenCustomPass
     {

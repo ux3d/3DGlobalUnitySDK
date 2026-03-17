@@ -4,16 +4,8 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-namespace g3d
+namespace G3D.RenderPass
 {
-    internal enum AntialiasingMode
-    {
-        None,
-        FXAA,
-        SMAA,
-        TAA
-    }
-
     internal class HDRPViewGenerationMosaicPass : FullScreenCustomPass
     {
         protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }

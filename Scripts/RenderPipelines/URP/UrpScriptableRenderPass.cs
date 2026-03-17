@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
-namespace g3d
+namespace G3D.RenderPass
 {
     internal class UrpScriptableRenderPass : ScriptableRenderPass
     {
