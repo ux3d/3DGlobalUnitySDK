@@ -5,9 +5,9 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
-namespace G3D.RenderPass
+namespace G3D.RenderPipeline.URP
 {
-    internal class UrpScriptableRenderPass : ScriptableRenderPass
+    internal class ScriptableRP : ScriptableRenderPass
     {
         Material m_Material;
 
@@ -18,7 +18,7 @@ namespace G3D.RenderPass
             internal Material blitMaterial;
         }
 
-        public UrpScriptableRenderPass(Material material)
+        public ScriptableRP(Material material)
         {
             m_Material = material;
             renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
@@ -43,7 +43,7 @@ namespace G3D.RenderPass
         {
             var camera = renderingData.cameraData.camera;
 
-            if (performBlit(camera, m_Material))
+            if (Helpers.isMainG3DCamera(camera, m_Material))
             {
                 CommandBuffer cmd = CommandBufferPool.Get();
                 Blitter.BlitCameraTexture(
@@ -79,50 +79,11 @@ namespace G3D.RenderPass
             passData.blitMaterial = m_Material;
         }
 
-        /// <summary>
-        /// Checks whether the camera is a G3D camera or a Mosaic Multiview camera and if the blit material has been set.
-        /// If so returns true, otherwise returns false.
-        /// </summary>
-        /// <param name="camera"></param>
-        /// <returns></returns>
-        static bool performBlit(Camera camera, Material blitMaterial)
-        {
-            if (camera.cameraType != CameraType.Game)
-                return false;
-            bool isG3DCamera = camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera);
-            bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled;
-
-            bool isMosaicMultiviewCamera =
-                camera.gameObject.TryGetComponent<G3DCameraMosaicMultiview>(out var mosaicCamera);
-            bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled;
-
-            if (!isG3DCameraEnabled && !isMosaicMultiviewCameraEnabled)
-                return false;
-
-            if (blitMaterial == null)
-                return false;
-
-            // skip all cameras created by the G3D Camera script
-            if (camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))
-            {
-                return false;
-            }
-
-            return true;
-        }
-
         static void ExecutePass(PassData data, RasterGraphContext context)
         {
             var camera = data.camera;
-            if (performBlit(camera, data.blitMaterial))
+            if (Helpers.isMainG3DCamera(camera, data.blitMaterial))
             {
-                // CommandBuffer cmd = CommandBufferPool.Get();
-                // Blitter.BlitCameraTexture(cmd, data.src, data.src, data.blitMaterial, 0);
-                // Blitter.
-                // context.ExecuteCommandBuffer(cmd);
-                // cmd.Clear();
-                // CommandBufferPool.Release(cmd);
-
                 Blitter.BlitTexture(
                     context.cmd,
                     data.src,
@@ -139,16 +100,14 @@ namespace G3D.RenderPass
         {
             string passName = "Blit With Material";
 
-            // This simple pass copies the active color texture to a new texture using a custom material. This sample is for API demonstrative purposes,
-            // so the new texture is not used anywhere else in the frame, you can use the frame debugger to verify its contents.
-
-            // add a raster render pass to the render graph, specifying the name and the data type that will be passed to the ExecutePass function
             using (
                 var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData)
             )
             {
                 // Initialize the pass data
                 InitPassData(renderGraph, frameData, ref passData);
+
+                // TODO check if these steps are needed
 
                 // // We disable culling for this pass for the demonstrative purpose of this sampe, as normally this pass would be culled,
                 // // since the destination texture is not used anywhere else

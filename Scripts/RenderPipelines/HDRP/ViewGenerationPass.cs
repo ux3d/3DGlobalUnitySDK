@@ -4,17 +4,9 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-namespace G3D.RenderPass
+namespace G3D.RenderPipeline.HDRP
 {
-    internal enum AntialiasingMode
-    {
-        None,
-        FXAA,
-        SMAA,
-        TAA
-    }
-
-    internal class HDRPViewGenerationPass : FullScreenCustomPass
+    internal class ViewGeneration : FullScreenCustomPass
     {
         public RTHandle leftColorMapHandle;
         public RTHandle rightColorMapHandle;
@@ -113,7 +105,7 @@ namespace G3D.RenderPass
                 enableRandomWrite = true
             };
             computeShaderResultTexture.Create();
-            computeShaderResultTextureHandle = HDRPCustomPass
+            computeShaderResultTextureHandle = CustomPass
                 .GetRTHandleSystem()
                 .Alloc(computeShaderResultTexture);
 
@@ -142,7 +134,7 @@ namespace G3D.RenderPass
                 enableRandomWrite = true
             };
             smaaEdgesTex.Create();
-            smaaEdgesTexHandle = HDRPCustomPass.GetRTHandleSystem().Alloc(smaaEdgesTex);
+            smaaEdgesTexHandle = CustomPass.GetRTHandleSystem().Alloc(smaaEdgesTex);
 
             smaaBlendTex = new RenderTexture(
                 width,
@@ -156,7 +148,7 @@ namespace G3D.RenderPass
                 enableRandomWrite = true
             };
             smaaBlendTex.Create();
-            smaaBlendTexHandle = HDRPCustomPass.GetRTHandleSystem().Alloc(smaaBlendTex);
+            smaaBlendTexHandle = CustomPass.GetRTHandleSystem().Alloc(smaaBlendTex);
         }
 
         public void setAntiAliasingMode(AntialiasingMode mode)
@@ -211,7 +203,7 @@ namespace G3D.RenderPass
         {
             var camera = ctx.hdCamera.camera;
             HDAdditionalCameraData hdCamera = camera.GetComponent<HDAdditionalCameraData>();
-            if (isMainG3DCamera(camera))
+            if (Helpers.isMainG3DCamera(camera))
             {
                 runReprojection(ctx);
                 // color image now in mosaicImageHandle
@@ -222,7 +214,13 @@ namespace G3D.RenderPass
 
                 if (debugRendering)
                 {
-                    if (fillHoles == false && antialiasingMode == AntialiasingMode.None)
+                    if (
+                        fillHoles == false
+                        && (
+                            antialiasingMode == AntialiasingMode.None
+                            || antialiasingMode == AntialiasingMode.TAA
+                        )
+                    )
                     {
                         blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), mosaicImageHandle);
                     }
@@ -244,7 +242,13 @@ namespace G3D.RenderPass
                 }
                 else
                 {
-                    if (fillHoles == false && antialiasingMode == AntialiasingMode.None)
+                    if (
+                        fillHoles == false
+                        && (
+                            antialiasingMode == AntialiasingMode.None
+                            || antialiasingMode == AntialiasingMode.TAA
+                        )
+                    )
                     {
                         return;
                     }
@@ -472,35 +476,6 @@ namespace G3D.RenderPass
                 ctx.propertyBlock,
                 shaderPassId: smaaMaterial.FindPass("NeighborhoodBlending")
             );
-        }
-
-        /// <summary>
-        /// Checks whether the camera is a G3D camera or a Mosaic Multiview camera and if the blit material has been set.
-        /// If so returns true, otherwise returns false.
-        /// </summary>
-        /// <param name="camera"></param>
-        /// <returns></returns>
-        static bool isMainG3DCamera(Camera camera)
-        {
-            if (camera.cameraType != CameraType.Game)
-                return false;
-            bool isG3DCamera = camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera);
-            bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled;
-
-            bool isMosaicMultiviewCamera =
-                camera.gameObject.TryGetComponent<G3DCameraMosaicMultiview>(out var mosaicCamera);
-            bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled;
-
-            if (!isG3DCameraEnabled && !isMosaicMultiviewCameraEnabled)
-                return false;
-
-            // skip all cameras created by the G3D Camera script
-            if (camera.name.StartsWith(G3DCamera.CAMERA_NAME_PREFIX))
-            {
-                return false;
-            }
-
-            return true;
         }
 
         protected override void Cleanup()

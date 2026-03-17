@@ -3,46 +3,25 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-namespace G3D.RenderPass
+namespace G3D.RenderPipeline
 {
-    internal class HDRPCustomPass : FullScreenCustomPass
+    internal enum AntialiasingMode
     {
-        private static RTHandleSystem m_RTHandleSystem;
+        None,
+        FXAA,
+        SMAA,
+        TAA
+    }
 
-        public static RTHandleSystem GetRTHandleSystem()
-        {
-            if (m_RTHandleSystem == null)
-            {
-                m_RTHandleSystem = new RTHandleSystem();
-                m_RTHandleSystem.Initialize(Screen.width, Screen.height);
-            }
-            return m_RTHandleSystem;
-        }
-
-        protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
-
-        protected override void Execute(CustomPassContext ctx)
-        {
-            var camera = ctx.hdCamera.camera;
-            if (shouldPerformBlit(camera))
-            {
-                CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
-                CoreUtils.DrawFullScreen(
-                    ctx.cmd,
-                    fullscreenPassMaterial,
-                    ctx.propertyBlock,
-                    shaderPassId: 0
-                );
-            }
-        }
-
+    internal class Helpers
+    {
         /// <summary>
         /// Checks whether the camera is a G3D camera or a Mosaic Multiview camera and if the blit material has been set.
         /// If so returns true, otherwise returns false.
         /// </summary>
         /// <param name="camera"></param>
         /// <returns></returns>
-        static bool shouldPerformBlit(Camera camera)
+        internal static bool isMainG3DCamera(Camera camera)
         {
             if (camera.cameraType != CameraType.Game)
                 return false;
@@ -64,8 +43,6 @@ namespace G3D.RenderPass
 
             return true;
         }
-
-        protected override void Cleanup() { }
     }
 }
 #endif

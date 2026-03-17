@@ -1,23 +1,32 @@
 #if G3D_HDRP
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 
-namespace G3D.RenderPass
+namespace G3D.RenderPipeline.HDRP
 {
-    internal class HDRPViewGenerationMosaicPass : FullScreenCustomPass
+    internal class CustomPass : FullScreenCustomPass
     {
+        private static RTHandleSystem m_RTHandleSystem;
+
+        public static RTHandleSystem GetRTHandleSystem()
+        {
+            if (m_RTHandleSystem == null)
+            {
+                m_RTHandleSystem = new RTHandleSystem();
+                m_RTHandleSystem.Initialize(Screen.width, Screen.height);
+            }
+            return m_RTHandleSystem;
+        }
+
         protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 
         protected override void Execute(CustomPassContext ctx)
         {
             var camera = ctx.hdCamera.camera;
-            if (isMainG3DCamera(camera))
+            if (shouldPerformBlit(camera))
             {
                 CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
-                ctx.propertyBlock.SetFloat(Shader.PropertyToID("mosaic_rows"), 4);
-                ctx.propertyBlock.SetFloat(Shader.PropertyToID("mosaic_columns"), 4);
                 CoreUtils.DrawFullScreen(
                     ctx.cmd,
                     fullscreenPassMaterial,
@@ -33,16 +42,16 @@ namespace G3D.RenderPass
         /// </summary>
         /// <param name="camera"></param>
         /// <returns></returns>
-        static bool isMainG3DCamera(Camera camera)
+        static bool shouldPerformBlit(Camera camera)
         {
             if (camera.cameraType != CameraType.Game)
                 return false;
             bool isG3DCamera = camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera);
-            bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled;
+            bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled; // only do something if our component is enabled
 
             bool isMosaicMultiviewCamera =
                 camera.gameObject.TryGetComponent<G3DCameraMosaicMultiview>(out var mosaicCamera);
-            bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled;
+            bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled; // same check if it is a mosaic camera
 
             if (!isG3DCameraEnabled && !isMosaicMultiviewCameraEnabled)
                 return false;
@@ -59,5 +68,4 @@ namespace G3D.RenderPass
         protected override void Cleanup() { }
     }
 }
-
 #endif
