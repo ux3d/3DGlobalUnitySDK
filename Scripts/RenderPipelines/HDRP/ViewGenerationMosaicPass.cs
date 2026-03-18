@@ -6,7 +6,7 @@ using UnityEngine.Rendering.HighDefinition;
 
 namespace G3D.RenderPipeline.HDRP
 {
-    internal class ViewGenerationMosaic : FullScreenCustomPass
+    internal class ViewGenerationMosaicPass : FullScreenCustomPass
     {
         protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd) { }
 

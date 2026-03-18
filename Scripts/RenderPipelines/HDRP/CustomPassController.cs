@@ -25,7 +25,6 @@ namespace G3D.RenderPipeline.HDRP
         /// <summary>
         /// Used for view generation mosaic rendering.
         /// </summary>
-        private RenderTexture mosaicTexture;
         private RTHandle rtHandleMosaic;
 
         public bool cameraCountChanged = false;
@@ -118,41 +117,7 @@ namespace G3D.RenderPipeline.HDRP
 
             if (generateViews)
             {
-                // add depth mosaic generation pass
-                depthMosaicPass =
-                    customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.DepthMaps))
-                    as G3D.RenderPipeline.HDRP.DepthMaps;
-                depthMosaicPass.cullingMask = mainCamCullingMask;
-                depthMosaicPass.cameras = cameras;
-                depthMosaicPass.internalCameraCount = internalCameraCount;
-
-                // add multiview generation pass
-                viewGenerationPass =
-                    customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.ViewGeneration))
-                    as G3D.RenderPipeline.HDRP.ViewGeneration;
-                viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
-
-                viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
-                viewGenerationPass.materialPassName = "G3DViewGeneration";
-                viewGenerationPass.cameras = cameras;
-                viewGenerationPass.internalCameraCount = internalCameraCount;
-
-                recreateDepthTextures();
-                viewGenerationPass.indivDepthMaps = depthMosaicPass.indivDepthTextures;
-                viewGenerationPass.debugRendering = debugRendering;
-
-                // add autostereo mosaic generation pass
-                recreateMosaicTexture();
-
-                if (debugRendering == false)
-                {
-                    G3D.RenderPipeline.HDRP.ViewGenerationMosaic finalAutostereoGeneration =
-                        customPassVolume.AddPassOfType(
-                            typeof(G3D.RenderPipeline.HDRP.ViewGenerationMosaic)
-                        ) as G3D.RenderPipeline.HDRP.ViewGenerationMosaic;
-                    finalAutostereoGeneration.fullscreenPassMaterial = material;
-                    finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
-                }
+                initViewGeneration(customPassVolume);
             }
             else
             {
@@ -161,6 +126,59 @@ namespace G3D.RenderPipeline.HDRP
                     as G3D.RenderPipeline.HDRP.CustomPass;
                 customPass.fullscreenPassMaterial = material;
                 customPass.materialPassName = "G3DFullScreen3D";
+            }
+        }
+
+        private void initViewGeneration(CustomPassVolume customPassVolume)
+        {
+            // add depth mosaic generation pass
+            depthMosaicPass =
+                customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.DepthMaps))
+                as G3D.RenderPipeline.HDRP.DepthMaps;
+            depthMosaicPass.cullingMask = mainCamCullingMask;
+            depthMosaicPass.cameras = cameras;
+            depthMosaicPass.internalCameraCount = internalCameraCount;
+
+            // add multiview generation pass
+            viewGenerationPass =
+                customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.ViewGeneration))
+                as G3D.RenderPipeline.HDRP.ViewGeneration;
+            viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
+
+            viewGenerationPass.fullscreenPassMaterial = viewGenerationMaterial;
+            viewGenerationPass.materialPassName = "G3DViewGeneration";
+            viewGenerationPass.cameras = cameras;
+            viewGenerationPass.internalCameraCount = internalCameraCount;
+
+            recreateDepthTextures();
+            viewGenerationPass.indivDepthMaps = depthMosaicPass.indivDepthTextures;
+            viewGenerationPass.debugRendering = debugRendering;
+
+            G3D.RenderPipeline.AntialiasingMode aaMode = getCameraAAMode();
+            if (aaMode == G3D.RenderPipeline.AntialiasingMode.SMAA)
+            {
+                // add SMAA pass
+            }
+            else if (aaMode == G3D.RenderPipeline.AntialiasingMode.FXAA)
+            {
+                // add FXAA pass
+            }
+            else if (aaMode == G3D.RenderPipeline.AntialiasingMode.TAA)
+            {
+                viewGenerationMaterial.EnableKeyword("TAA");
+            }
+
+            // add autostereo mosaic generation pass
+            recreateMosaicTexture();
+
+            if (debugRendering == false)
+            {
+                G3D.RenderPipeline.HDRP.ViewGenerationMosaicPass finalAutostereoGeneration =
+                    customPassVolume.AddPassOfType(
+                        typeof(G3D.RenderPipeline.HDRP.ViewGenerationMosaicPass)
+                    ) as G3D.RenderPipeline.HDRP.ViewGenerationMosaicPass;
+                finalAutostereoGeneration.fullscreenPassMaterial = material;
+                finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
             }
         }
 
@@ -180,25 +198,16 @@ namespace G3D.RenderPipeline.HDRP
 
         private void recreateMosaicTexture()
         {
-            if (mosaicTexture != null)
-            {
-                mosaicTexture.Release();
-            }
+            Helpers.GetRTHandleSystem().Release(rtHandleMosaic);
+            rtHandleMosaic = Helpers
+                .GetRTHandleSystem()
+                .Alloc(
+                    mainCamera.pixelWidth,
+                    mainCamera.pixelHeight,
+                    colorFormat: UnityEngine.Experimental.Rendering.GraphicsFormat.R8G8B8A8_SRGB,
+                    enableRandomWrite: true
+                );
 
-            mosaicTexture = new RenderTexture(
-                mainCamera.pixelWidth,
-                mainCamera.pixelHeight,
-                0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.sRGB
-            );
-            mosaicTexture.enableRandomWrite = true;
-
-            if (rtHandleMosaic != null)
-            {
-                Helpers.GetRTHandleSystem().Release(rtHandleMosaic);
-            }
-            rtHandleMosaic = Helpers.GetRTHandleSystem().Alloc(mosaicTexture);
             material.SetTexture("_colorMosaic", rtHandleMosaic);
             viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
         }
