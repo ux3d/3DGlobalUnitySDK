@@ -83,7 +83,7 @@ namespace G3D.RenderPipeline.HDRP
                 {
                     continue;
                 }
-                CustomPass.GetRTHandleSystem().Release(indivDepthTextures[i]);
+                Helpers.GetRTHandleSystem().Release(indivDepthTextures[i]);
             }
         }
 
@@ -107,7 +107,7 @@ namespace G3D.RenderPipeline.HDRP
                     RenderTextureFormat.Depth
                 );
                 depthTexture.Create();
-                RTHandle handle = CustomPass.GetRTHandleSystem().Alloc(depthTexture);
+                RTHandle handle = Helpers.GetRTHandleSystem().Alloc(depthTexture);
                 indivDepthTextures[i] = handle;
             }
         }

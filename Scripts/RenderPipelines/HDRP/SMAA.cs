@@ -50,7 +50,7 @@ namespace G3D.RenderPipeline.HDRP
         {
             releaseSMAATextures();
 
-            smaaEdgesTexHandle = CustomPass
+            smaaEdgesTexHandle = Helpers
                 .GetRTHandleSystem()
                 .Alloc(
                     width,
@@ -60,7 +60,7 @@ namespace G3D.RenderPipeline.HDRP
                     enableRandomWrite: true
                 );
 
-            smaaBlendTexHandle = CustomPass
+            smaaBlendTexHandle = Helpers
                 .GetRTHandleSystem()
                 .Alloc(
                     width,
@@ -70,7 +70,7 @@ namespace G3D.RenderPipeline.HDRP
                     enableRandomWrite: true
                 );
 
-            computeShaderResultTextureHandle = CustomPass
+            computeShaderResultTextureHandle = Helpers
                 .GetRTHandleSystem()
                 .Alloc(
                     width,

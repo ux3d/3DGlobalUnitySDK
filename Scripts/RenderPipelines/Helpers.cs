@@ -15,6 +15,18 @@ namespace G3D.RenderPipeline
 
     internal class Helpers
     {
+        private static RTHandleSystem m_RTHandleSystem;
+
+        public static RTHandleSystem GetRTHandleSystem()
+        {
+            if (m_RTHandleSystem == null)
+            {
+                m_RTHandleSystem = new RTHandleSystem();
+                m_RTHandleSystem.Initialize(Screen.width, Screen.height);
+            }
+            return m_RTHandleSystem;
+        }
+
         /// <summary>
         /// Checks whether the camera is a G3D camera or a Mosaic Multiview camera and if the blit material has been set.
         /// If so returns true, otherwise returns false.

@@ -47,7 +47,7 @@ namespace G3D.RenderPipeline.HDRP
             // release old texture if it exists
             computeShaderResultTextureHandle?.Release();
 
-            computeShaderResultTextureHandle = CustomPass
+            computeShaderResultTextureHandle = Helpers
                 .GetRTHandleSystem()
                 .Alloc(
                     renderResolution.x,
