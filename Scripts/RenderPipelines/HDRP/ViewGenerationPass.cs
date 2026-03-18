@@ -15,180 +15,20 @@ namespace G3D.RenderPipeline.HDRP
         public int internalCameraCount = 16;
 
         public RTHandle mosaicImageHandle;
-
-        private ComputeShader holeFillingCompShader;
-        private int holeFillingKernel;
-
-        public RenderTexture computeShaderResultTexture;
-        public RTHandle computeShaderResultTextureHandle;
-
-        private RenderTexture smaaEdgesTex;
-        private RTHandle smaaEdgesTexHandle;
-        private RenderTexture smaaBlendTex;
-        private RTHandle smaaBlendTexHandle;
-
-        public int holeFillingRadius;
-
-        public bool fillHoles;
-
         public bool debugRendering;
 
         private Material blitMaterial;
 
         public RTHandle[] indivDepthMaps;
 
-        private ComputeShader fxaaCompShader;
-        private int fxaaKernel;
-
-        private Material smaaMaterial;
-        private AntialiasingMode antialiasingMode = AntialiasingMode.None;
-
-        public Vector2Int renderResolution = new Vector2Int(1920, 1080);
-
         protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
         {
-            if (fillHoles)
-            {
-                holeFillingCompShader = Resources.Load<ComputeShader>("G3DViewGenHoleFilling");
-                holeFillingKernel = holeFillingCompShader.FindKernel("main");
-            }
-
-            fxaaCompShader = Resources.Load<ComputeShader>("G3DFXAA");
-            fxaaKernel = fxaaCompShader.FindKernel("FXAA");
-
-            smaaMaterial = new Material(Shader.Find("G3D/SMAA"));
-            smaaMaterial.SetTexture("_AreaTex", Resources.Load<Texture2D>("SMAA/AreaTex"));
-            // Import search tex as PNG because I can't get Unity to work with an R8 DDS file properly.
-            smaaMaterial.SetTexture("_SearchTex", Resources.Load<Texture2D>("SMAA/SearchTex"));
-
             blitMaterial = new Material(Shader.Find("G3D/G3DBlit"));
-            blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), computeShaderResultTexture);
-        }
-
-        public void init(Vector2Int resolution, AntialiasingMode mode)
-        {
-            renderResolution = resolution;
-            CreateComputeShaderResultTexture();
-            setAntiAliasingMode(mode);
-        }
-
-        public void updateRenderResolution(Vector2Int resolution)
-        {
-            if (renderResolution.x == resolution.x && renderResolution.y == resolution.y)
-            {
-                return;
-            }
-
-            renderResolution = resolution;
-            CreateComputeShaderResultTexture();
-
-            if (antialiasingMode == AntialiasingMode.SMAA)
-            {
-                CreateSMAATextures(renderResolution.x, renderResolution.y);
-            }
-        }
-
-        private void CreateComputeShaderResultTexture()
-        {
-            // release old texture if it exists
-            computeShaderResultTexture?.Release();
-            computeShaderResultTextureHandle?.Release();
-
-            computeShaderResultTexture = new RenderTexture(
-                renderResolution.x,
-                renderResolution.y,
-                0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Linear
-            )
-            {
-                enableRandomWrite = true
-            };
-            computeShaderResultTexture.Create();
-            computeShaderResultTextureHandle = CustomPass
-                .GetRTHandleSystem()
-                .Alloc(computeShaderResultTexture);
-
-            if (blitMaterial != null)
-            {
-                blitMaterial.SetTexture(
-                    Shader.PropertyToID("_mainTex"),
-                    computeShaderResultTexture
-                );
-            }
-        }
-
-        private void CreateSMAATextures(int width, int height)
-        {
-            releaseSMAATextures();
-
-            smaaEdgesTex = new RenderTexture(
-                width,
-                height,
-                0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Linear
-            )
-            {
-                name = "SMAAEdgesTex",
-                enableRandomWrite = true
-            };
-            smaaEdgesTex.Create();
-            smaaEdgesTexHandle = CustomPass.GetRTHandleSystem().Alloc(smaaEdgesTex);
-
-            smaaBlendTex = new RenderTexture(
-                width,
-                height,
-                0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Linear
-            )
-            {
-                name = "SMAABlendTex",
-                enableRandomWrite = true
-            };
-            smaaBlendTex.Create();
-            smaaBlendTexHandle = CustomPass.GetRTHandleSystem().Alloc(smaaBlendTex);
-        }
-
-        public void setAntiAliasingMode(AntialiasingMode mode)
-        {
-            AntialiasingMode oldMode = antialiasingMode;
-            if (oldMode == mode)
-            {
-                return;
-            }
-
-            antialiasingMode = mode;
-            if (
-                mode == AntialiasingMode.None
-                || mode == AntialiasingMode.FXAA
-                || mode == AntialiasingMode.TAA
-            )
-            {
-                releaseSMAATextures();
-            }
-            else if (mode == AntialiasingMode.SMAA)
-            {
-                CreateSMAATextures(renderResolution.x, renderResolution.y);
-            }
-        }
-
-        private void releaseSMAATextures()
-        {
-            smaaEdgesTex?.Release();
-            smaaBlendTex?.Release();
-            smaaBlendTexHandle?.Release();
-            smaaEdgesTexHandle?.Release();
         }
 
         private void setMatrix(CustomPassContext ctx, Matrix4x4 matrix, string name)
         {
             ctx.propertyBlock.SetMatrix(Shader.PropertyToID(name), matrix);
-            if (fillHoles)
-            {
-                ctx.cmd.SetComputeMatrixParam(holeFillingCompShader, name, matrix);
-            }
         }
 
         private void addViewProjectionMatrix(CustomPassContext ctx, Camera camera, string name)
@@ -208,57 +48,11 @@ namespace G3D.RenderPipeline.HDRP
                 runReprojection(ctx);
                 // color image now in mosaicImageHandle
 
-                runHoleFilling(ctx);
-                runFXAA(ctx);
-                runSMAA(ctx, hdCamera);
-
                 if (debugRendering)
                 {
-                    if (
-                        fillHoles == false
-                        && (
-                            antialiasingMode == AntialiasingMode.None
-                            || antialiasingMode == AntialiasingMode.TAA
-                        )
-                    )
-                    {
-                        blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), mosaicImageHandle);
-                    }
-                    else
-                    {
-                        blitMaterial.SetTexture(
-                            Shader.PropertyToID("_mainTex"),
-                            computeShaderResultTexture
-                        );
-                    }
+                    blitMaterial.SetTexture(Shader.PropertyToID("_mainTex"), mosaicImageHandle);
 
                     CoreUtils.SetRenderTarget(ctx.cmd, ctx.cameraColorBuffer, ClearFlag.None);
-                    CoreUtils.DrawFullScreen(
-                        ctx.cmd,
-                        blitMaterial,
-                        ctx.propertyBlock,
-                        shaderPassId: 0
-                    );
-                }
-                else
-                {
-                    if (
-                        fillHoles == false
-                        && (
-                            antialiasingMode == AntialiasingMode.None
-                            || antialiasingMode == AntialiasingMode.TAA
-                        )
-                    )
-                    {
-                        return;
-                    }
-
-                    blitMaterial.SetTexture(
-                        Shader.PropertyToID("_mainTex"),
-                        computeShaderResultTexture
-                    );
-
-                    CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
                     CoreUtils.DrawFullScreen(
                         ctx.cmd,
                         blitMaterial,
@@ -293,20 +87,6 @@ namespace G3D.RenderPipeline.HDRP
                 invProjMatrices[i] = invGPUProjMatrix;
             }
 
-            if (fillHoles)
-            {
-                ctx.cmd.SetComputeMatrixArrayParam(
-                    holeFillingCompShader,
-                    "viewMatrices",
-                    viewMatrices
-                );
-                ctx.cmd.SetComputeMatrixArrayParam(
-                    holeFillingCompShader,
-                    "invProjMatrices",
-                    invProjMatrices
-                );
-            }
-
             addViewProjectionMatrix(ctx, cameras[0], "leftViewProjMatrix");
             addViewProjectionMatrix(ctx, cameras[internalCameraCount / 2], "middleViewProjMatrix");
             addViewProjectionMatrix(ctx, cameras[internalCameraCount - 1], "rightViewProjMatrix");
@@ -321,168 +101,6 @@ namespace G3D.RenderPipeline.HDRP
                 ctx.propertyBlock,
                 shaderPassId: 0
             );
-        }
-
-        private void runHoleFilling(CustomPassContext ctx)
-        {
-            if (fillHoles == false)
-            {
-                return;
-            }
-
-            // fill holes in the mosaic image
-            ctx.cmd.SetComputeTextureParam(
-                holeFillingCompShader,
-                holeFillingKernel,
-                "Result",
-                computeShaderResultTexture
-            );
-            for (int i = 0; i < internalCameraCount; i++)
-            {
-                ctx.cmd.SetComputeTextureParam(
-                    holeFillingCompShader,
-                    holeFillingKernel,
-                    "_depthMap" + i,
-                    indivDepthMaps[i]
-                );
-            }
-            ctx.cmd.SetComputeTextureParam(
-                holeFillingCompShader,
-                holeFillingKernel,
-                "_colorMosaic",
-                mosaicImageHandle
-            );
-            ctx.cmd.SetComputeIntParams(holeFillingCompShader, "gridSize", new int[] { 4, 4 });
-            ctx.cmd.SetComputeIntParam(holeFillingCompShader, "radius", holeFillingRadius);
-            ctx.cmd.SetComputeFloatParam(holeFillingCompShader, "sigma", holeFillingRadius / 2.0f);
-            ctx.cmd.SetComputeIntParams(
-                holeFillingCompShader,
-                "imageSize",
-                new int[] { mosaicImageHandle.rt.width, mosaicImageHandle.rt.height }
-            );
-
-            ctx.cmd.DispatchCompute(
-                holeFillingCompShader,
-                holeFillingKernel,
-                mosaicImageHandle.rt.width,
-                mosaicImageHandle.rt.height,
-                1
-            );
-
-            // Blit the result to the mosaic image
-            CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
-            CoreUtils.DrawFullScreen(ctx.cmd, blitMaterial, ctx.propertyBlock, shaderPassId: 0);
-        }
-
-        private void runFXAA(CustomPassContext ctx)
-        {
-            if (antialiasingMode != AntialiasingMode.FXAA)
-            {
-                return;
-            }
-
-            Tonemapping tonemapping = ctx.hdCamera.volumeStack.GetComponent<Tonemapping>();
-            float paperWhite = tonemapping.paperWhite.value;
-            Vector4 hdroutParameters = new Vector4(0, 1000, paperWhite, 1f / paperWhite);
-
-            ctx.cmd.SetComputeTextureParam(
-                fxaaCompShader,
-                fxaaKernel,
-                "_colorMosaic",
-                mosaicImageHandle
-            );
-            ctx.cmd.SetComputeTextureParam(
-                fxaaCompShader,
-                fxaaKernel,
-                "_OutputTexture",
-                computeShaderResultTexture
-            );
-            ctx.cmd.SetComputeVectorParam(fxaaCompShader, "_HDROutputParams", hdroutParameters);
-            ctx.cmd.DispatchCompute(
-                fxaaCompShader,
-                fxaaKernel,
-                mosaicImageHandle.rt.width,
-                mosaicImageHandle.rt.height,
-                1
-            );
-        }
-
-        private void runSMAA(CustomPassContext ctx, HDAdditionalCameraData hdCamera)
-        {
-            if (antialiasingMode != AntialiasingMode.SMAA)
-            {
-                return;
-            }
-
-            smaaMaterial.EnableKeyword("SMAA_PRESET_HIGH");
-            smaaMaterial.SetVector(
-                Shader.PropertyToID("_SMAARTMetrics"),
-                new Vector4(
-                    1.0f / mosaicImageHandle.rt.width,
-                    1.0f / mosaicImageHandle.rt.height,
-                    mosaicImageHandle.rt.width,
-                    mosaicImageHandle.rt.height
-                )
-            );
-            smaaMaterial.SetInt(Shader.PropertyToID("_StencilRef"), (int)(1 << 2));
-            smaaMaterial.SetInt(Shader.PropertyToID("_StencilCmp"), (int)(1 << 2));
-
-            switch (hdCamera.SMAAQuality)
-            {
-                case HDAdditionalCameraData.SMAAQualityLevel.Low:
-                    smaaMaterial.EnableKeyword("SMAA_PRESET_LOW");
-                    break;
-                case HDAdditionalCameraData.SMAAQualityLevel.Medium:
-                    smaaMaterial.EnableKeyword("SMAA_PRESET_MEDIUM");
-                    break;
-                case HDAdditionalCameraData.SMAAQualityLevel.High:
-                    smaaMaterial.EnableKeyword("SMAA_PRESET_HIGH");
-                    break;
-                default:
-                    smaaMaterial.EnableKeyword("SMAA_PRESET_HIGH");
-                    break;
-            }
-
-            // -----------------------------------------------------------------------------
-            // EdgeDetection stage
-            ctx.propertyBlock.SetTexture(Shader.PropertyToID("_InputTexture"), mosaicImageHandle);
-            CoreUtils.SetRenderTarget(ctx.cmd, smaaEdgesTex, ClearFlag.Color);
-            CoreUtils.DrawFullScreen(
-                ctx.cmd,
-                smaaMaterial,
-                ctx.propertyBlock,
-                shaderPassId: smaaMaterial.FindPass("EdgeDetection")
-            );
-
-            // -----------------------------------------------------------------------------
-            // BlendWeights stage
-            ctx.propertyBlock.SetTexture(Shader.PropertyToID("_InputTexture"), smaaEdgesTex);
-            CoreUtils.SetRenderTarget(ctx.cmd, smaaBlendTex, ClearFlag.Color);
-            CoreUtils.DrawFullScreen(
-                ctx.cmd,
-                smaaMaterial,
-                ctx.propertyBlock,
-                shaderPassId: smaaMaterial.FindPass("BlendingWeightCalculation")
-            );
-
-            // -----------------------------------------------------------------------------
-            // NeighborhoodBlending stage
-            ctx.propertyBlock.SetTexture(Shader.PropertyToID("_InputTexture"), mosaicImageHandle);
-            ctx.propertyBlock.SetTexture(Shader.PropertyToID("_BlendTex"), smaaBlendTex);
-            CoreUtils.SetRenderTarget(ctx.cmd, computeShaderResultTextureHandle, ClearFlag.None);
-            CoreUtils.DrawFullScreen(
-                ctx.cmd,
-                smaaMaterial,
-                ctx.propertyBlock,
-                shaderPassId: smaaMaterial.FindPass("NeighborhoodBlending")
-            );
-        }
-
-        protected override void Cleanup()
-        {
-            releaseSMAATextures();
-            computeShaderResultTextureHandle?.Release();
-            computeShaderResultTexture?.Release();
         }
     }
 }

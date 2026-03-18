@@ -429,13 +429,6 @@ public class G3DCamera
             recreateDepthTextures();
             viewGenerationPass.indivDepthMaps = depthMosaicPass.indivDepthTextures;
             viewGenerationPass.debugRendering = debugRendering;
-            viewGenerationPass.fillHoles = isFillingHoles;
-            viewGenerationPass.holeFillingRadius = holeFillingRadius;
-            G3D.RenderPipeline.AntialiasingMode aaMode = getCameraAAMode();
-            viewGenerationPass.init(
-                new Vector2Int(mainCamera.pixelWidth, mainCamera.pixelHeight),
-                aaMode
-            );
 
             // add autostereo mosaic generation pass
             recreateMosaicTexture();
@@ -1100,17 +1093,6 @@ public class G3DCamera
         {
             updateShaderRenderTextures();
         }
-
-#if G3D_HDRP
-        if (generateViews)
-        {
-            viewGenerationPass.holeFillingRadius = holeFillingRadius;
-            viewGenerationPass.fillHoles = isFillingHoles;
-
-            G3D.RenderPipeline.AntialiasingMode aaMode = getCameraAAMode();
-            viewGenerationPass.setAntiAliasingMode(aaMode);
-        }
-#endif
     }
 
     private void updateScreenViewportProperties()
@@ -1495,7 +1477,6 @@ public class G3DCamera
 #if G3D_HDRP
             recreateDepthTextures();
             recreateMosaicTexture();
-            viewGenerationPass.updateRenderResolution(new Vector2Int(Screen.width, Screen.height));
 #endif
         }
         else
