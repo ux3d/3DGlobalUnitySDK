@@ -100,8 +100,13 @@ public class InspectorG3DCamera : Editor
             }
         );
 
+#if G3D_URP
+        // hide in URP
+        viewGenerationContainer.style.display = DisplayStyle.None;
+#elif G3D_HDRP
         // setup UI
         setViewgenerationDisplay((target as G3DCamera).generateViews);
+#endif
 
         return mainInspector;
     }

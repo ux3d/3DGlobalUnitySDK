@@ -49,8 +49,12 @@ public class G3DCamera : MonoBehaviour
     [Range(1, 100)]
     public int renderResolutionScale = 100;
 
+#if G3D_URP
+    private bool generateViews = false;
+#elif G3D_HDRP
     [Tooltip("Only actually renders three views. The rest are generated. IF turned on anti ali")]
-    public bool generateViews = true;
+    public bool generateViews = false;
+#endif
     #endregion
 
 
@@ -879,10 +883,12 @@ public class G3DCamera : MonoBehaviour
             recreatedRenderTextures = true;
         }
 
+#if G3D_HDRP
         customPassController.cameraCountChanged = cameraCountChanged;
         customPassController.resolutionScaleChanged =
             oldRenderResolutionScale != renderResolutionScale;
         customPassController.debugRendering = debugRendering;
+#endif
 
         if (recreatedRenderTextures)
         {
@@ -987,11 +993,13 @@ public class G3DCamera : MonoBehaviour
             material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
             material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
 
+#if G3D_HDRP
             if (generateViews)
             {
                 viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_x"), 4);
                 viewGenerationMaterial.SetInt(Shader.PropertyToID("grid_size_y"), 4);
             }
+#endif
         }
     }
 
