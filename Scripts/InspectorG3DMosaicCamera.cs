@@ -4,86 +4,89 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
-[CustomEditor(typeof(G3DCameraMosaicMultiview))]
-public class InspectorG3DMosaicCamera : Editor
+namespace G3D
 {
-    public VisualTreeAsset inspectorXML;
-
-    private PropertyField dimensionsFromFilename;
-    private PropertyField modeField;
-
-    private PropertyField renderTexture;
-    private PropertyField image;
-    private PropertyField videoClip;
-
-    private static bool isAdvancedSettingsVisible = false;
-    private Foldout advancedSettingsFoldout;
-
-    public override VisualElement CreateInspectorGUI()
+    [CustomEditor(typeof(G3DCameraMosaicMultiview))]
+    public class InspectorG3DMosaicCamera : Editor
     {
-        G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+        public VisualTreeAsset inspectorXML;
 
-        // Create a new VisualElement to be the root of our Inspector UI.
-        VisualElement mainInspector = new VisualElement();
+        private PropertyField dimensionsFromFilename;
+        private PropertyField modeField;
 
-        // Load the UXML file.
-        inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-            "Packages/com.3dglobal.core/Resources/G3DMosaicCameraInspector.uxml"
-        );
+        private PropertyField renderTexture;
+        private PropertyField image;
+        private PropertyField videoClip;
 
-        // Instantiate the UXML.
-        mainInspector = inspectorXML.Instantiate();
+        private static bool isAdvancedSettingsVisible = false;
+        private Foldout advancedSettingsFoldout;
 
-        dimensionsFromFilename = mainInspector.Q<PropertyField>("dimensionsFromFilename");
+        public override VisualElement CreateInspectorGUI()
+        {
+            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
 
-        modeField = mainInspector.Q<PropertyField>("mosaicMode");
-        renderTexture = mainInspector.Q<PropertyField>("renderTexture");
-        image = mainInspector.Q<PropertyField>("image");
-        videoClip = mainInspector.Q<PropertyField>("videoClip");
+            // Create a new VisualElement to be the root of our Inspector UI.
+            VisualElement mainInspector = new VisualElement();
 
-        // Find the PropertyField in the Inspector XML.
-        modeField = mainInspector.Q<PropertyField>("mosaicMode");
-        modeField.RegisterValueChangeCallback(
-            (evt) =>
-            {
-                MosaicMode newMode = (MosaicMode)evt.changedProperty.enumValueIndex;
-                switch (newMode)
+            // Load the UXML file.
+            inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+                "Packages/com.3dglobal.core/Resources/G3DMosaicCameraInspector.uxml"
+            );
+
+            // Instantiate the UXML.
+            mainInspector = inspectorXML.Instantiate();
+
+            dimensionsFromFilename = mainInspector.Q<PropertyField>("dimensionsFromFilename");
+
+            modeField = mainInspector.Q<PropertyField>("mosaicMode");
+            renderTexture = mainInspector.Q<PropertyField>("renderTexture");
+            image = mainInspector.Q<PropertyField>("image");
+            videoClip = mainInspector.Q<PropertyField>("videoClip");
+
+            // Find the PropertyField in the Inspector XML.
+            modeField = mainInspector.Q<PropertyField>("mosaicMode");
+            modeField.RegisterValueChangeCallback(
+                (evt) =>
                 {
-                    case MosaicMode.Image:
-                        renderTexture.style.display = DisplayStyle.None;
-                        image.style.display = DisplayStyle.Flex;
-                        videoClip.style.display = DisplayStyle.None;
+                    MosaicMode newMode = (MosaicMode)evt.changedProperty.enumValueIndex;
+                    switch (newMode)
+                    {
+                        case MosaicMode.Image:
+                            renderTexture.style.display = DisplayStyle.None;
+                            image.style.display = DisplayStyle.Flex;
+                            videoClip.style.display = DisplayStyle.None;
 
-                        dimensionsFromFilename.SetEnabled(true);
-                        break;
-                    case MosaicMode.RenderTexture:
-                        renderTexture.style.display = DisplayStyle.Flex;
-                        image.style.display = DisplayStyle.None;
-                        videoClip.style.display = DisplayStyle.None;
-                        dimensionsFromFilename.SetEnabled(false);
-                        break;
-                    case MosaicMode.Video:
-                        renderTexture.style.display = DisplayStyle.None;
-                        image.style.display = DisplayStyle.None;
-                        videoClip.style.display = DisplayStyle.Flex;
-                        dimensionsFromFilename.SetEnabled(true);
-                        break;
+                            dimensionsFromFilename.SetEnabled(true);
+                            break;
+                        case MosaicMode.RenderTexture:
+                            renderTexture.style.display = DisplayStyle.Flex;
+                            image.style.display = DisplayStyle.None;
+                            videoClip.style.display = DisplayStyle.None;
+                            dimensionsFromFilename.SetEnabled(false);
+                            break;
+                        case MosaicMode.Video:
+                            renderTexture.style.display = DisplayStyle.None;
+                            image.style.display = DisplayStyle.None;
+                            videoClip.style.display = DisplayStyle.Flex;
+                            dimensionsFromFilename.SetEnabled(true);
+                            break;
+                    }
                 }
-            }
-        );
+            );
 
-        advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
-        advancedSettingsFoldout.value = isAdvancedSettingsVisible;
-        advancedSettingsFoldout.RegisterValueChangedCallback(
-            (evt) =>
-            {
-                isAdvancedSettingsVisible = evt.newValue;
-            }
-        );
+            advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
+            advancedSettingsFoldout.value = isAdvancedSettingsVisible;
+            advancedSettingsFoldout.RegisterValueChangedCallback(
+                (evt) =>
+                {
+                    isAdvancedSettingsVisible = evt.newValue;
+                }
+            );
 
-        // setup UI
+            // setup UI
 
-        return mainInspector;
+            return mainInspector;
+        }
     }
 }
 #endif
