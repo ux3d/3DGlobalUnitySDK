@@ -1,16 +1,6 @@
-public delegate void TNewHeadPositionCallback(
-    bool headDetected,
-    bool imagePosIsValid,
-    int imagePosX,
-    int imagePosY,
-    double worldPosX,
-    double worldPosY,
-    double worldPosZ
-);
-
-public interface ITNewHeadPositionCallback
+namespace G3D
 {
-    public void NewHeadPositionCallback(
+    public delegate void TNewHeadPositionCallback(
         bool headDetected,
         bool imagePosIsValid,
         int imagePosX,
@@ -19,4 +9,17 @@ public interface ITNewHeadPositionCallback
         double worldPosY,
         double worldPosZ
     );
+
+    public interface ITNewHeadPositionCallback
+    {
+        public void NewHeadPositionCallback(
+            bool headDetected,
+            bool imagePosIsValid,
+            int imagePosX,
+            int imagePosY,
+            double worldPosX,
+            double worldPosY,
+            double worldPosZ
+        );
+    }
 }

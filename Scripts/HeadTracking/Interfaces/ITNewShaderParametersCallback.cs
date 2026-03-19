@@ -1,6 +1,9 @@
-public delegate void TNewShaderParametersCallback(G3DShaderParameters shaderParameters);
-
-public interface ITNewShaderParametersCallback
+namespace G3D
 {
-    public void NewShaderParametersCallback(G3DShaderParameters shaderParameters);
+    public delegate void TNewShaderParametersCallback(G3DShaderParameters shaderParameters);
+
+    public interface ITNewShaderParametersCallback
+    {
+        public void NewShaderParametersCallback(G3DShaderParameters shaderParameters);
+    }
 }

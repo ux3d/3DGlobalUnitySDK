@@ -5,121 +5,124 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-[CustomEditor(typeof(G3DCamera))]
-public class InspectorG3DCamera : Editor
+namespace G3D
 {
-    public VisualTreeAsset inspectorXML;
-
-    private PropertyField modeField;
-    private PropertyField generateViewsField;
-
-    private PropertyField calibrationFileField;
-    private PropertyField headtrackingScaleField;
-
-    private PropertyField viewOffsetField;
-
-    private Label calibFolderLabel;
-    private Label DioramaCalibFileInfo;
-
-    private static bool isAdvancedSettingsVisible = false;
-    private Foldout advancedSettingsFoldout;
-    private VisualElement viewGenerationContainer;
-
-    public override VisualElement CreateInspectorGUI()
+    [CustomEditor(typeof(G3DCamera))]
+    public class InspectorG3DCamera : Editor
     {
-        G3DCamera camera = (G3DCamera)target;
+        public VisualTreeAsset inspectorXML;
 
-        // Create a new VisualElement to be the root of our Inspector UI.
-        VisualElement mainInspector = new VisualElement();
+        private PropertyField modeField;
+        private PropertyField generateViewsField;
 
-        // Add a simple label.
-        mainInspector.Add(new Label("This is a custom Inspector"));
+        private PropertyField calibrationFileField;
+        private PropertyField headtrackingScaleField;
 
-        // Load the UXML file.
-        inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-            "Packages/com.3dglobal.core/Resources/G3DCameraInspector.uxml"
-        );
+        private PropertyField viewOffsetField;
 
-        // Instantiate the UXML.
-        mainInspector = inspectorXML.Instantiate();
+        private Label calibFolderLabel;
+        private Label DioramaCalibFileInfo;
 
-        // Find the PropertyField in the Inspector XML.
-        modeField = mainInspector.Q<PropertyField>("mode");
-        modeField.RegisterValueChangeCallback(
-            (evt) =>
-            {
-                G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
-                if (newMode == G3DCameraMode.DIORAMA)
+        private static bool isAdvancedSettingsVisible = false;
+        private Foldout advancedSettingsFoldout;
+        private VisualElement viewGenerationContainer;
+
+        public override VisualElement CreateInspectorGUI()
+        {
+            G3DCamera camera = (G3DCamera)target;
+
+            // Create a new VisualElement to be the root of our Inspector UI.
+            VisualElement mainInspector = new VisualElement();
+
+            // Add a simple label.
+            mainInspector.Add(new Label("This is a custom Inspector"));
+
+            // Load the UXML file.
+            inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+                "Packages/com.3dglobal.core/Resources/G3DCameraInspector.uxml"
+            );
+
+            // Instantiate the UXML.
+            mainInspector = inspectorXML.Instantiate();
+
+            // Find the PropertyField in the Inspector XML.
+            modeField = mainInspector.Q<PropertyField>("mode");
+            modeField.RegisterValueChangeCallback(
+                (evt) =>
                 {
-                    calibFolderLabel.style.display = DisplayStyle.Flex;
-                    headtrackingScaleField.style.display = DisplayStyle.Flex;
-                    DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
-                    viewOffsetField.style.display = DisplayStyle.None;
+                    G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
+                    if (newMode == G3DCameraMode.DIORAMA)
+                    {
+                        calibFolderLabel.style.display = DisplayStyle.Flex;
+                        headtrackingScaleField.style.display = DisplayStyle.Flex;
+                        DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
+                        viewOffsetField.style.display = DisplayStyle.None;
+                    }
+                    else
+                    {
+                        calibFolderLabel.style.display = DisplayStyle.None;
+                        headtrackingScaleField.style.display = DisplayStyle.None;
+                        DioramaCalibFileInfo.style.display = DisplayStyle.None;
+                        viewOffsetField.style.display = DisplayStyle.Flex;
+                    }
                 }
-                else
+            );
+
+            advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
+            advancedSettingsFoldout.value = isAdvancedSettingsVisible;
+            advancedSettingsFoldout.RegisterValueChangedCallback(
+                (evt) =>
                 {
-                    calibFolderLabel.style.display = DisplayStyle.None;
-                    headtrackingScaleField.style.display = DisplayStyle.None;
-                    DioramaCalibFileInfo.style.display = DisplayStyle.None;
-                    viewOffsetField.style.display = DisplayStyle.Flex;
+                    isAdvancedSettingsVisible = evt.newValue;
                 }
-            }
-        );
+            );
 
-        advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
-        advancedSettingsFoldout.value = isAdvancedSettingsVisible;
-        advancedSettingsFoldout.RegisterValueChangedCallback(
-            (evt) =>
-            {
-                isAdvancedSettingsVisible = evt.newValue;
-            }
-        );
+            headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
 
-        headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
+            viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
 
-        viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
+            string calibrationPath = System.Environment.GetFolderPath(
+                Environment.SpecialFolder.CommonDocuments
+            );
+            calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
+            calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
+            calibFolderLabel.text =
+                "The headtracking library will search for display calibrations in this folder:\n"
+                + calibrationPath;
 
-        string calibrationPath = System.Environment.GetFolderPath(
-            Environment.SpecialFolder.CommonDocuments
-        );
-        calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
-        calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
-        calibFolderLabel.text =
-            "The headtracking library will search for display calibrations in this folder:\n"
-            + calibrationPath;
+            DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
 
-        DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
-
-        viewGenerationContainer = mainInspector.Q<VisualElement>("viewGenerationContainer");
-        generateViewsField = mainInspector.Q<PropertyField>("generateViews");
-        generateViewsField.RegisterValueChangeCallback(
-            (evt) =>
-            {
-                bool newMode = evt.changedProperty.boolValue;
-                setViewgenerationDisplay(newMode);
-            }
-        );
+            viewGenerationContainer = mainInspector.Q<VisualElement>("viewGenerationContainer");
+            generateViewsField = mainInspector.Q<PropertyField>("generateViews");
+            generateViewsField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    bool newMode = evt.changedProperty.boolValue;
+                    setViewgenerationDisplay(newMode);
+                }
+            );
 
 #if G3D_URP
-        // hide in URP
-        viewGenerationContainer.style.display = DisplayStyle.None;
+            // hide in URP
+            viewGenerationContainer.style.display = DisplayStyle.None;
 #elif G3D_HDRP
-        // setup UI
-        setViewgenerationDisplay((target as G3DCamera).generateViews);
+            // setup UI
+            setViewgenerationDisplay((target as G3DCamera).generateViews);
 #endif
 
-        return mainInspector;
-    }
-
-    private void setViewgenerationDisplay(bool enabled)
-    {
-        if (enabled)
-        {
-            viewGenerationContainer.style.display = DisplayStyle.Flex;
+            return mainInspector;
         }
-        else
+
+        private void setViewgenerationDisplay(bool enabled)
         {
-            viewGenerationContainer.style.display = DisplayStyle.None;
+            if (enabled)
+            {
+                viewGenerationContainer.style.display = DisplayStyle.Flex;
+            }
+            else
+            {
+                viewGenerationContainer.style.display = DisplayStyle.None;
+            }
         }
     }
 }

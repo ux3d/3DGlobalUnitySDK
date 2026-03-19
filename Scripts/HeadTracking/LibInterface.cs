@@ -2,162 +2,231 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate void TNewShaderParametersCallbackInternal(
-    in G3DShaderParameters shaderParameters,
-    IntPtr listener
-);
-
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-internal delegate void TNewHeadPositionCallbackInternal(
-    int headDetected,
-    int imagePosIsValid,
-    int imagePosX,
-    int imagePosY,
-    double worldPosX,
-    double worldPosY,
-    double worldPosZ,
-    IntPtr listener
-);
-
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-internal delegate void TNewErrorMessageCallbackInternal(
-    EMessageSeverity severity,
-    IntPtr sender,
-    IntPtr caption,
-    IntPtr cause,
-    IntPtr remedy,
-    IntPtr listener
-);
-
-public enum EMessageSeverity
+namespace G3D
 {
-    MS_INFO = 1,
-    MS_WARNING,
-    MS_ERROR,
-    MS_EXCEPTION
-};
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void TNewShaderParametersCallbackInternal(
+        in G3DShaderParameters shaderParameters,
+        IntPtr listener
+    );
 
-public enum LatencyCorrectionMode
-{
-    LCM_SIMPLE = 0, //< Simple or No LatencyCorrection (position prediction) - without timestamp from render event / paintGL
-    LCM_EXTENDED = 1, //< Extended prediction - considering timestamp from render event / paintGL
-}
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate void TNewHeadPositionCallbackInternal(
+        int headDetected,
+        int imagePosIsValid,
+        int imagePosX,
+        int imagePosY,
+        double worldPosX,
+        double worldPosY,
+        double worldPosZ,
+        IntPtr listener
+    );
 
-public struct G3DShaderParameters
-{
-    // Viewport properties
-    public int leftViewportPosition; //< The left position of the viewport in screen coordinates
-    public int bottomViewportPosition; //< The bottom position of the viewport in screen coordinates
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate void TNewErrorMessageCallbackInternal(
+        EMessageSeverity severity,
+        IntPtr sender,
+        IntPtr caption,
+        IntPtr cause,
+        IntPtr remedy,
+        IntPtr listener
+    );
 
-    // Monitor properties
-    public int screenWidth; //< The screen width in pixels
-    public int screenHeight; //< The screen height in pixels
-
-    public int nativeViewCount; // OLD: viewcount
-    public int angleRatioNumerator; // OLD: zwinkel
-    public int angleRatioDenominator; // OLD: nwinkel
-    public int leftLensOrientation; // OLD: isleft
-    public int BGRPixelLayout; // OLD: isbgr
-
-    public int mstart; // TODO:   rename to viewOffset
-    public int showTestFrame; // OLD: test
-    public int showTestStripe; // OLD: stest
-    public int testGapWidth; // OLD: testgap
-    public int track;
-    public int hqViewCount; // OLD: hqview
-    public int hviews1;
-    public int hviews2;
-    public int blur;
-    public int blackBorder; // OLD: bborder
-    public int blackSpace; // OLD: bspace
-    public int bls;
-    public int ble;
-    public int brs;
-    public int bre;
-
-    public int zCorrectionValue; // OLD: tvx
-    public int zCompensationValue; // OLD: zkom
-};
-
-public struct HeadTrackingStatus
-{
-    public bool hasTrackingDevice;
-    public bool isTrackingActive;
-}
-
-public sealed class LibInterface
-{
-    public bool logToConsole = true;
-    private TNewHeadPositionCallbackInternal newHeadPosCppCallback;
-    private TNewShaderParametersCallbackInternal newShaderparamsCppCallback;
-    TNewErrorMessageCallbackInternal newErrorMessagesCppCallback;
-
-    private static readonly LibInterface internalInstance = new LibInterface();
-
-    // Explicit static constructor to tell C# compiler
-    // not to mark type as beforefieldinit
-    static LibInterface() { }
-
-    private LibInterface()
+    public enum EMessageSeverity
     {
-        newHeadPosCppCallback = new TNewHeadPositionCallbackInternal(
-            TranslateNewHeadPositionCallback
-        );
+        MS_INFO = 1,
+        MS_WARNING,
+        MS_ERROR,
+        MS_EXCEPTION
+    };
 
-        newShaderparamsCppCallback = new TNewShaderParametersCallbackInternal(
-            TranslateShaderParametersCallback
-        );
-
-        newErrorMessagesCppCallback = new TNewErrorMessageCallbackInternal(
-            TranslateNewErrorMessageCallback
-        );
+    public enum LatencyCorrectionMode
+    {
+        LCM_SIMPLE = 0, //< Simple or No LatencyCorrection (position prediction) - without timestamp from render event / paintGL
+        LCM_EXTENDED = 1, //< Extended prediction - considering timestamp from render event / paintGL
     }
 
-    public static LibInterface Instance
+    public struct G3DShaderParameters
     {
-        get { return internalInstance; }
+        // Viewport properties
+        public int leftViewportPosition; //< The left position of the viewport in screen coordinates
+        public int bottomViewportPosition; //< The bottom position of the viewport in screen coordinates
+
+        // Monitor properties
+        public int screenWidth; //< The screen width in pixels
+        public int screenHeight; //< The screen height in pixels
+
+        public int nativeViewCount; // OLD: viewcount
+        public int angleRatioNumerator; // OLD: zwinkel
+        public int angleRatioDenominator; // OLD: nwinkel
+        public int leftLensOrientation; // OLD: isleft
+        public int BGRPixelLayout; // OLD: isbgr
+
+        public int mstart; // TODO:   rename to viewOffset
+        public int showTestFrame; // OLD: test
+        public int showTestStripe; // OLD: stest
+        public int testGapWidth; // OLD: testgap
+        public int track;
+        public int hqViewCount; // OLD: hqview
+        public int hviews1;
+        public int hviews2;
+        public int blur;
+        public int blackBorder; // OLD: bborder
+        public int blackSpace; // OLD: bspace
+        public int bls;
+        public int ble;
+        public int brs;
+        public int bre;
+
+        public int zCorrectionValue; // OLD: tvx
+        public int zCompensationValue; // OLD: zkom
+    };
+
+    public struct HeadTrackingStatus
+    {
+        public bool hasTrackingDevice;
+        public bool isTrackingActive;
     }
 
-    private bool initialized = false;
-
-    /// <summary>
-    /// Initializes the G3D head tracking library. If it is already initialized, this function only registers the callbacks.
-    /// If the library is already initialized, this function will not set the useHimaxD2XXDevice and usePmdFlexxDevice Flag, neither the logToConsole flag.
-    ///
-    /// This function has to be called before any other function of this class is called.
-    ///
-    /// This function does not start the head tracking. To start the head tracking, call startHeadTracking().
-    ///
-    /// You do not have to call the destructor manually. It is called, when the last reference to the singeleton is removed.
-    /// </summary>
-    /// <param name="calibrationPath"></param>
-    /// <param name="configPath"></param>
-    /// <param name="configFileName"></param>
-    /// <param name="newHeadInferfaceInstance"></param>
-    /// <param name="shaderInterfaceInstance"></param>
-    /// <param name="errorInterfaceInstance"></param>
-    /// <param name="logToConsole"></param>
-    /// <param name="useHimaxD2XXDevice"></param>
-    /// <param name="usePmdFlexxDevice"></param>
-    /// <exception cref="System.Exception"></exception>
-    public void init(
-        string calibrationPath,
-        string configPath,
-        string configFileName,
-        in ITNewHeadPositionCallback newHeadInferfaceInstance,
-        in ITNewShaderParametersCallback shaderInterfaceInstance,
-        in ITNewErrorMessageCallback errorInterfaceInstance,
-        bool logToConsole = true,
-        bool useHimaxD2XXDevice = true,
-        bool useHimaxRP2040Device = true,
-        bool usePmdFlexxDevice = true
-    )
+    public sealed class LibInterface
     {
-        // register callbacks in case the library is already initialized
-        // afterwards, return
-        if (initialized)
+        public bool logToConsole = true;
+        private TNewHeadPositionCallbackInternal newHeadPosCppCallback;
+        private TNewShaderParametersCallbackInternal newShaderparamsCppCallback;
+        TNewErrorMessageCallbackInternal newErrorMessagesCppCallback;
+
+        private static readonly LibInterface internalInstance = new LibInterface();
+
+        // Explicit static constructor to tell C# compiler
+        // not to mark type as beforefieldinit
+        static LibInterface() { }
+
+        private LibInterface()
         {
+            newHeadPosCppCallback = new TNewHeadPositionCallbackInternal(
+                TranslateNewHeadPositionCallback
+            );
+
+            newShaderparamsCppCallback = new TNewShaderParametersCallbackInternal(
+                TranslateShaderParametersCallback
+            );
+
+            newErrorMessagesCppCallback = new TNewErrorMessageCallbackInternal(
+                TranslateNewErrorMessageCallback
+            );
+        }
+
+        public static LibInterface Instance
+        {
+            get { return internalInstance; }
+        }
+
+        private bool initialized = false;
+
+        /// <summary>
+        /// Initializes the G3D head tracking library. If it is already initialized, this function only registers the callbacks.
+        /// If the library is already initialized, this function will not set the useHimaxD2XXDevice and usePmdFlexxDevice Flag, neither the logToConsole flag.
+        ///
+        /// This function has to be called before any other function of this class is called.
+        ///
+        /// This function does not start the head tracking. To start the head tracking, call startHeadTracking().
+        ///
+        /// You do not have to call the destructor manually. It is called, when the last reference to the singeleton is removed.
+        /// </summary>
+        /// <param name="calibrationPath"></param>
+        /// <param name="configPath"></param>
+        /// <param name="configFileName"></param>
+        /// <param name="newHeadInferfaceInstance"></param>
+        /// <param name="shaderInterfaceInstance"></param>
+        /// <param name="errorInterfaceInstance"></param>
+        /// <param name="logToConsole"></param>
+        /// <param name="useHimaxD2XXDevice"></param>
+        /// <param name="usePmdFlexxDevice"></param>
+        /// <exception cref="System.Exception"></exception>
+        public void init(
+            string calibrationPath,
+            string configPath,
+            string configFileName,
+            in ITNewHeadPositionCallback newHeadInferfaceInstance,
+            in ITNewShaderParametersCallback shaderInterfaceInstance,
+            in ITNewErrorMessageCallback errorInterfaceInstance,
+            bool logToConsole = true,
+            bool useHimaxD2XXDevice = true,
+            bool useHimaxRP2040Device = true,
+            bool usePmdFlexxDevice = true
+        )
+        {
+            // register callbacks in case the library is already initialized
+            // afterwards, return
+            if (initialized)
+            {
+                try
+                {
+                    registerHeadPositionChangedCallback(newHeadInferfaceInstance);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+                try
+                {
+                    registerShaderParametersChangedCallback(shaderInterfaceInstance);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+                try
+                {
+                    registerMessageCallback(errorInterfaceInstance);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+
+                Debug.Log("G3D head tracking library is already initialized.");
+                return;
+            }
+
+            this.logToConsole = logToConsole;
+
+            if (calibrationPath == "" || configPath == "" || configFileName == "")
+            {
+                throw new System.Exception(
+                    "G3D head tracking library: Configuration paths have to be set. Aborting initialization."
+                );
+            }
+
+            try
+            {
+                initLibrary();
+            }
+            catch (G3D_AlreadyInitializedException)
+            {
+                Debug.Log("G3D head tracking library has already been initialized.");
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+
+            try
+            {
+                setCalibrationPath(calibrationPath);
+                setConfigPath(configPath);
+                setConfigFileName(configFileName);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                deinitLibrary();
+                throw new System.Exception(
+                    "G3D head tracking library: an error occured when setting the calibration paths. Aborting initialization"
+                );
+            }
+
+            // register callbacks
             try
             {
                 registerHeadPositionChangedCallback(newHeadInferfaceInstance);
@@ -183,2002 +252,1956 @@ public sealed class LibInterface
                 Debug.LogError(e);
             }
 
-            Debug.Log("G3D head tracking library is already initialized.");
-            return;
-        }
-
-        this.logToConsole = logToConsole;
-
-        if (calibrationPath == "" || configPath == "" || configFileName == "")
-        {
-            throw new System.Exception(
-                "G3D head tracking library: Configuration paths have to be set. Aborting initialization."
-            );
-        }
-
-        try
-        {
-            initLibrary();
-        }
-        catch (G3D_AlreadyInitializedException)
-        {
-            Debug.Log("G3D head tracking library has already been initialized.");
-        }
-        catch (Exception e)
-        {
-            throw e;
-        }
-
-        try
-        {
-            setCalibrationPath(calibrationPath);
-            setConfigPath(configPath);
-            setConfigFileName(configFileName);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e);
-            deinitLibrary();
-            throw new System.Exception(
-                "G3D head tracking library: an error occured when setting the calibration paths. Aborting initialization"
-            );
-        }
-
-        // register callbacks
-        try
-        {
-            registerHeadPositionChangedCallback(newHeadInferfaceInstance);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e);
-        }
-        try
-        {
-            registerShaderParametersChangedCallback(shaderInterfaceInstance);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e);
-        }
-        try
-        {
-            registerMessageCallback(errorInterfaceInstance);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e);
-        }
-
-        try
-        {
-            if (useHimaxD2XXDevice)
+            try
             {
-                useHimaxD2XXDevices();
+                if (useHimaxD2XXDevice)
+                {
+                    useHimaxD2XXDevices();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+            try
+            {
+                if (useHimaxRP2040Device)
+                {
+                    useHimaxRP2040Devices();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+            try
+            {
+                if (usePmdFlexxDevice)
+                {
+                    usePmdFlexxDevices();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+
+            try
+            {
+                initHeadTracking();
+            }
+            catch (G3D_AlreadyInitializedException)
+            {
+                Debug.Log("G3D head tracking has already been initialized.");
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+            Debug.Log("tracking device count " + getHeadTrackingDeviceCount());
+
+            initialized = true;
+        }
+
+        public void deinit()
+        {
+            // this is in its own try catch to continue deinit if this fails
+            try
+            {
+                stopHeadTracking();
+            }
+            catch (Exception e)
+            {
+                // only log this if actually initialized.
+                // otherwise this was probably called from an uninitialized state and the exception reflects that.
+                if (initialized)
+                {
+                    Debug.LogError(e.ToString());
+                }
+            }
+
+            // this is in its own try catch to continue deinit if this fails
+            try
+            {
+                deinitHeadTracking();
+            }
+            catch (Exception e)
+            {
+                if (initialized)
+                {
+                    Debug.LogError(e.ToString());
+                }
+            }
+
+            // this is in its own try catch to continue deinit if this fails
+            try
+            {
+                deinitLibrary();
+            }
+            catch (Exception e)
+            {
+                if (initialized)
+                {
+                    Debug.LogError(e.ToString());
+                }
+            }
+
+            Debug.Log("destroy library");
+
+            initialized = false;
+        }
+
+        ~LibInterface()
+        {
+            deinit();
+        }
+
+        public bool isInitialized()
+        {
+            return initialized;
+        }
+
+        private void initLibrary()
+        {
+            int result = LibInterfaceCpp.initLibrary();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library initialization successfull.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when initializing the library."
+                );
             }
         }
-        catch (Exception e)
+
+        private void deinitLibrary()
         {
-            Debug.LogError(e);
-        }
-        try
-        {
-            if (useHimaxRP2040Device)
+            int result = LibInterfaceCpp.deinitLibrary();
+            if (logToConsole)
             {
-                useHimaxRP2040Devices();
+                Debug.Log("G3D library deinitialization successfull.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when initializing the library."
+                );
             }
         }
-        catch (Exception e)
+
+        public void setCalibrationPath(string calibrationPath)
         {
-            Debug.LogError(e);
-        }
-        try
-        {
-            if (usePmdFlexxDevice)
+            byte[] calibPathBytes = System.Text.Encoding.UTF8.GetBytes(calibrationPath + "\0");
+            int result = LibInterfaceCpp.setCalibrationPath(calibPathBytes);
+            if (logToConsole)
             {
-                usePmdFlexxDevices();
+                Debug.Log("G3D library: setCalibrationPath success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: calibration path already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the calibration path."
+                );
             }
         }
-        catch (Exception e)
+
+        public void setConfigPath(string configPath)
         {
-            Debug.LogError(e);
+            byte[] configPathBytes = System.Text.Encoding.UTF8.GetBytes(configPath + "\0");
+            int result = LibInterfaceCpp.setConfigPath(configPathBytes);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: setConfigPath success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: config path already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the config path."
+                );
+            }
         }
 
-        try
+        public void setConfigFileName(string configFileName)
         {
-            initHeadTracking();
+            byte[] configFileNameBytes = System.Text.Encoding.UTF8.GetBytes(configFileName + "\0");
+            int result = LibInterfaceCpp.setConfigFileName(configFileNameBytes);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: setConfigFileName success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: config file name already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the config file name."
+                );
+            }
         }
-        catch (G3D_AlreadyInitializedException)
-        {
-            Debug.Log("G3D head tracking has already been initialized.");
-        }
-        catch (Exception e)
-        {
-            throw e;
-        }
-        Debug.Log("tracking device count " + getHeadTrackingDeviceCount());
 
-        initialized = true;
-    }
+        /// <summary>
+        ///
+        /// </summary>
+        /// <returns>(has device, is tracking)</returns>
+        /// <exception cref="G3D_AlreadyInitializedException"></exception>
+        /// <exception cref="G3D_NotInitializedException"></exception>
+        /// <exception cref="G3D_IndexOutOfRangeException"></exception>
+        /// <exception cref="Exception"></exception>
+        public bool currentHeadTrackingDeviceHasValidCalibration()
+        {
+            bool isValid;
+            int result = LibInterfaceCpp.currentHeadTrackingDeviceHasValidCalibration(out isValid);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: currentHeadTrackingDeviceHasValidCalibration success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when trying toi check if the current devide has a valid calibration."
+                );
+            }
 
-    public void deinit()
-    {
-        // this is in its own try catch to continue deinit if this fails
-        try
-        {
-            stopHeadTracking();
+            return isValid;
         }
-        catch (Exception e)
+
+        // ------------------------------------------------
+
+        /// <summary>
+        /// headDetected: 0 = no head detected, 1 >= head detected
+        /// imagePosIsValid: 0 = invalid, 1 >= valid
+        /// </summary>
+        /// <param name="headDetected"></param>
+        /// <param name="imagePosIsValid"></param>
+        /// <param name="imagePosX"></param>
+        /// <param name="imagePosY"></param>
+        /// <param name="worldPosX"></param>
+        /// <param name="worldPosY"></param>
+        /// <param name="worldPosZ"></param>
+        /// <param name="listener"></param>
+        private void TranslateNewHeadPositionCallback(
+            int headDetected,
+            int imagePosIsValid,
+            int imagePosX,
+            int imagePosY,
+            double worldPosX,
+            double worldPosY,
+            double worldPosZ,
+            IntPtr listener
+        )
         {
-            // only log this if actually initialized.
-            // otherwise this was probably called from an uninitialized state and the exception reflects that.
-            if (initialized)
+            try
+            {
+                // translate intptr to interface instance
+                // call interface instance callback
+                GCHandle gch = GCHandle.FromIntPtr(listener);
+                ITNewHeadPositionCallback interfaceInstance = (ITNewHeadPositionCallback)gch.Target;
+
+                interfaceInstance.NewHeadPositionCallback(
+                    headDetected != 0,
+                    imagePosIsValid != 0,
+                    imagePosX,
+                    imagePosY,
+                    worldPosX,
+                    worldPosY,
+                    worldPosZ
+                );
+            }
+            catch (Exception e)
             {
                 Debug.LogError(e.ToString());
             }
         }
 
-        // this is in its own try catch to continue deinit if this fails
-        try
+        public void registerHeadPositionChangedCallback(
+            in ITNewHeadPositionCallback inferfaceInstance
+        )
         {
-            deinitHeadTracking();
+            GCHandle gch = GCHandle.Alloc(inferfaceInstance);
+
+            int result = LibInterfaceCpp.registerHeadPositionChangedCallback(
+                GCHandle.ToIntPtr(gch),
+                newHeadPosCppCallback
+            );
+            // TODO figure out if this results in memory leaks
+            // gch.Free();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: registerHeadPositionChangedCallback success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: this callback has already been registered."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when registering the head position changed callback."
+                );
+            }
         }
-        catch (Exception e)
+
+        public void unregisterHeadPositionChangedCallback(
+            in ITNewHeadPositionCallback inferfaceInstance
+        )
         {
-            if (initialized)
+            GCHandle gch = GCHandle.Alloc(inferfaceInstance);
+            int result = LibInterfaceCpp.unregisterHeadPositionChangedCallback(
+                GCHandle.ToIntPtr(gch)
+            );
+            gch.Free();
+
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: unregisterHeadPositionChangedCallback success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: this callback has already been unregistered."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library: callback not registered.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when unregistering the head position changed callback."
+                );
+            }
+        }
+
+        private void TranslateShaderParametersCallback(
+            in G3DShaderParameters shaderParameters,
+            IntPtr listener
+        )
+        {
+            try
+            {
+                // translate intptr to interface instance
+                // call interface instance callback
+                GCHandle gch = GCHandle.FromIntPtr(listener);
+                ITNewShaderParametersCallback interfaceInstance = (ITNewShaderParametersCallback)
+                    gch.Target;
+
+                interfaceInstance.NewShaderParametersCallback(shaderParameters);
+            }
+            catch (Exception e)
             {
                 Debug.LogError(e.ToString());
             }
         }
 
-        // this is in its own try catch to continue deinit if this fails
-        try
+        public void registerShaderParametersChangedCallback(
+            in ITNewShaderParametersCallback interfaceInstance
+        )
         {
-            deinitLibrary();
+            GCHandle gch = GCHandle.Alloc(interfaceInstance);
+
+            int result = LibInterfaceCpp.registerShaderParametersChangedCallback(
+                GCHandle.ToIntPtr(gch),
+                newShaderparamsCppCallback
+            );
+            // TODO figure out if this results in memory leaks
+            // gch.Free();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: registerShaderParametersChangedCallback success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: this callback has already been registered."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when registering the shader parameters changed callback."
+                );
+            }
         }
-        catch (Exception e)
+
+        public void unregisterShaderParametersChangedCallback(
+            in ITNewShaderParametersCallback interfaceInstance
+        )
         {
-            if (initialized)
+            GCHandle gch = GCHandle.Alloc(interfaceInstance);
+            int result = LibInterfaceCpp.unregisterShaderParametersChangedCallback(
+                GCHandle.ToIntPtr(gch)
+            );
+            gch.Free();
+
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: unregisterShaderParametersChangedCallback success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: this callback has already been unregistered."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library: callback not registered.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when unregistering the shader parameters changed callback."
+                );
+            }
+        }
+
+        private void TranslateNewErrorMessageCallback(
+            EMessageSeverity severity,
+            IntPtr sender,
+            IntPtr caption,
+            IntPtr cause,
+            IntPtr remedy,
+            IntPtr listener
+        )
+        {
+            try
+            {
+                // translate intptr to interface instance
+                // call interface instance callback
+                GCHandle gch = GCHandle.FromIntPtr(listener);
+                ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback)gch.Target;
+
+                string senderString = Marshal.PtrToStringUTF8(sender);
+                string captionString = Marshal.PtrToStringUTF8(caption);
+                string causeString = Marshal.PtrToStringUTF8(cause);
+                string remedyString = Marshal.PtrToStringUTF8(remedy);
+
+                interfaceInstance.NewErrorMessageCallback(
+                    severity,
+                    senderString,
+                    captionString,
+                    causeString,
+                    remedyString
+                );
+            }
+            catch (Exception e)
             {
                 Debug.LogError(e.ToString());
             }
         }
 
-        Debug.Log("destroy library");
+        public void registerMessageCallback(in ITNewErrorMessageCallback inferfaceInstance)
+        {
+            GCHandle gch = GCHandle.Alloc(inferfaceInstance);
 
-        initialized = false;
-    }
-
-    ~LibInterface()
-    {
-        deinit();
-    }
-
-    public bool isInitialized()
-    {
-        return initialized;
-    }
-
-    private void initLibrary()
-    {
-        int result = LibInterfaceCpp.initLibrary();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library initialization successfull.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
+            int result = LibInterfaceCpp.registerMessageCallback(
+                GCHandle.ToIntPtr(gch),
+                newErrorMessagesCppCallback
             );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when initializing the library."
-            );
-        }
-    }
-
-    private void deinitLibrary()
-    {
-        int result = LibInterfaceCpp.deinitLibrary();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library deinitialization successfull.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when initializing the library."
-            );
-        }
-    }
-
-    public void setCalibrationPath(string calibrationPath)
-    {
-        byte[] calibPathBytes = System.Text.Encoding.UTF8.GetBytes(calibrationPath + "\0");
-        int result = LibInterfaceCpp.setCalibrationPath(calibPathBytes);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: setCalibrationPath success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: calibration path already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the calibration path."
-            );
-        }
-    }
-
-    public void setConfigPath(string configPath)
-    {
-        byte[] configPathBytes = System.Text.Encoding.UTF8.GetBytes(configPath + "\0");
-        int result = LibInterfaceCpp.setConfigPath(configPathBytes);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: setConfigPath success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: config path already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the config path."
-            );
-        }
-    }
-
-    public void setConfigFileName(string configFileName)
-    {
-        byte[] configFileNameBytes = System.Text.Encoding.UTF8.GetBytes(configFileName + "\0");
-        int result = LibInterfaceCpp.setConfigFileName(configFileNameBytes);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: setConfigFileName success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: config file name already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the config file name."
-            );
-        }
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns>(has device, is tracking)</returns>
-    /// <exception cref="G3D_AlreadyInitializedException"></exception>
-    /// <exception cref="G3D_NotInitializedException"></exception>
-    /// <exception cref="G3D_IndexOutOfRangeException"></exception>
-    /// <exception cref="Exception"></exception>
-    public bool currentHeadTrackingDeviceHasValidCalibration()
-    {
-        bool isValid;
-        int result = LibInterfaceCpp.currentHeadTrackingDeviceHasValidCalibration(out isValid);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: currentHeadTrackingDeviceHasValidCalibration success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when trying toi check if the current devide has a valid calibration."
-            );
+            // TODO figure out if this results in memory leaks
+            // gch.Free();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: registerMessageCallback success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: this callback has already been registered."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when registering the message callback."
+                );
+            }
         }
 
-        return isValid;
-    }
+        public void unregisterMessageCallback(in ITNewErrorMessageCallback inferfaceInstance)
+        {
+            GCHandle gch = GCHandle.Alloc(inferfaceInstance);
+            int result = LibInterfaceCpp.unregisterMessageCallback(GCHandle.ToIntPtr(gch));
+            gch.Free();
 
-    // ------------------------------------------------
-
-    /// <summary>
-    /// headDetected: 0 = no head detected, 1 >= head detected
-    /// imagePosIsValid: 0 = invalid, 1 >= valid
-    /// </summary>
-    /// <param name="headDetected"></param>
-    /// <param name="imagePosIsValid"></param>
-    /// <param name="imagePosX"></param>
-    /// <param name="imagePosY"></param>
-    /// <param name="worldPosX"></param>
-    /// <param name="worldPosY"></param>
-    /// <param name="worldPosZ"></param>
-    /// <param name="listener"></param>
-    private void TranslateNewHeadPositionCallback(
-        int headDetected,
-        int imagePosIsValid,
-        int imagePosX,
-        int imagePosY,
-        double worldPosX,
-        double worldPosY,
-        double worldPosZ,
-        IntPtr listener
-    )
-    {
-        try
-        {
-            // translate intptr to interface instance
-            // call interface instance callback
-            GCHandle gch = GCHandle.FromIntPtr(listener);
-            ITNewHeadPositionCallback interfaceInstance = (ITNewHeadPositionCallback)gch.Target;
-
-            interfaceInstance.NewHeadPositionCallback(
-                headDetected != 0,
-                imagePosIsValid != 0,
-                imagePosX,
-                imagePosY,
-                worldPosX,
-                worldPosY,
-                worldPosZ
-            );
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e.ToString());
-        }
-    }
-
-    public void registerHeadPositionChangedCallback(in ITNewHeadPositionCallback inferfaceInstance)
-    {
-        GCHandle gch = GCHandle.Alloc(inferfaceInstance);
-
-        int result = LibInterfaceCpp.registerHeadPositionChangedCallback(
-            GCHandle.ToIntPtr(gch),
-            newHeadPosCppCallback
-        );
-        // TODO figure out if this results in memory leaks
-        // gch.Free();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: registerHeadPositionChangedCallback success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: this callback has already been registered."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when registering the head position changed callback."
-            );
-        }
-    }
-
-    public void unregisterHeadPositionChangedCallback(
-        in ITNewHeadPositionCallback inferfaceInstance
-    )
-    {
-        GCHandle gch = GCHandle.Alloc(inferfaceInstance);
-        int result = LibInterfaceCpp.unregisterHeadPositionChangedCallback(GCHandle.ToIntPtr(gch));
-        gch.Free();
-
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: unregisterHeadPositionChangedCallback success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: this callback has already been unregistered."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library: callback not registered.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when unregistering the head position changed callback."
-            );
-        }
-    }
-
-    private void TranslateShaderParametersCallback(
-        in G3DShaderParameters shaderParameters,
-        IntPtr listener
-    )
-    {
-        try
-        {
-            // translate intptr to interface instance
-            // call interface instance callback
-            GCHandle gch = GCHandle.FromIntPtr(listener);
-            ITNewShaderParametersCallback interfaceInstance = (ITNewShaderParametersCallback)
-                gch.Target;
-
-            interfaceInstance.NewShaderParametersCallback(shaderParameters);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e.ToString());
-        }
-    }
-
-    public void registerShaderParametersChangedCallback(
-        in ITNewShaderParametersCallback interfaceInstance
-    )
-    {
-        GCHandle gch = GCHandle.Alloc(interfaceInstance);
-
-        int result = LibInterfaceCpp.registerShaderParametersChangedCallback(
-            GCHandle.ToIntPtr(gch),
-            newShaderparamsCppCallback
-        );
-        // TODO figure out if this results in memory leaks
-        // gch.Free();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: registerShaderParametersChangedCallback success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: this callback has already been registered."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when registering the shader parameters changed callback."
-            );
-        }
-    }
-
-    public void unregisterShaderParametersChangedCallback(
-        in ITNewShaderParametersCallback interfaceInstance
-    )
-    {
-        GCHandle gch = GCHandle.Alloc(interfaceInstance);
-        int result = LibInterfaceCpp.unregisterShaderParametersChangedCallback(
-            GCHandle.ToIntPtr(gch)
-        );
-        gch.Free();
-
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: unregisterShaderParametersChangedCallback success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: this callback has already been unregistered."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library: callback not registered.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when unregistering the shader parameters changed callback."
-            );
-        }
-    }
-
-    private void TranslateNewErrorMessageCallback(
-        EMessageSeverity severity,
-        IntPtr sender,
-        IntPtr caption,
-        IntPtr cause,
-        IntPtr remedy,
-        IntPtr listener
-    )
-    {
-        try
-        {
-            // translate intptr to interface instance
-            // call interface instance callback
-            GCHandle gch = GCHandle.FromIntPtr(listener);
-            ITNewErrorMessageCallback interfaceInstance = (ITNewErrorMessageCallback)gch.Target;
-
-            string senderString = Marshal.PtrToStringUTF8(sender);
-            string captionString = Marshal.PtrToStringUTF8(caption);
-            string causeString = Marshal.PtrToStringUTF8(cause);
-            string remedyString = Marshal.PtrToStringUTF8(remedy);
-
-            interfaceInstance.NewErrorMessageCallback(
-                severity,
-                senderString,
-                captionString,
-                causeString,
-                remedyString
-            );
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e.ToString());
-        }
-    }
-
-    public void registerMessageCallback(in ITNewErrorMessageCallback inferfaceInstance)
-    {
-        GCHandle gch = GCHandle.Alloc(inferfaceInstance);
-
-        int result = LibInterfaceCpp.registerMessageCallback(
-            GCHandle.ToIntPtr(gch),
-            newErrorMessagesCppCallback
-        );
-        // TODO figure out if this results in memory leaks
-        // gch.Free();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: registerMessageCallback success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: this callback has already been registered."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when registering the message callback."
-            );
-        }
-    }
-
-    public void unregisterMessageCallback(in ITNewErrorMessageCallback inferfaceInstance)
-    {
-        GCHandle gch = GCHandle.Alloc(inferfaceInstance);
-        int result = LibInterfaceCpp.unregisterMessageCallback(GCHandle.ToIntPtr(gch));
-        gch.Free();
-
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: unregisterMessageCallback success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: this callback has already been unregistered."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library: callback not registered.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when unregistering the message callback."
-            );
-        }
-    }
-
-    // ------------------------------------------------
-
-    public void useHimaxD2XXDevices()
-    {
-        int result = LibInterfaceCpp.useHimaxD2XXDevices();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: useHimaxD2XXDevices success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when using Himax D2XX devices."
-            );
-        }
-    }
-
-    public void useHimaxRP2040Devices()
-    {
-        int result = LibInterfaceCpp.useHimaxRP2040Devices();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: useHimaxRP2040Devices success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when using Himax RP2040 devices."
-            );
-        }
-    }
-
-    public void usePmdFlexxDevices()
-    {
-        int result = LibInterfaceCpp.usePmdFlexxDevices();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: usePmdFlexxDevices success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when using PMD Flexx devices."
-            );
-        }
-    }
-
-    public void initHeadTracking()
-    {
-        int result = LibInterfaceCpp.initHeadTracking();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: initHeadTracking success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: head tracking already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library: head tracking not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when initializing head tracking."
-            );
-        }
-    }
-
-    public void deinitHeadTracking()
-    {
-        int result = LibInterfaceCpp.deinitHeadTracking();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: deinitHeadTracking success.");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: head tracking already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library: head tracking not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when deinitializing head tracking."
-            );
-        }
-    }
-
-    // ------------------------------------------------
-
-    public int getHeadTrackingDeviceCount()
-    {
-        int deviceCount;
-        int result = LibInterfaceCpp.getHeadTrackingDeviceCount(out deviceCount);
-        if (logToConsole)
-        {
-            Debug.Log(
-                "G3D library: getHeadTrackingDeviceCount success. Device count: " + deviceCount
-            );
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: head tracking device count already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the head tracking device count."
-            );
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: unregisterMessageCallback success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: this callback has already been unregistered."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library: callback not registered.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when unregistering the message callback."
+                );
+            }
         }
 
-        return deviceCount;
-    }
+        // ------------------------------------------------
 
-    public string getHeadTrackingDeviceName(int deviceNumber)
-    {
-        IntPtr deviceNamePtr;
-        int result = LibInterfaceCpp.getHeadTrackingDeviceName(deviceNumber, out deviceNamePtr);
-        string deviceName = Marshal.PtrToStringUTF8(deviceNamePtr);
-        if (logToConsole)
+        public void useHimaxD2XXDevices()
         {
-            Debug.Log(
-                "G3D library: getHeadTrackingDeviceName success. Device with index "
-                    + deviceNumber
-                    + "has name: "
-                    + deviceName
-            );
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: head tracking device name already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: the provided deviceNumber is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the head tracking device name."
-            );
+            int result = LibInterfaceCpp.useHimaxD2XXDevices();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: useHimaxD2XXDevices success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when using Himax D2XX devices."
+                );
+            }
         }
 
-        return deviceName;
-    }
-
-    public string getCurrentHeadTrackingDevice()
-    {
-        IntPtr device;
-        int result = LibInterfaceCpp.getCurrentHeadTrackingDevice(out device);
-        string deviceName = Marshal.PtrToStringUTF8(device);
-        if (logToConsole)
+        public void useHimaxRP2040Devices()
         {
-            Debug.Log(
-                "G3D library: getCurrentHeadTrackingDevice success. Current device name: "
-                    + deviceName
-            );
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: current head tracking device already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the current head tracking device."
-            );
+            int result = LibInterfaceCpp.useHimaxRP2040Devices();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: useHimaxRP2040Devices success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when using Himax RP2040 devices."
+                );
+            }
         }
 
-        return deviceName;
-    }
-
-    public void setCurrentHeadTrackingDevice(string device)
-    {
-        byte[] deviceNameBytes = System.Text.Encoding.UTF8.GetBytes(device);
-        int result = LibInterfaceCpp.setCurrentHeadTrackingDevice(deviceNameBytes);
-        if (logToConsole)
+        public void usePmdFlexxDevices()
         {
-            Debug.Log("G3D library: setCurrentHeadTrackingDevice success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library: current head tracking device already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the current head tracking device."
-            );
-        }
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns>(horizontal resolution, vertical resolution)</returns>
-    /// <exception cref="G3D_AlreadyInitializedException"></exception>
-    /// <exception cref="G3D_NotInitializedException"></exception>
-    /// <exception cref="G3D_IndexOutOfRangeException"></exception>
-    /// <exception cref="Exception"></exception>
-    public Tuple<int, int> getHeadTrackingDeviceResolution()
-    {
-        int horizontalResolution;
-        int verticalResolution;
-        int result = LibInterfaceCpp.getHeadTrackingDeviceResolution(
-            out horizontalResolution,
-            out verticalResolution
-        );
-        if (logToConsole)
-        {
-            Debug.Log(
-                "G3D library: getHeadTrackingDeviceResolution success. Horizontal resolution: "
-                    + horizontalResolution
-                    + ", vertical resolution: "
-                    + verticalResolution
-            );
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the head tracking device resolution."
-            );
+            int result = LibInterfaceCpp.usePmdFlexxDevices();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: usePmdFlexxDevices success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when using PMD Flexx devices."
+                );
+            }
         }
 
-        return new Tuple<int, int>(horizontalResolution, verticalResolution);
-    }
-
-    // ------------------------------------------------
-
-    public int getFirstValidCalibrationMatrixCol()
-    {
-        int value;
-        int result = LibInterfaceCpp.getFirstValidCalibrationMatrixCol(out value);
-        if (logToConsole)
+        public void initHeadTracking()
         {
-            Debug.Log("G3D library: getFirstValidCalibrationMatrixCol success. Value: " + value);
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the first valid calibration matrix column."
-            );
-        }
-
-        return value;
-    }
-
-    public int getLastValidCalibrationMatrixCol()
-    {
-        int value;
-        int result = LibInterfaceCpp.getLastValidCalibrationMatrixCol(out value);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: getLastValidCalibrationMatrixCol success. Value: " + value);
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the last valid calibration matrix column."
-            );
+            int result = LibInterfaceCpp.initHeadTracking();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: initHeadTracking success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: head tracking already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException(
+                    "G3D library: head tracking not initialized."
+                );
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when initializing head tracking."
+                );
+            }
         }
 
-        return value;
-    }
-
-    public int getFirstValidCalibrationMatrixRow()
-    {
-        int value;
-        int result = LibInterfaceCpp.getFirstValidCalibrationMatrixRow(out value);
-        if (logToConsole)
+        public void deinitHeadTracking()
         {
-            Debug.Log("G3D library: getFirstValidCalibrationMatrixRow success. Value: " + value);
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the first valid calibration matrix row."
-            );
-        }
-
-        return value;
-    }
-
-    public int getLastValidCalibrationMatrixRow()
-    {
-        int value;
-        int result = LibInterfaceCpp.getLastValidCalibrationMatrixRow(out value);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: getLastValidCalibrationMatrixRow success. Value: " + value);
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the last valid calibration matrix row."
-            );
+            int result = LibInterfaceCpp.deinitHeadTracking();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: deinitHeadTracking success.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: head tracking already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException(
+                    "G3D library: head tracking not initialized."
+                );
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when deinitializing head tracking."
+                );
+            }
         }
 
-        return value;
-    }
+        // ------------------------------------------------
 
-    // ------------------------------------------------
+        public int getHeadTrackingDeviceCount()
+        {
+            int deviceCount;
+            int result = LibInterfaceCpp.getHeadTrackingDeviceCount(out deviceCount);
+            if (logToConsole)
+            {
+                Debug.Log(
+                    "G3D library: getHeadTrackingDeviceCount success. Device count: " + deviceCount
+                );
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: head tracking device count already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the head tracking device count."
+                );
+            }
 
-    public void startHeadTracking()
-    {
-        int result = LibInterfaceCpp.startHeadTracking();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: head tracking started successfully.");
+            return deviceCount;
         }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already started.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library: head tracking not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when starting head tracking."
-            );
-        }
-    }
 
-    public void stopHeadTracking()
-    {
-        int result = LibInterfaceCpp.stopHeadTracking();
-        if (logToConsole)
+        public string getHeadTrackingDeviceName(int deviceNumber)
         {
-            Debug.Log("G3D library: head tracking stopped successfully.");
+            IntPtr deviceNamePtr;
+            int result = LibInterfaceCpp.getHeadTrackingDeviceName(deviceNumber, out deviceNamePtr);
+            string deviceName = Marshal.PtrToStringUTF8(deviceNamePtr);
+            if (logToConsole)
+            {
+                Debug.Log(
+                    "G3D library: getHeadTrackingDeviceName success. Device with index "
+                        + deviceNumber
+                        + "has name: "
+                        + deviceName
+                );
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: head tracking device name already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: the provided deviceNumber is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the head tracking device name."
+                );
+            }
+
+            return deviceName;
         }
-        if (result == -100)
+
+        public string getCurrentHeadTrackingDevice()
         {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            IntPtr device;
+            int result = LibInterfaceCpp.getCurrentHeadTrackingDevice(out device);
+            string deviceName = Marshal.PtrToStringUTF8(device);
+            if (logToConsole)
+            {
+                Debug.Log(
+                    "G3D library: getCurrentHeadTrackingDevice success. Current device name: "
+                        + deviceName
+                );
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: current head tracking device already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the current head tracking device."
+                );
+            }
+
+            return deviceName;
         }
-        if (result == -101)
+
+        public void setCurrentHeadTrackingDevice(string device)
         {
-            throw new G3D_NotInitializedException("G3D library: head tracking already stopped.");
+            byte[] deviceNameBytes = System.Text.Encoding.UTF8.GetBytes(device);
+            int result = LibInterfaceCpp.setCurrentHeadTrackingDevice(deviceNameBytes);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: setCurrentHeadTrackingDevice success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library: current head tracking device already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the current head tracking device."
+                );
+            }
         }
-        if (result == -102)
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <returns>(horizontal resolution, vertical resolution)</returns>
+        /// <exception cref="G3D_AlreadyInitializedException"></exception>
+        /// <exception cref="G3D_NotInitializedException"></exception>
+        /// <exception cref="G3D_IndexOutOfRangeException"></exception>
+        /// <exception cref="Exception"></exception>
+        public Tuple<int, int> getHeadTrackingDeviceResolution()
         {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
+            int horizontalResolution;
+            int verticalResolution;
+            int result = LibInterfaceCpp.getHeadTrackingDeviceResolution(
+                out horizontalResolution,
+                out verticalResolution
             );
+            if (logToConsole)
+            {
+                Debug.Log(
+                    "G3D library: getHeadTrackingDeviceResolution success. Horizontal resolution: "
+                        + horizontalResolution
+                        + ", vertical resolution: "
+                        + verticalResolution
+                );
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the head tracking device resolution."
+                );
+            }
+
+            return new Tuple<int, int>(horizontalResolution, verticalResolution);
         }
-        if (result == -200)
+
+        // ------------------------------------------------
+
+        public int getFirstValidCalibrationMatrixCol()
         {
-            throw new Exception(
-                "G3D library: an unknown error occurred when stopping head tracking."
+            int value;
+            int result = LibInterfaceCpp.getFirstValidCalibrationMatrixCol(out value);
+            if (logToConsole)
+            {
+                Debug.Log(
+                    "G3D library: getFirstValidCalibrationMatrixCol success. Value: " + value
+                );
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the first valid calibration matrix column."
+                );
+            }
+
+            return value;
+        }
+
+        public int getLastValidCalibrationMatrixCol()
+        {
+            int value;
+            int result = LibInterfaceCpp.getLastValidCalibrationMatrixCol(out value);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: getLastValidCalibrationMatrixCol success. Value: " + value);
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the last valid calibration matrix column."
+                );
+            }
+
+            return value;
+        }
+
+        public int getFirstValidCalibrationMatrixRow()
+        {
+            int value;
+            int result = LibInterfaceCpp.getFirstValidCalibrationMatrixRow(out value);
+            if (logToConsole)
+            {
+                Debug.Log(
+                    "G3D library: getFirstValidCalibrationMatrixRow success. Value: " + value
+                );
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the first valid calibration matrix row."
+                );
+            }
+
+            return value;
+        }
+
+        public int getLastValidCalibrationMatrixRow()
+        {
+            int value;
+            int result = LibInterfaceCpp.getLastValidCalibrationMatrixRow(out value);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: getLastValidCalibrationMatrixRow success. Value: " + value);
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the last valid calibration matrix row."
+                );
+            }
+
+            return value;
+        }
+
+        // ------------------------------------------------
+
+        public void startHeadTracking()
+        {
+            int result = LibInterfaceCpp.startHeadTracking();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: head tracking started successfully.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already started.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException(
+                    "G3D library: head tracking not initialized."
+                );
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when starting head tracking."
+                );
+            }
+        }
+
+        public void stopHeadTracking()
+        {
+            int result = LibInterfaceCpp.stopHeadTracking();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: head tracking stopped successfully.");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException(
+                    "G3D library: head tracking already stopped."
+                );
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when stopping head tracking."
+                );
+            }
+        }
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <returns>(has device, is tracking)</returns>
+        /// <exception cref="G3D_AlreadyInitializedException"></exception>
+        /// <exception cref="G3D_NotInitializedException"></exception>
+        /// <exception cref="G3D_IndexOutOfRangeException"></exception>
+        /// <exception cref="Exception"></exception>
+        public HeadTrackingStatus getHeadTrackingStatus()
+        {
+            bool hasDevice;
+            bool isTracking;
+            int result = LibInterfaceCpp.getHeadTrackingStatus(out hasDevice, out isTracking);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: getHeadTrackingStatus success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the head tracking status."
+                );
+            }
+
+            HeadTrackingStatus headTrackingStatus = new HeadTrackingStatus
+            {
+                hasTrackingDevice = hasDevice,
+                isTrackingActive = isTracking
+            };
+
+            return headTrackingStatus;
+        }
+
+        // ------------------------------------------------
+
+        public G3DShaderParameters getCurrentShaderParameters()
+        {
+            G3DShaderParameters parameters;
+            int result = LibInterfaceCpp.getCurrentShaderParameters(out parameters);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: getCurrentShaderParameters success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when getting the current shader parameters."
+                );
+            }
+
+            return parameters;
+        }
+
+        public void setWindowPosition(int left, int top)
+        {
+            int result = LibInterfaceCpp.setWindowPosition(left, top);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: setWindowPosition success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the window position."
+                );
+            }
+        }
+
+        public void setWindowSize(int width, int height)
+        {
+            int result = LibInterfaceCpp.setWindowSize(width, height);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: setWindowSize success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the window size."
+                );
+            }
+        }
+
+        public void setViewportOffset(int left, int top)
+        {
+            int result = LibInterfaceCpp.setViewportOffset(left, top);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: setViewportOffset success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the viewport offset."
+                );
+            }
+        }
+
+        public void setViewportSize(int width, int height)
+        {
+            int result = LibInterfaceCpp.setViewportSize(width, height);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: setViewportSize success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the viewport size."
+                );
+            }
+        }
+
+        public void setScreenSize(int width, int height)
+        {
+            int result = LibInterfaceCpp.setScreenSize(width, height);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: setScreenSize success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when setting the screen dimensions."
+                );
+            }
+        }
+
+        // ------------------------------------------------
+
+        public void shiftViewToLeft()
+        {
+            int result = LibInterfaceCpp.shiftViewToLeft();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: shiftViewToLeft success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when shifting the view to the left."
+                );
+            }
+        }
+
+        public void shiftViewToRight()
+        {
+            int result = LibInterfaceCpp.shiftViewToRight();
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: shiftViewToRight success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException("G3D library already initialized.");
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException("G3D library not initialized.");
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library: an unknown error occurred when shifting the view to the right."
+                );
+            }
+        }
+
+        // ------------------------------------------------
+
+        // extern G3D_UNIVERSAL_HEADTRACKING_LIBRARY_EXPORT int initializePositionFilter(const int lenX, const int lenY, const int lenZ);
+        public void initializePositionFilter(int lenX, int lenY, int lenZ)
+        {
+            int result = LibInterfaceCpp.initializePositionFilter(lenX, lenY, lenZ);
+            if (logToConsole)
+            {
+                Debug.Log(
+                    "G3D library: initializePositionFilter success. Filter set to ("
+                        + lenX
+                        + ","
+                        + lenY
+                        + ","
+                        + lenZ
+                        + ","
+                        + ")"
+                );
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library initializePositionFilter: position filter already initialized."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException(
+                    "G3D library initializePositionFilter: not initialized."
+                );
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library initializePositionFilter: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library initializePositionFilter: an unknown error occurred when shifting the view to the right."
+                );
+            }
+        }
+
+        // extern G3D_UNIVERSAL_HEADTRACKING_LIBRARY_EXPORT int applyPositionFilter(const double posX, const double posY, const double posZ,
+        //     double* filteredX, double* filteredY, double* filteredZ);
+        public void applyPositionFilter(
+            double posX,
+            double posY,
+            double posZ,
+            out double filteredX,
+            out double filteredY,
+            out double filteredZ
+        )
+        {
+            int result = LibInterfaceCpp.applyPositionFilter(
+                posX,
+                posY,
+                posZ,
+                out filteredX,
+                out filteredY,
+                out filteredZ
             );
+            if (logToConsole)
+            {
+                Debug.Log(
+                    "G3D library: applyPositionFilter success. Filtered position: ()"
+                        + filteredX
+                        + ", "
+                        + filteredY
+                        + ", "
+                        + filteredZ
+                        + "); Unfiltered Position: ("
+                        + posX
+                        + ", "
+                        + posY
+                        + ", "
+                        + posZ
+                        + ")"
+                );
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library applyPositionFilter: library already initialized error."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException(
+                    "G3D library applyPositionFilter: position filter not initialized."
+                );
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library applyPositionFilter: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library applyPositionFilter: an unknown error occurred when getting the head tracking device resolution."
+                );
+            }
+        }
+
+        public void calculateShaderParameters(LatencyCorrectionMode latencyCorrectionMode)
+        {
+            int result = LibInterfaceCpp.calculateShaderParameters(latencyCorrectionMode);
+            if (logToConsole)
+            {
+                Debug.Log("G3D library: calculateShaderParameters success");
+            }
+            if (result == -100)
+            {
+                throw new G3D_AlreadyInitializedException(
+                    "G3D library calculateShaderParameters: library already initialized error."
+                );
+            }
+            if (result == -101)
+            {
+                throw new G3D_NotInitializedException(
+                    "G3D library calculateShaderParameters: library not initialized."
+                );
+            }
+            if (result == -102)
+            {
+                throw new G3D_IndexOutOfRangeException(
+                    "G3D library calculateShaderParameters: a provided index is out of range."
+                );
+            }
+            if (result == -200)
+            {
+                throw new Exception(
+                    "G3D library calculateShaderParameters: an unknown error occurred when calculating the shader parameters."
+                );
+            }
         }
     }
 
     /// <summary>
-    ///
+    /// This class provides the raw C interface to the G3D Universal Head Tracking Library.
     /// </summary>
-    /// <returns>(has device, is tracking)</returns>
-    /// <exception cref="G3D_AlreadyInitializedException"></exception>
-    /// <exception cref="G3D_NotInitializedException"></exception>
-    /// <exception cref="G3D_IndexOutOfRangeException"></exception>
-    /// <exception cref="Exception"></exception>
-    public HeadTrackingStatus getHeadTrackingStatus()
+    internal static class LibInterfaceCpp
     {
-        bool hasDevice;
-        bool isTracking;
-        int result = LibInterfaceCpp.getHeadTrackingStatus(out hasDevice, out isTracking);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: getHeadTrackingStatus success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the head tracking status."
-            );
-        }
+        // Error codes
+        // const int E_OK = 0;
+        // const int E_INITIALIZED_ALREADY = -100;
+        // const int E_NOT_INITIALIZED = -101;
+        // const int E_INDEX_OUT_OF_RANGE = -102;
+        // const int E_EXCEPTION_ERROR = -200;
 
-        HeadTrackingStatus headTrackingStatus = new HeadTrackingStatus
-        {
-            hasTrackingDevice = hasDevice,
-            isTrackingActive = isTracking
-        };
+        //function definitions
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?initLibrary@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int initLibrary();
 
-        return headTrackingStatus;
-    }
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?deinitLibrary@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int deinitLibrary();
 
-    // ------------------------------------------------
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setCalibrationPath@G3D_HTL@@YAHPEBD@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setCalibrationPath(byte[] path);
 
-    public G3DShaderParameters getCurrentShaderParameters()
-    {
-        G3DShaderParameters parameters;
-        int result = LibInterfaceCpp.getCurrentShaderParameters(out parameters);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: getCurrentShaderParameters success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when getting the current shader parameters."
-            );
-        }
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setConfigPath@G3D_HTL@@YAHPEBD@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setConfigPath(byte[] path);
 
-        return parameters;
-    }
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setConfigFileName@G3D_HTL@@YAHPEBD@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setConfigFileName(byte[] path);
 
-    public void setWindowPosition(int left, int top)
-    {
-        int result = LibInterfaceCpp.setWindowPosition(left, top);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: setWindowPosition success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the window position."
-            );
-        }
-    }
-
-    public void setWindowSize(int width, int height)
-    {
-        int result = LibInterfaceCpp.setWindowSize(width, height);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: setWindowSize success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the window size."
-            );
-        }
-    }
-
-    public void setViewportOffset(int left, int top)
-    {
-        int result = LibInterfaceCpp.setViewportOffset(left, top);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: setViewportOffset success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the viewport offset."
-            );
-        }
-    }
-
-    public void setViewportSize(int width, int height)
-    {
-        int result = LibInterfaceCpp.setViewportSize(width, height);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: setViewportSize success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the viewport size."
-            );
-        }
-    }
-
-    public void setScreenSize(int width, int height)
-    {
-        int result = LibInterfaceCpp.setScreenSize(width, height);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: setScreenSize success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when setting the screen dimensions."
-            );
-        }
-    }
-
-    // ------------------------------------------------
-
-    public void shiftViewToLeft()
-    {
-        int result = LibInterfaceCpp.shiftViewToLeft();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: shiftViewToLeft success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when shifting the view to the left."
-            );
-        }
-    }
-
-    public void shiftViewToRight()
-    {
-        int result = LibInterfaceCpp.shiftViewToRight();
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: shiftViewToRight success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException("G3D library already initialized.");
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException("G3D library not initialized.");
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library: an unknown error occurred when shifting the view to the right."
-            );
-        }
-    }
-
-    // ------------------------------------------------
-
-    // extern G3D_UNIVERSAL_HEADTRACKING_LIBRARY_EXPORT int initializePositionFilter(const int lenX, const int lenY, const int lenZ);
-    public void initializePositionFilter(int lenX, int lenY, int lenZ)
-    {
-        int result = LibInterfaceCpp.initializePositionFilter(lenX, lenY, lenZ);
-        if (logToConsole)
-        {
-            Debug.Log(
-                "G3D library: initializePositionFilter success. Filter set to ("
-                    + lenX
-                    + ","
-                    + lenY
-                    + ","
-                    + lenZ
-                    + ","
-                    + ")"
-            );
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library initializePositionFilter: position filter already initialized."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException(
-                "G3D library initializePositionFilter: not initialized."
-            );
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library initializePositionFilter: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library initializePositionFilter: an unknown error occurred when shifting the view to the right."
-            );
-        }
-    }
-
-    // extern G3D_UNIVERSAL_HEADTRACKING_LIBRARY_EXPORT int applyPositionFilter(const double posX, const double posY, const double posZ,
-    //     double* filteredX, double* filteredY, double* filteredZ);
-    public void applyPositionFilter(
-        double posX,
-        double posY,
-        double posZ,
-        out double filteredX,
-        out double filteredY,
-        out double filteredZ
-    )
-    {
-        int result = LibInterfaceCpp.applyPositionFilter(
-            posX,
-            posY,
-            posZ,
-            out filteredX,
-            out filteredY,
-            out filteredZ
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?currentHeadTrackingDeviceHasValidCalibration@G3D_HTL@@YAHPEA_N@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int currentHeadTrackingDeviceHasValidCalibration(
+            [MarshalAs(UnmanagedType.U1)] out bool isValid
         );
-        if (logToConsole)
-        {
-            Debug.Log(
-                "G3D library: applyPositionFilter success. Filtered position: ()"
-                    + filteredX
-                    + ", "
-                    + filteredY
-                    + ", "
-                    + filteredZ
-                    + "); Unfiltered Position: ("
-                    + posX
-                    + ", "
-                    + posY
-                    + ", "
-                    + posZ
-                    + ")"
-            );
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library applyPositionFilter: library already initialized error."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException(
-                "G3D library applyPositionFilter: position filter not initialized."
-            );
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library applyPositionFilter: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library applyPositionFilter: an unknown error occurred when getting the head tracking device resolution."
-            );
-        }
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?registerHeadPositionChangedCallback@G3D_HTL@@YAHPEAXP6AXHHHHNNN0@Z@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int registerHeadPositionChangedCallback(
+            IntPtr listener,
+            TNewHeadPositionCallbackInternal callback
+        );
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?unregisterHeadPositionChangedCallback@G3D_HTL@@YAHPEAX@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int unregisterHeadPositionChangedCallback(IntPtr listener);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?registerShaderParametersChangedCallback@G3D_HTL@@YAHPEAXP6AXPEBUCG3DShaderParameters@@0@Z@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int registerShaderParametersChangedCallback(
+            IntPtr listener,
+            TNewShaderParametersCallbackInternal callback
+        );
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?unregisterShaderParametersChangedCallback@G3D_HTL@@YAHPEAX@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int unregisterShaderParametersChangedCallback(IntPtr listener);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?registerMessageCallback@G3D_HTL@@YAHPEAXP6AXW4EMessageSeverity@@PEBD2220@Z@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int registerMessageCallback(
+            IntPtr listener,
+            TNewErrorMessageCallbackInternal callback
+        );
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?unregisterMessageCallback@G3D_HTL@@YAHPEAX@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int unregisterMessageCallback(IntPtr listener);
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?useHimaxD2XXDevices@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int useHimaxD2XXDevices();
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?useHimaxRP2040Devices@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int useHimaxRP2040Devices();
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?usePmdFlexxDevices@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int usePmdFlexxDevices();
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?initHeadTracking@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int initHeadTracking();
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?deinitHeadTracking@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int deinitHeadTracking();
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getHeadTrackingDeviceCount@G3D_HTL@@YAHPEAH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getHeadTrackingDeviceCount(out int deviceCount);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getHeadTrackingDeviceName@G3D_HTL@@YAHHPEAPEAD@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getHeadTrackingDeviceName(int deviceNumber, out IntPtr deviceName);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getCurrentHeadTrackingDevice@G3D_HTL@@YAHPEAPEAD@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getCurrentHeadTrackingDevice(out IntPtr deviceName);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setCurrentHeadTrackingDevice@G3D_HTL@@YAHPEBD@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setCurrentHeadTrackingDevice(in byte[] device);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getHeadTrackingDeviceResolution@G3D_HTL@@YAHPEAH0@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getHeadTrackingDeviceResolution(
+            out int horizontalResolution,
+            out int verticalResolution
+        );
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getFirstValidCalibrationMatrixCol@G3D_HTL@@YAHPEAH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getFirstValidCalibrationMatrixCol(out int value);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getLastValidCalibrationMatrixCol@G3D_HTL@@YAHPEAH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getLastValidCalibrationMatrixCol(out int value);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getFirstValidCalibrationMatrixRow@G3D_HTL@@YAHPEAH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getFirstValidCalibrationMatrixRow(out int value);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getLastValidCalibrationMatrixRow@G3D_HTL@@YAHPEAH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getLastValidCalibrationMatrixRow(out int value);
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?startHeadTracking@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int startHeadTracking();
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?stopHeadTracking@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int stopHeadTracking();
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getHeadTrackingStatus@G3D_HTL@@YAHPEA_N0@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getHeadTrackingStatus(
+            [MarshalAs(UnmanagedType.U1)] out bool hasDevice,
+            [MarshalAs(UnmanagedType.U1)] out bool isTracking
+        );
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?getCurrentShaderParameters@G3D_HTL@@YAHPEAUCG3DShaderParameters@@@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int getCurrentShaderParameters(
+            out G3DShaderParameters shaderParameters
+        );
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setWindowPosition@G3D_HTL@@YAHHH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setWindowPosition(int left, int top);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setWindowSize@G3D_HTL@@YAHHH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setWindowSize(int width, int height);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setViewportOffset@G3D_HTL@@YAHHH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setViewportOffset(int left, int top);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setViewportSize@G3D_HTL@@YAHHH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setViewportSize(int width, int height);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?setScreenSize@G3D_HTL@@YAHHH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int setScreenSize(int width, int height);
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?shiftViewToLeft@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int shiftViewToLeft();
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?shiftViewToRight@G3D_HTL@@YAHXZ",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int shiftViewToRight();
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?initializePositionFilter@G3D_HTL@@YAHHHH@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int initializePositionFilter(int lenX, int lenY, int lenZ);
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?applyPositionFilter@G3D_HTL@@YAHNNNPEAN00@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int applyPositionFilter(
+            double posX,
+            double posY,
+            double posZ,
+            out double filteredX,
+            out double filteredY,
+            out double filteredZ
+        );
+
+        // ------------------------------------------------
+
+        [DllImport(
+            "G3D_HeadTrackingLibrary_c.dll",
+            EntryPoint = "?calculateShaderParameters@G3D_HTL@@YAHW4LatencyCorrectionMode@1@@Z",
+            CallingConvention = CallingConvention.Cdecl
+        )]
+        public static extern int calculateShaderParameters(
+            LatencyCorrectionMode latencyCorrectionMode
+        );
     }
-
-    public void calculateShaderParameters(LatencyCorrectionMode latencyCorrectionMode)
-    {
-        int result = LibInterfaceCpp.calculateShaderParameters(latencyCorrectionMode);
-        if (logToConsole)
-        {
-            Debug.Log("G3D library: calculateShaderParameters success");
-        }
-        if (result == -100)
-        {
-            throw new G3D_AlreadyInitializedException(
-                "G3D library calculateShaderParameters: library already initialized error."
-            );
-        }
-        if (result == -101)
-        {
-            throw new G3D_NotInitializedException(
-                "G3D library calculateShaderParameters: library not initialized."
-            );
-        }
-        if (result == -102)
-        {
-            throw new G3D_IndexOutOfRangeException(
-                "G3D library calculateShaderParameters: a provided index is out of range."
-            );
-        }
-        if (result == -200)
-        {
-            throw new Exception(
-                "G3D library calculateShaderParameters: an unknown error occurred when calculating the shader parameters."
-            );
-        }
-    }
-}
-
-/// <summary>
-/// This class provides the raw C interface to the G3D Universal Head Tracking Library.
-/// </summary>
-internal static class LibInterfaceCpp
-{
-    // Error codes
-    // const int E_OK = 0;
-    // const int E_INITIALIZED_ALREADY = -100;
-    // const int E_NOT_INITIALIZED = -101;
-    // const int E_INDEX_OUT_OF_RANGE = -102;
-    // const int E_EXCEPTION_ERROR = -200;
-
-    //function definitions
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?initLibrary@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int initLibrary();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?deinitLibrary@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int deinitLibrary();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setCalibrationPath@G3D_HTL@@YAHPEBD@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setCalibrationPath(byte[] path);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setConfigPath@G3D_HTL@@YAHPEBD@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setConfigPath(byte[] path);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setConfigFileName@G3D_HTL@@YAHPEBD@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setConfigFileName(byte[] path);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?currentHeadTrackingDeviceHasValidCalibration@G3D_HTL@@YAHPEA_N@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int currentHeadTrackingDeviceHasValidCalibration(
-        [MarshalAs(UnmanagedType.U1)] out bool isValid
-    );
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?registerHeadPositionChangedCallback@G3D_HTL@@YAHPEAXP6AXHHHHNNN0@Z@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int registerHeadPositionChangedCallback(
-        IntPtr listener,
-        TNewHeadPositionCallbackInternal callback
-    );
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?unregisterHeadPositionChangedCallback@G3D_HTL@@YAHPEAX@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int unregisterHeadPositionChangedCallback(IntPtr listener);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?registerShaderParametersChangedCallback@G3D_HTL@@YAHPEAXP6AXPEBUCG3DShaderParameters@@0@Z@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int registerShaderParametersChangedCallback(
-        IntPtr listener,
-        TNewShaderParametersCallbackInternal callback
-    );
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?unregisterShaderParametersChangedCallback@G3D_HTL@@YAHPEAX@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int unregisterShaderParametersChangedCallback(IntPtr listener);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?registerMessageCallback@G3D_HTL@@YAHPEAXP6AXW4EMessageSeverity@@PEBD2220@Z@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int registerMessageCallback(
-        IntPtr listener,
-        TNewErrorMessageCallbackInternal callback
-    );
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?unregisterMessageCallback@G3D_HTL@@YAHPEAX@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int unregisterMessageCallback(IntPtr listener);
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?useHimaxD2XXDevices@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int useHimaxD2XXDevices();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?useHimaxRP2040Devices@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int useHimaxRP2040Devices();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?usePmdFlexxDevices@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int usePmdFlexxDevices();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?initHeadTracking@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int initHeadTracking();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?deinitHeadTracking@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int deinitHeadTracking();
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getHeadTrackingDeviceCount@G3D_HTL@@YAHPEAH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getHeadTrackingDeviceCount(out int deviceCount);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getHeadTrackingDeviceName@G3D_HTL@@YAHHPEAPEAD@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getHeadTrackingDeviceName(int deviceNumber, out IntPtr deviceName);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getCurrentHeadTrackingDevice@G3D_HTL@@YAHPEAPEAD@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getCurrentHeadTrackingDevice(out IntPtr deviceName);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setCurrentHeadTrackingDevice@G3D_HTL@@YAHPEBD@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setCurrentHeadTrackingDevice(in byte[] device);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getHeadTrackingDeviceResolution@G3D_HTL@@YAHPEAH0@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getHeadTrackingDeviceResolution(
-        out int horizontalResolution,
-        out int verticalResolution
-    );
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getFirstValidCalibrationMatrixCol@G3D_HTL@@YAHPEAH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getFirstValidCalibrationMatrixCol(out int value);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getLastValidCalibrationMatrixCol@G3D_HTL@@YAHPEAH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getLastValidCalibrationMatrixCol(out int value);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getFirstValidCalibrationMatrixRow@G3D_HTL@@YAHPEAH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getFirstValidCalibrationMatrixRow(out int value);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getLastValidCalibrationMatrixRow@G3D_HTL@@YAHPEAH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getLastValidCalibrationMatrixRow(out int value);
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?startHeadTracking@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int startHeadTracking();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?stopHeadTracking@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int stopHeadTracking();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getHeadTrackingStatus@G3D_HTL@@YAHPEA_N0@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getHeadTrackingStatus(
-        [MarshalAs(UnmanagedType.U1)] out bool hasDevice,
-        [MarshalAs(UnmanagedType.U1)] out bool isTracking
-    );
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?getCurrentShaderParameters@G3D_HTL@@YAHPEAUCG3DShaderParameters@@@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int getCurrentShaderParameters(out G3DShaderParameters shaderParameters);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setWindowPosition@G3D_HTL@@YAHHH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setWindowPosition(int left, int top);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setWindowSize@G3D_HTL@@YAHHH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setWindowSize(int width, int height);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setViewportOffset@G3D_HTL@@YAHHH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setViewportOffset(int left, int top);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setViewportSize@G3D_HTL@@YAHHH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setViewportSize(int width, int height);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?setScreenSize@G3D_HTL@@YAHHH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int setScreenSize(int width, int height);
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?shiftViewToLeft@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int shiftViewToLeft();
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?shiftViewToRight@G3D_HTL@@YAHXZ",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int shiftViewToRight();
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?initializePositionFilter@G3D_HTL@@YAHHHH@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int initializePositionFilter(int lenX, int lenY, int lenZ);
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?applyPositionFilter@G3D_HTL@@YAHNNNPEAN00@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int applyPositionFilter(
-        double posX,
-        double posY,
-        double posZ,
-        out double filteredX,
-        out double filteredY,
-        out double filteredZ
-    );
-
-    // ------------------------------------------------
-
-    [DllImport(
-        "G3D_HeadTrackingLibrary_c.dll",
-        EntryPoint = "?calculateShaderParameters@G3D_HTL@@YAHW4LatencyCorrectionMode@1@@Z",
-        CallingConvention = CallingConvention.Cdecl
-    )]
-    public static extern int calculateShaderParameters(LatencyCorrectionMode latencyCorrectionMode);
 }
