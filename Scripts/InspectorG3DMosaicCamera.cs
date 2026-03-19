@@ -5,7 +5,7 @@ using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 [CustomEditor(typeof(G3DCameraMosaicMultiview))]
-public class InspectorG3DMosaicCamera1 : Editor
+public class InspectorG3DMosaicCamera : Editor
 {
     public VisualTreeAsset inspectorXML;
 
