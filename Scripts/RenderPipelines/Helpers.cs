@@ -1,7 +1,8 @@
-#if G3D_HDRP
 using UnityEngine;
 using UnityEngine.Rendering;
+#if G3D_HDRP
 using UnityEngine.Rendering.HighDefinition;
+#endif
 
 namespace G3D.RenderPipeline
 {
@@ -15,6 +16,7 @@ namespace G3D.RenderPipeline
 
     internal class Helpers
     {
+#if G3D_HDRP
         private static RTHandleSystem m_RTHandleSystem;
 
         public static RTHandleSystem GetRTHandleSystem()
@@ -26,6 +28,7 @@ namespace G3D.RenderPipeline
             }
             return m_RTHandleSystem;
         }
+#endif
 
         /// <summary>
         /// Checks whether the camera is a G3D camera or a Mosaic Multiview camera and if the blit material has been set.
@@ -57,4 +60,3 @@ namespace G3D.RenderPipeline
         }
     }
 }
-#endif

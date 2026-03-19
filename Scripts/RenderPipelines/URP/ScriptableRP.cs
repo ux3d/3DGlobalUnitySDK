@@ -43,7 +43,7 @@ namespace G3D.RenderPipeline.URP
         {
             var camera = renderingData.cameraData.camera;
 
-            if (Helpers.isMainG3DCamera(camera, m_Material))
+            if (Helpers.isMainG3DCamera(camera))
             {
                 CommandBuffer cmd = CommandBufferPool.Get();
                 Blitter.BlitCameraTexture(
@@ -82,7 +82,7 @@ namespace G3D.RenderPipeline.URP
         static void ExecutePass(PassData data, RasterGraphContext context)
         {
             var camera = data.camera;
-            if (Helpers.isMainG3DCamera(camera, data.blitMaterial))
+            if (Helpers.isMainG3DCamera(camera))
             {
                 Blitter.BlitTexture(
                     context.cmd,

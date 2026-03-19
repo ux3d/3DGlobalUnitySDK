@@ -117,20 +117,8 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         //initialize cameras
 
-        shaderHandles = new ShaderHandles()
-        {
-            leftViewportPosition = Shader.PropertyToID("viewport_pos_x"),
-            bottomViewportPosition = Shader.PropertyToID("viewport_pos_y"),
-            screenHeight = Shader.PropertyToID("screen_height"),
-            screenWidth = Shader.PropertyToID("screen_width"),
-            nativeViewCount = Shader.PropertyToID("nativeViewCount"),
-            angleRatioNumerator = Shader.PropertyToID("zwinkel"),
-            angleRatioDenominator = Shader.PropertyToID("nwinkel"),
-            leftLensOrientation = Shader.PropertyToID("isleft"),
-            BGRPixelLayout = Shader.PropertyToID("isBGR"),
-            hqViewCount = Shader.PropertyToID("hqview"),
-            mstart = Shader.PropertyToID("mstart"),
-        };
+        shaderHandles = new ShaderHandles();
+        shaderHandles.init();
 
         // This has to be done after the cameras are updated
         cachedWindowPosition = new Vector2Int(
@@ -173,6 +161,194 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         }
 
         updateIndexMap();
+    }
+
+#if G3D_URP
+    private void OnEnable()
+    {
+        RenderPipelineManager.beginCameraRendering += OnBeginCamera;
+    }
+
+    private void OnDisable()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
+    }
+
+    private void OnBeginCamera(ScriptableRenderContext context, Camera cam)
+    {
+        // Use the EnqueuePass method to inject a custom render pass
+        cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
+    }
+#endif
+
+    #endregion
+
+    #region Updates
+
+    /// <summary>
+    /// OnValidate gets called every time the script is changed in the editor.
+    /// This is used to react to changes made to the parameters.
+    /// </summary>
+    void OnValidate()
+    {
+        if (isActiveAndEnabled == false)
+        {
+            // do not run this code if the script is not enabled
+            return;
+        }
+
+        if (calibrationFile != previousValues.calibrationFile)
+        {
+            previousValues.calibrationFile = calibrationFile;
+            updateShaderFromCalibrationFile();
+        }
+
+        if (
+            previousValues.indexMapYoyoStart != indexMapYoyoStart
+            || previousValues.invertIndexMap != invertIndexMap
+            || previousValues.invertIndexMapIndices != invertIndexMapIndices
+        )
+        {
+            previousValues.indexMapYoyoStart = indexMapYoyoStart;
+            previousValues.invertIndexMap = invertIndexMap;
+            previousValues.invertIndexMapIndices = invertIndexMapIndices;
+
+            indexMap.UpdateIndexMap(
+                shaderParameters.nativeViewCount,
+                mosaicColumnCount * mosaicRowCount,
+                indexMapYoyoStart,
+                invertIndexMap,
+                invertIndexMapIndices
+            );
+        }
+    }
+
+    void Update()
+    {
+        updateShaderParameters();
+
+        if (windowResized() || windowMoved())
+        {
+            updateScreenViewportProperties();
+        }
+    }
+
+    public void reinitializeShader()
+    {
+        material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
+        setCorrectMosaicTexture();
+
+        updateScreenViewportProperties();
+        updateShaderParameters();
+
+#if G3D_HDRP
+        customPass.fullscreenPassMaterial = material;
+#endif
+#if G3D_URP
+        customPass.updateMaterial(material);
+#endif
+    }
+
+    public void updateShaderFromCalibrationFile(TextAsset calibrationFile)
+    {
+        if (calibrationFile == null || calibrationFile.text == "")
+        {
+            return;
+        }
+        this.calibrationFile = calibrationFile;
+        updateShaderFromCalibrationFile();
+    }
+
+    public void updateShaderFromCalibrationFile()
+    {
+        if (calibrationFile == null || calibrationFile.text == "")
+        {
+            return;
+        }
+
+        CalibrationProvider calibrationProvider = CalibrationProvider.getFromString(
+            calibrationFile.text
+        );
+        shaderParameters = calibrationProvider.getShaderParameters();
+    }
+
+    /// <summary>
+    /// The provided file uri has to be a display calibration ini file.
+    /// </summary>
+    /// <param name="uri"></param>
+    public void UpdateShaderParametersFromURI(string uri)
+    {
+        if (uri == null || uri == "")
+        {
+            return;
+        }
+
+        try
+        {
+            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromURI(
+                uri,
+                (CalibrationProvider provider) =>
+                {
+                    shaderParameters = provider.getShaderParameters();
+                    updateShaderParameters();
+                    return 0;
+                }
+            );
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to update shader parameters from uri: " + e.Message);
+        }
+    }
+
+    /// <summary>
+    /// The provided file path has to be a display calibration ini file.
+    /// </summary>
+    /// <param name="filePath"></param>
+    public void UpdateShaderParametersFromFile(string filePath)
+    {
+        if (filePath == null || filePath == "" || filePath.EndsWith(".ini") == false)
+        {
+            return;
+        }
+
+        try
+        {
+            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromConfigFile(
+                filePath
+            );
+            shaderParameters = defaultCalibrationProvider.getShaderParameters();
+            updateShaderParameters();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to update shader parameters from file: " + e.Message);
+        }
+    }
+
+    /// <summary>
+    /// The provided string has to be a display calibration ini file.
+    /// </summary>
+    /// <param name="json"></param>
+    public void UpdateShaderParametersFromINIString(string iniFile)
+    {
+        if (iniFile == null || iniFile == "")
+        {
+            return;
+        }
+
+        try
+        {
+            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
+                iniFile
+            );
+            shaderParameters = defaultCalibrationProvider.getShaderParameters();
+            updateShaderParameters();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to update shader parameters from json: " + e.Message);
+        }
     }
 
     private void updateIndexMap()
@@ -297,115 +473,6 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
         }
     }
 
-    public void reinitializeShader()
-    {
-        material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
-        setCorrectMosaicTexture();
-
-        updateScreenViewportProperties();
-        updateShaderParameters();
-
-#if G3D_HDRP
-        customPass.fullscreenPassMaterial = material;
-#endif
-#if G3D_URP
-        customPass.updateMaterial(material);
-#endif
-    }
-
-#if G3D_URP
-    private void OnEnable()
-    {
-        RenderPipelineManager.beginCameraRendering += OnBeginCamera;
-    }
-
-    private void OnDisable()
-    {
-        RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
-    }
-
-    private void OnBeginCamera(ScriptableRenderContext context, Camera cam)
-    {
-        // Use the EnqueuePass method to inject a custom render pass
-        cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
-    }
-#endif
-
-    #endregion
-
-    #region Updates
-
-    /// <summary>
-    /// OnValidate gets called every time the script is changed in the editor.
-    /// This is used to react to changes made to the parameters.
-    /// </summary>
-    void OnValidate()
-    {
-        if (isActiveAndEnabled == false)
-        {
-            // do not run this code if the script is not enabled
-            return;
-        }
-
-        if (calibrationFile != previousValues.calibrationFile)
-        {
-            previousValues.calibrationFile = calibrationFile;
-            updateShaderFromCalibrationFile();
-        }
-
-        if (
-            previousValues.indexMapYoyoStart != indexMapYoyoStart
-            || previousValues.invertIndexMap != invertIndexMap
-            || previousValues.invertIndexMapIndices != invertIndexMapIndices
-        )
-        {
-            previousValues.indexMapYoyoStart = indexMapYoyoStart;
-            previousValues.invertIndexMap = invertIndexMap;
-            previousValues.invertIndexMapIndices = invertIndexMapIndices;
-
-            indexMap.UpdateIndexMap(
-                shaderParameters.nativeViewCount,
-                mosaicColumnCount * mosaicRowCount,
-                indexMapYoyoStart,
-                invertIndexMap,
-                invertIndexMapIndices
-            );
-        }
-    }
-
-    public void updateShaderFromCalibrationFile(TextAsset calibrationFile)
-    {
-        if (calibrationFile == null || calibrationFile.text == "")
-        {
-            return;
-        }
-        this.calibrationFile = calibrationFile;
-        updateShaderFromCalibrationFile();
-    }
-
-    public void updateShaderFromCalibrationFile()
-    {
-        if (calibrationFile == null || calibrationFile.text == "")
-        {
-            return;
-        }
-
-        CalibrationProvider calibrationProvider = CalibrationProvider.getFromString(
-            calibrationFile.text
-        );
-        shaderParameters = calibrationProvider.getShaderParameters();
-    }
-
-    void Update()
-    {
-        updateShaderParameters();
-
-        if (windowResized() || windowMoved())
-        {
-            updateScreenViewportProperties();
-        }
-    }
-
     private void updateScreenViewportProperties()
     {
         try
@@ -507,83 +574,4 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 #endif
     }
     #endregion
-
-    /// <summary>
-    /// The provided file uri has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="uri"></param>
-    public void UpdateShaderParametersFromURI(string uri)
-    {
-        if (uri == null || uri == "")
-        {
-            return;
-        }
-
-        try
-        {
-            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromURI(
-                uri,
-                (CalibrationProvider provider) =>
-                {
-                    shaderParameters = provider.getShaderParameters();
-                    updateShaderParameters();
-                    return 0;
-                }
-            );
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from uri: " + e.Message);
-        }
-    }
-
-    /// <summary>
-    /// The provided file path has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="filePath"></param>
-    public void UpdateShaderParametersFromFile(string filePath)
-    {
-        if (filePath == null || filePath == "" || filePath.EndsWith(".ini") == false)
-        {
-            return;
-        }
-
-        try
-        {
-            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromConfigFile(
-                filePath
-            );
-            shaderParameters = defaultCalibrationProvider.getShaderParameters();
-            updateShaderParameters();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from file: " + e.Message);
-        }
-    }
-
-    /// <summary>
-    /// The provided string has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="json"></param>
-    public void UpdateShaderParametersFromINIString(string iniFile)
-    {
-        if (iniFile == null || iniFile == "")
-        {
-            return;
-        }
-
-        try
-        {
-            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
-                iniFile
-            );
-            shaderParameters = defaultCalibrationProvider.getShaderParameters();
-            updateShaderParameters();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from json: " + e.Message);
-        }
-    }
 }
