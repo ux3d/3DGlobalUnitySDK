@@ -264,16 +264,15 @@ namespace G3D.RenderPipeline.HDRP
                 == HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing
             )
             {
-                smaaPass.CreateSMAATextures(mainCamera.pixelWidth, mainCamera.pixelHeight);
+                smaaPass?.CreateSMAATextures(mainCamera.pixelWidth, mainCamera.pixelHeight);
             }
             else if (
                 antialiasingMode
                 == HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing
             )
             {
-                // recreate FXAA render textures
+                fxaaPass?.CreateFXAATextures(mainCamera.pixelWidth, mainCamera.pixelHeight);
             }
-            // TODO recreate FXAA/ SMAA render textures if needed
         }
 
         private G3D.RenderPipeline.AntialiasingMode getCameraAAMode()

@@ -81,6 +81,10 @@ namespace G3D.RenderPipeline.HDRP
             if (Helpers.isMainG3DCamera(camera))
             {
                 runSMAA(ctx, hdCamera);
+
+                // Blit the result of the compute shader to the camera's color buffer
+                CoreUtils.SetRenderTarget(ctx.cmd, mosaicImageHandle, ClearFlag.None);
+                CoreUtils.DrawFullScreen(ctx.cmd, blitMaterial, shaderPassId: 0);
             }
         }
 
