@@ -377,18 +377,6 @@ public class G3DCamera
         }
     }
 
-    private void InitMainCamera()
-    {
-        if (mainCamera != null)
-        {
-            return;
-        }
-        mainCamera = GetComponent<Camera>();
-        mainCamCullingMask = mainCamera.cullingMask;
-        originalMainFOV = mainCamera.fieldOfView;
-        originalMainClearFlags = mainCamera.clearFlags;
-    }
-
     void OnApplicationQuit()
     {
         deinitLibrary();
@@ -534,37 +522,6 @@ public class G3DCamera
         }
     }
 
-    private void loadMultiviewViewSeparationFromCalibration(CalibrationProvider calibration)
-    {
-        if (mode != G3DCameraMode.MULTIVIEW)
-        {
-            return;
-        }
-
-        int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
-        int NativeViewcount = calibration.getInt("NativeViewcount");
-        float ApertureAngle = 14.0f;
-        try
-        {
-            ApertureAngle = calibration.getFloat("ApertureAngle");
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning(e.Message);
-        }
-
-        float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
-        float halfZoneOpeningAngleRad = ApertureAngle * Mathf.Deg2Rad / 2.0f;
-        float halfWidthZoneAtbasicDistance =
-            Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
-
-        // calculate eye separation/ view separation
-        if (mode == G3DCameraMode.MULTIVIEW)
-        {
-            viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
-        }
-    }
-
     /// <summary>
     /// Updates all camera parameters based on the calibration file (i.e. focus distance, fov, etc.).
     /// Includes shader parameters (i.e. lense shear angle, camera count, etc.).
@@ -673,6 +630,222 @@ public class G3DCamera
             Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;
 
         loadShaderParametersFromCalibrationFile();
+    }
+
+    public void updateShaderRenderTextures()
+    {
+        if (material == null)
+            return;
+        if (cameras == null)
+            return;
+
+        //prevent any memory leaks
+        for (int i = 0; i < MAX_CAMERAS; i++)
+            cameras[i].targetTexture?.Release();
+
+        for (int i = 0; i < colorRenderTextures?.Length; i++)
+        {
+            if (colorRenderTextures[i] != null)
+                colorRenderTextures[i].Release();
+        }
+
+        colorRenderTextures = new RenderTexture[internalCameraCount];
+
+        if (generateViews)
+        {
+            addRenderTextureToCamera(colorRenderTextures, 0, 0, "_leftCamTex"); // left camera
+            addRenderTextureToCamera(
+                colorRenderTextures,
+                1,
+                internalCameraCount / 2,
+                "_middleCamTex"
+            ); // middle camera
+            addRenderTextureToCamera(
+                colorRenderTextures,
+                2,
+                internalCameraCount - 1,
+                "_rightCamTex"
+            ); // right camera
+        }
+        else
+        {
+            //set only those we need
+            for (int i = 0; i < internalCameraCount; i++)
+            {
+                addRenderTextureToCamera(colorRenderTextures, i, i);
+            }
+        }
+    }
+
+    /// <summary>
+    /// always use this method to get the current head position.
+    /// NEVER access headPosition directly, as it is updated in a different thread.
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public HeadPosition getHeadPosition()
+    {
+        lock (headPosLock)
+        {
+            return headPosition;
+        }
+    }
+
+    /// <summary>
+    /// always use this method to get the smoothed head position.
+    /// NEVER access headPosition directly, as it is updated in a different thread.
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public HeadPosition getFilteredHeadPosition()
+    {
+        lock (headPosLock)
+        {
+            return filteredHeadPosition;
+        }
+    }
+
+    public void logCameraPositionsToFile()
+    {
+        System.IO.StreamWriter writer = new System.IO.StreamWriter(
+            Application.dataPath + "/HeadPositionLog.csv",
+            false
+        );
+        writer.WriteLine(
+            "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Filtered X; Filtered Y; Filtered Z"
+        );
+        string[] headPoitionLogArray = headPositionLog.ToArray();
+        for (int i = 0; i < headPoitionLogArray.Length; i++)
+        {
+            writer.WriteLine(headPoitionLogArray[i]);
+        }
+        writer.Close();
+    }
+
+    public void shiftViewToLeft()
+    {
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            return;
+        }
+        try
+        {
+            libInterface.shiftViewToLeft();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to shift view to left: " + e.Message);
+        }
+    }
+
+    public void shiftViewToRight()
+    {
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            return;
+        }
+        try
+        {
+            libInterface.shiftViewToRight();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to shift view to right: " + e.Message);
+        }
+    }
+
+    public void toggleTestFrame()
+    {
+        showTestFrame = !showTestFrame;
+    }
+
+    public void toggleHeadTracking()
+    {
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            return;
+        }
+        Debug.Log("Toggling head tracking status");
+        if (libInterface == null || !libInterface.isInitialized())
+        {
+            return;
+        }
+
+        try
+        {
+            HeadTrackingStatus headtrackingHandler = libInterface.getHeadTrackingStatus();
+            if (headtrackingHandler.hasTrackingDevice)
+            {
+                if (!headtrackingHandler.isTrackingActive)
+                {
+                    libInterface.startHeadTracking();
+                }
+                else
+                {
+                    libInterface.stopHeadTracking();
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to toggle head tracking status: " + e.Message);
+        }
+    }
+
+    public G3DShaderParameters GetShaderParameters()
+    {
+        lock (shaderLock)
+        {
+            return shaderParameters;
+        }
+    }
+
+    public void setOriginalFOV(float fov)
+    {
+        originalMainFOV = fov;
+    }
+
+    private void InitMainCamera()
+    {
+        if (mainCamera != null)
+        {
+            return;
+        }
+        mainCamera = GetComponent<Camera>();
+        mainCamCullingMask = mainCamera.cullingMask;
+        originalMainFOV = mainCamera.fieldOfView;
+        originalMainClearFlags = mainCamera.clearFlags;
+    }
+
+    private void loadMultiviewViewSeparationFromCalibration(CalibrationProvider calibration)
+    {
+        if (mode != G3DCameraMode.MULTIVIEW)
+        {
+            return;
+        }
+
+        int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
+        int NativeViewcount = calibration.getInt("NativeViewcount");
+        float ApertureAngle = 14.0f;
+        try
+        {
+            ApertureAngle = calibration.getFloat("ApertureAngle");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning(e.Message);
+        }
+
+        float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
+        float halfZoneOpeningAngleRad = ApertureAngle * Mathf.Deg2Rad / 2.0f;
+        float halfWidthZoneAtbasicDistance =
+            Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
+
+        // calculate eye separation/ view separation
+        if (mode == G3DCameraMode.MULTIVIEW)
+        {
+            viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
+        }
     }
 
     /// <summary>
@@ -1302,51 +1475,6 @@ public class G3DCamera
         }
     }
 
-    public void updateShaderRenderTextures()
-    {
-        if (material == null)
-            return;
-        if (cameras == null)
-            return;
-
-        //prevent any memory leaks
-        for (int i = 0; i < MAX_CAMERAS; i++)
-            cameras[i].targetTexture?.Release();
-
-        for (int i = 0; i < colorRenderTextures?.Length; i++)
-        {
-            if (colorRenderTextures[i] != null)
-                colorRenderTextures[i].Release();
-        }
-
-        colorRenderTextures = new RenderTexture[internalCameraCount];
-
-        if (generateViews)
-        {
-            addRenderTextureToCamera(colorRenderTextures, 0, 0, "_leftCamTex"); // left camera
-            addRenderTextureToCamera(
-                colorRenderTextures,
-                1,
-                internalCameraCount / 2,
-                "_middleCamTex"
-            ); // middle camera
-            addRenderTextureToCamera(
-                colorRenderTextures,
-                2,
-                internalCameraCount - 1,
-                "_rightCamTex"
-            ); // right camera
-        }
-        else
-        {
-            //set only those we need
-            for (int i = 0; i < internalCameraCount; i++)
-            {
-                addRenderTextureToCamera(colorRenderTextures, i, i);
-            }
-        }
-    }
-
     private bool windowResized()
     {
         var window_dim = new Vector2Int(Screen.width, Screen.height);
@@ -1415,34 +1543,6 @@ public class G3DCamera
 #endif
     }
     #endregion
-
-    /// <summary>
-    /// always use this method to get the current head position.
-    /// NEVER access headPosition directly, as it is updated in a different thread.
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public HeadPosition getHeadPosition()
-    {
-        lock (headPosLock)
-        {
-            return headPosition;
-        }
-    }
-
-    /// <summary>
-    /// always use this method to get the smoothed head position.
-    /// NEVER access headPosition directly, as it is updated in a different thread.
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public HeadPosition getFilteredHeadPosition()
-    {
-        lock (headPosLock)
-        {
-            return filteredHeadPosition;
-        }
-    }
 
     #region callback handling
     void ITNewHeadPositionCallback.NewHeadPositionCallback(
@@ -1752,105 +1852,5 @@ public class G3DCamera
     private bool usePositionFiltering()
     {
         return headPositionFilter.x != 0 || headPositionFilter.y != 0 || headPositionFilter.z != 0;
-    }
-
-    public void logCameraPositionsToFile()
-    {
-        System.IO.StreamWriter writer = new System.IO.StreamWriter(
-            Application.dataPath + "/HeadPositionLog.csv",
-            false
-        );
-        writer.WriteLine(
-            "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Filtered X; Filtered Y; Filtered Z"
-        );
-        string[] headPoitionLogArray = headPositionLog.ToArray();
-        for (int i = 0; i < headPoitionLogArray.Length; i++)
-        {
-            writer.WriteLine(headPoitionLogArray[i]);
-        }
-        writer.Close();
-    }
-
-    public void shiftViewToLeft()
-    {
-        if (mode == G3DCameraMode.MULTIVIEW)
-        {
-            return;
-        }
-        try
-        {
-            libInterface.shiftViewToLeft();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to shift view to left: " + e.Message);
-        }
-    }
-
-    public void shiftViewToRight()
-    {
-        if (mode == G3DCameraMode.MULTIVIEW)
-        {
-            return;
-        }
-        try
-        {
-            libInterface.shiftViewToRight();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to shift view to right: " + e.Message);
-        }
-    }
-
-    public void toggleTestFrame()
-    {
-        showTestFrame = !showTestFrame;
-    }
-
-    public void toggleHeadTracking()
-    {
-        if (mode == G3DCameraMode.MULTIVIEW)
-        {
-            return;
-        }
-        Debug.Log("Toggling head tracking status");
-        if (libInterface == null || !libInterface.isInitialized())
-        {
-            return;
-        }
-
-        try
-        {
-            HeadTrackingStatus headtrackingHandler = libInterface.getHeadTrackingStatus();
-            if (headtrackingHandler.hasTrackingDevice)
-            {
-                if (!headtrackingHandler.isTrackingActive)
-                {
-                    libInterface.startHeadTracking();
-                }
-                else
-                {
-                    libInterface.stopHeadTracking();
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to toggle head tracking status: " + e.Message);
-        }
-    }
-
-    public G3DShaderParameters GetShaderParameters()
-    {
-        lock (shaderLock)
-        {
-            return shaderParameters;
-        }
-    }
-
-    public void setOriginalFOV(float fov)
-    {
-        originalMainFOV = fov;
     }
 }
