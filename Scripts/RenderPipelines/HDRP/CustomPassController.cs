@@ -44,6 +44,8 @@ namespace G3D.RenderPipeline.HDRP
 
         private Vector2Int cachedWindowSize;
 
+        private bool initialized = false;
+
         // Start is called before the first frame update
         public Material init(
             int internalCameraCount,
@@ -58,12 +60,15 @@ namespace G3D.RenderPipeline.HDRP
             this.cameras = cameras;
             this.material = material;
             this.renderResolutionScale = renderResolutionScale;
+            viewGenerationMaterial = new Material(Shader.Find("G3D/ViewGeneration"));
 
             g3dCamera = GetComponent<G3DCamera>();
             mainCamera = GetComponent<Camera>();
 
-            initCustomPass();
             antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
+            initCustomPass();
+
+            initialized = true;
 
             return viewGenerationMaterial;
         }
@@ -71,6 +76,10 @@ namespace G3D.RenderPipeline.HDRP
         // Update is called once per frame
         void Update()
         {
+            if (!initialized)
+            {
+                return;
+            }
             if (mainCamera.enabled == false)
             {
                 mainCamInactiveLastFrame = true;
@@ -133,9 +142,6 @@ namespace G3D.RenderPipeline.HDRP
 
         private void initViewGeneration(CustomPassVolume customPassVolume)
         {
-            recreateMosaicTexture();
-            recreateDepthTextures();
-
             // add depth mosaic generation pass
             depthMosaicPass =
                 customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.DepthMaps))
@@ -192,6 +198,10 @@ namespace G3D.RenderPipeline.HDRP
                 finalAutostereoGeneration.fullscreenPassMaterial = material;
                 finalAutostereoGeneration.materialPassName = "G3DFullScreen3D";
             }
+
+            // do these last so that the passes are already created
+            recreateMosaicTexture();
+            recreateDepthTextures();
         }
 
         private void recreateDepthTextures()
