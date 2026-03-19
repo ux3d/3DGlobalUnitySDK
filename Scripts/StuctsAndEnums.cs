@@ -55,6 +55,36 @@ struct ShaderHandles
 
     public int zCorrectionValue;
     public int zCompensationValue;
+
+    public void init()
+    {
+        leftViewportPosition = Shader.PropertyToID("viewport_pos_x");
+        bottomViewportPosition = Shader.PropertyToID("viewport_pos_y");
+        screenWidth = Shader.PropertyToID("screen_width");
+        screenHeight = Shader.PropertyToID("screen_height");
+        nativeViewCount = Shader.PropertyToID("nativeViewCount");
+        angleRatioNumerator = Shader.PropertyToID("zwinkel");
+        angleRatioDenominator = Shader.PropertyToID("nwinkel");
+        leftLensOrientation = Shader.PropertyToID("isleft");
+        BGRPixelLayout = Shader.PropertyToID("isBGR");
+        mstart = Shader.PropertyToID("mstart");
+        showTestFrame = Shader.PropertyToID("test");
+        showTestStripe = Shader.PropertyToID("stest");
+        testGapWidth = Shader.PropertyToID("testgap");
+        track = Shader.PropertyToID("track");
+        hqViewCount = Shader.PropertyToID("hqview");
+        hviews1 = Shader.PropertyToID("hviews1");
+        hviews2 = Shader.PropertyToID("hviews2");
+        blur = Shader.PropertyToID("blur");
+        blackBorder = Shader.PropertyToID("bborder");
+        blackSpace = Shader.PropertyToID("bspace");
+        bls = Shader.PropertyToID("bls");
+        ble = Shader.PropertyToID("ble");
+        brs = Shader.PropertyToID("brs");
+        bre = Shader.PropertyToID("bre");
+        zCorrectionValue = Shader.PropertyToID("tvx");
+        zCompensationValue = Shader.PropertyToID("zkom");
+    }
 }
 
 public struct PreviousValues

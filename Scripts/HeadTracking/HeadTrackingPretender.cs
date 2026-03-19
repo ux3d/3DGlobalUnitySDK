@@ -23,7 +23,7 @@ public class HeadTrackingPretender : MonoBehaviour
         headPosition = -headPosition;
         headPosition = headPosition * 1000;
         headPosition.z += initialOffsetZ * 1000;
-        ((ITNewHeadPositionCallback)g3dCamera).NewHeadPositionCallback(
+        ((ITNewHeadPositionCallback)g3dCamera.headtrackingConnection).NewHeadPositionCallback(
             headDetected,
             true,
             (int)headPosition.x,

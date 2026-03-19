@@ -117,20 +117,8 @@ public class G3DCameraMosaicMultiview : MonoBehaviour
 
         //initialize cameras
 
-        shaderHandles = new ShaderHandles()
-        {
-            leftViewportPosition = Shader.PropertyToID("viewport_pos_x"),
-            bottomViewportPosition = Shader.PropertyToID("viewport_pos_y"),
-            screenHeight = Shader.PropertyToID("screen_height"),
-            screenWidth = Shader.PropertyToID("screen_width"),
-            nativeViewCount = Shader.PropertyToID("nativeViewCount"),
-            angleRatioNumerator = Shader.PropertyToID("zwinkel"),
-            angleRatioDenominator = Shader.PropertyToID("nwinkel"),
-            leftLensOrientation = Shader.PropertyToID("isleft"),
-            BGRPixelLayout = Shader.PropertyToID("isBGR"),
-            hqViewCount = Shader.PropertyToID("hqview"),
-            mstart = Shader.PropertyToID("mstart"),
-        };
+        shaderHandles = new ShaderHandles();
+        shaderHandles.init();
 
         // This has to be done after the cameras are updated
         cachedWindowPosition = new Vector2Int(

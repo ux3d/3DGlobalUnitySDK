@@ -17,11 +17,7 @@ using UnityEngine.UI;
 /// </summary>
 [RequireComponent(typeof(Camera))]
 [DisallowMultipleComponent]
-public class G3DCamera
-    : MonoBehaviour,
-        ITNewHeadPositionCallback,
-        ITNewShaderParametersCallback,
-        ITNewErrorMessageCallback
+public class G3DCamera : MonoBehaviour
 {
     [Tooltip("Drop the calibration file for the display you want to use here.")]
     public TextAsset calibrationFile;
@@ -85,7 +81,7 @@ public class G3DCamera
 
     #region Advanced settings
     [Tooltip(
-        "Smoothes the head position (Size of the filter kernel). Not filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
+        "Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
     )]
     public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
     public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
@@ -121,21 +117,21 @@ public class G3DCamera
     [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
     public bool invertIndexMapIndices = false;
 
+    public HeadtrackingConnection headtrackingConnection;
+
     #endregion
 
     #region Private variables
     private PreviousValues previousValues;
     private IndexMap indexMap = IndexMap.Instance;
-    private LibInterface libInterface;
-
-    private string calibrationPath;
 
     // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
     private float viewSeparation = 0.065f;
 
     /// <summary>
     /// The distance between the camera and the focus plane in meters. Default is 70 cm.
-    /// Is read from calibration file at startup
+    /// Is read from calibration file at startup.
+    /// DO NOT SET THIS PARAMETER DIRECTLY. Use the SetFocusDistance function instead.
     /// </summary>
     private float focusDistance = 0.7f;
 
@@ -143,15 +139,6 @@ public class G3DCamera
     private int internalCameraCount = 2;
     private int oldRenderResolutionScale = 100;
 
-    /// <summary>
-    /// This struct is used to store the current head position.
-    /// It is updated in a different thread, so always use getHeadPosition() to get the current head position.
-    /// NEVER use headPosition directly.
-    /// </summary>
-    private HeadPosition headPosition;
-    private HeadPosition filteredHeadPosition;
-
-    private static object headPosLock = new object();
     private static object shaderLock = new object();
 
     private Camera mainCamera;
@@ -178,10 +165,6 @@ public class G3DCamera
 
     // half of the width of field of view at start at focus distance
     private float halfCameraWidthAtStart = 1.0f;
-
-    private Queue<string> headPositionLog;
-
-    private HeadtrackingHandler headtrackingHandler;
 
     /// <summary>
     /// This value is calculated based on the calibration file
@@ -231,7 +214,7 @@ public class G3DCamera
     private G3D.RenderPipeline.HDRP.CustomPassController customPassController;
 #endif
 
-    // TODO Handle viewport resizing/ moving
+    private bool mainCamInactiveLastFrame = false;
 
     #region Initialization
 
@@ -243,15 +226,6 @@ public class G3DCamera
     void Start()
     {
         previousValues.init();
-
-        calibrationPath = System.Environment.GetFolderPath(
-            Environment.SpecialFolder.CommonDocuments
-        );
-        calibrationPath = Path.Combine(calibrationPath, "3D Global", "calibrations");
-        if (!string.IsNullOrEmpty(calibrationPathOverwrite))
-        {
-            calibrationPath = calibrationPathOverwrite;
-        }
 
         oldRenderResolutionScale = renderResolutionScale;
         setupCameras();
@@ -276,58 +250,29 @@ public class G3DCamera
         mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
 #endif
 
-        shaderHandles = new ShaderHandles()
-        {
-            leftViewportPosition = Shader.PropertyToID("viewport_pos_x"),
-            bottomViewportPosition = Shader.PropertyToID("viewport_pos_y"),
-            screenWidth = Shader.PropertyToID("screen_width"),
-            screenHeight = Shader.PropertyToID("screen_height"),
-            nativeViewCount = Shader.PropertyToID("nativeViewCount"),
-            angleRatioNumerator = Shader.PropertyToID("zwinkel"),
-            angleRatioDenominator = Shader.PropertyToID("nwinkel"),
-            leftLensOrientation = Shader.PropertyToID("isleft"),
-            BGRPixelLayout = Shader.PropertyToID("isBGR"),
-            mstart = Shader.PropertyToID("mstart"),
-            showTestFrame = Shader.PropertyToID("test"),
-            showTestStripe = Shader.PropertyToID("stest"),
-            testGapWidth = Shader.PropertyToID("testgap"),
-            track = Shader.PropertyToID("track"),
-            hqViewCount = Shader.PropertyToID("hqview"),
-            hviews1 = Shader.PropertyToID("hviews1"),
-            hviews2 = Shader.PropertyToID("hviews2"),
-            blur = Shader.PropertyToID("blur"),
-            blackBorder = Shader.PropertyToID("bborder"),
-            blackSpace = Shader.PropertyToID("bspace"),
-            bls = Shader.PropertyToID("bls"),
-            ble = Shader.PropertyToID("ble"),
-            brs = Shader.PropertyToID("brs"),
-            bre = Shader.PropertyToID("bre"),
-            zCorrectionValue = Shader.PropertyToID("tvx"),
-            zCompensationValue = Shader.PropertyToID("zkom"),
-        };
+        shaderHandles = new ShaderHandles();
+        shaderHandles.init();
 
+        headtrackingConnection = new HeadtrackingConnection(
+            focusDistance,
+            headTrackingScale,
+            sceneScaleFactor,
+            calibrationPathOverwrite,
+            this,
+            debugMessages,
+            headPositionFilter,
+            latencyCorrectionMode
+        );
         if (mode == G3DCameraMode.DIORAMA)
         {
-            initLibrary();
+            headtrackingConnection.initLibrary();
+            headtrackingConnection.startHeadTracking();
         }
+
         updateScreenViewportProperties();
 
         loadShaderParametersFromCalibrationFile();
         updateShaderParameters();
-
-        if (mode == G3DCameraMode.DIORAMA)
-        {
-            try
-            {
-                libInterface.startHeadTracking();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to start head tracking: " + e.Message);
-            }
-        }
-
-        headtrackingHandler = new HeadtrackingHandler(focusDistance);
 
         updateCameras();
         updateShaderRenderTextures();
@@ -338,8 +283,6 @@ public class G3DCamera
             Screen.mainWindowPosition.y
         );
         cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
-
-        headPositionLog = new Queue<string>(10000);
 
         indexMap.UpdateIndexMap(
             getCameraCountFromCalibrationFile(),
@@ -352,7 +295,7 @@ public class G3DCamera
 
     void OnApplicationQuit()
     {
-        deinitLibrary();
+        headtrackingConnection.deinitLibrary();
     }
 
     private void OnEnable()
@@ -415,6 +358,7 @@ public class G3DCamera
             return;
         }
 
+        // reset cameras if calibration file or scene scale factor changed
         if (
             calibrationFile != previousValues.calibrationFile
             || previousValues.sceneScaleFactor != sceneScaleFactor
@@ -422,6 +366,22 @@ public class G3DCamera
         {
             previousValues.calibrationFile = calibrationFile;
             setupCameras(true);
+        }
+
+        // update cached calibration file if it changed
+        if (calibrationFile != previousValues.calibrationFile)
+        {
+            previousValues.calibrationFile = calibrationFile;
+        }
+
+        // update cached scene scale factor if it changed
+        if (previousValues.sceneScaleFactor != sceneScaleFactor)
+        {
+            if (headtrackingConnection != null)
+            {
+                headtrackingConnection.sceneScaleFactor = sceneScaleFactor;
+            }
+            previousValues.sceneScaleFactor = sceneScaleFactor;
         }
 
         if (previousValues.mode != mode)
@@ -530,7 +490,7 @@ public class G3DCamera
                 "No calibration file set. Please set a calibration file. Using default values."
             );
             mainCamera.fieldOfView = 16.0f;
-            focusDistance = 0.7f;
+            SetFocusDistance(0.7f);
             viewSeparation = 0.065f;
             if (mode == G3DCameraMode.MULTIVIEW)
             {
@@ -559,7 +519,7 @@ public class G3DCamera
             2 * Mathf.Atan(physicalSizeInMeter / 2.0f / BasicWorkingDistanceMeter) * Mathf.Rad2Deg;
 
         // set focus distance
-        focusDistance = (float)BasicWorkingDistanceMeter;
+        SetFocusDistance((float)BasicWorkingDistanceMeter);
 
         // set camera fov
         baseFieldOfView = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
@@ -650,49 +610,9 @@ public class G3DCamera
         }
     }
 
-    /// <summary>
-    /// always use this method to get the current head position.
-    /// NEVER access headPosition directly, as it is updated in a different thread.
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public HeadPosition getHeadPosition()
-    {
-        lock (headPosLock)
-        {
-            return headPosition;
-        }
-    }
-
-    /// <summary>
-    /// always use this method to get the smoothed head position.
-    /// NEVER access headPosition directly, as it is updated in a different thread.
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public HeadPosition getFilteredHeadPosition()
-    {
-        lock (headPosLock)
-        {
-            return filteredHeadPosition;
-        }
-    }
-
     public void logCameraPositionsToFile()
     {
-        System.IO.StreamWriter writer = new System.IO.StreamWriter(
-            Application.dataPath + "/HeadPositionLog.csv",
-            false
-        );
-        writer.WriteLine(
-            "Camera update time; Camera X; Camera Y; Camera Z; Head detected; Image position valid; Filtered X; Filtered Y; Filtered Z"
-        );
-        string[] headPoitionLogArray = headPositionLog.ToArray();
-        for (int i = 0; i < headPoitionLogArray.Length; i++)
-        {
-            writer.WriteLine(headPoitionLogArray[i]);
-        }
-        writer.Close();
+        headtrackingConnection.logCameraPositionsToFile();
     }
 
     public void shiftViewToLeft()
@@ -701,14 +621,7 @@ public class G3DCamera
         {
             return;
         }
-        try
-        {
-            libInterface.shiftViewToLeft();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to shift view to left: " + e.Message);
-        }
+        headtrackingConnection.shiftViewToLeft();
     }
 
     public void shiftViewToRight()
@@ -717,14 +630,7 @@ public class G3DCamera
         {
             return;
         }
-        try
-        {
-            libInterface.shiftViewToRight();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to shift view to right: " + e.Message);
-        }
+        headtrackingConnection.shiftViewToRight();
     }
 
     public void toggleTestFrame()
@@ -738,31 +644,7 @@ public class G3DCamera
         {
             return;
         }
-        Debug.Log("Toggling head tracking status");
-        if (libInterface == null || !libInterface.isInitialized())
-        {
-            return;
-        }
-
-        try
-        {
-            HeadTrackingStatus headtrackingHandler = libInterface.getHeadTrackingStatus();
-            if (headtrackingHandler.hasTrackingDevice)
-            {
-                if (!headtrackingHandler.isTrackingActive)
-                {
-                    libInterface.startHeadTracking();
-                }
-                else
-                {
-                    libInterface.stopHeadTracking();
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to toggle head tracking status: " + e.Message);
-        }
+        headtrackingConnection.toggleHeadTracking();
     }
 
     public G3DShaderParameters GetShaderParameters()
@@ -773,9 +655,26 @@ public class G3DCamera
         }
     }
 
+    public void setShaderParameters(G3DShaderParameters parameters)
+    {
+        lock (shaderLock)
+        {
+            shaderParameters = parameters;
+        }
+    }
+
     public void setOriginalFOV(float fov)
     {
         originalMainFOV = fov;
+    }
+
+    private void SetFocusDistance(float distance)
+    {
+        focusDistance = distance;
+        if (headtrackingConnection != null)
+        {
+            headtrackingConnection.focusDistance = distance;
+        }
     }
 
     private void InitMainCamera()
@@ -907,106 +806,6 @@ public class G3DCamera
         return new Vector2Int(HorizontalResolution, VerticalResolution);
     }
 
-    private void initLibrary()
-    {
-        string applicationName = Application.productName;
-        if (string.IsNullOrEmpty(applicationName))
-        {
-            applicationName = "Unity";
-        }
-        var invalids = System.IO.Path.GetInvalidFileNameChars();
-        applicationName = String
-            .Join("_", applicationName.Split(invalids, StringSplitOptions.RemoveEmptyEntries))
-            .TrimEnd('.');
-        applicationName = applicationName + "_G3D_Config.ini";
-
-        try
-        {
-            bool useHimaxD2XXDevices = true;
-            bool useHimaxRP2040Devices = true;
-            bool usePmdFlexxDevices = true;
-
-            libInterface = LibInterface.Instance;
-            libInterface.init(
-                calibrationPath,
-                Application.persistentDataPath,
-                applicationName,
-                this,
-                this,
-                this,
-                debugMessages,
-                useHimaxD2XXDevices,
-                useHimaxRP2040Devices,
-                usePmdFlexxDevices
-            );
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to initialize library: " + e.Message);
-            return;
-        }
-
-        // set initial values
-        // intialize head position at focus distance from focus plane
-        headPosition = new HeadPosition
-        {
-            headDetected = false,
-            imagePosIsValid = false,
-            imagePosX = 0,
-            imagePosY = 0,
-            worldPosX = 0.0,
-            worldPosY = 0.0,
-            worldPosZ = -focusDistance
-        };
-        filteredHeadPosition = new HeadPosition
-        {
-            headDetected = false,
-            imagePosIsValid = false,
-            imagePosX = 0,
-            imagePosY = 0,
-            worldPosX = 0.0,
-            worldPosY = 0.0,
-            worldPosZ = -focusDistance
-        };
-
-        if (usePositionFiltering())
-        {
-            try
-            {
-                libInterface.initializePositionFilter(
-                    headPositionFilter.x,
-                    headPositionFilter.y,
-                    headPositionFilter.z
-                );
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to initialize position filter: " + e.Message);
-            }
-        }
-    }
-
-    private void deinitLibrary()
-    {
-        if (libInterface == null || !libInterface.isInitialized())
-        {
-            return;
-        }
-
-        try
-        {
-            libInterface.stopHeadTracking();
-            libInterface.unregisterHeadPositionChangedCallback(this);
-            libInterface.unregisterShaderParametersChangedCallback(this);
-            libInterface.unregisterMessageCallback(this);
-            libInterface.deinit();
-        }
-        catch (Exception e)
-        {
-            Debug.Log(e);
-        }
-    }
-
     private void reinitializeShader()
     {
         if (mode == G3DCameraMode.MULTIVIEW)
@@ -1028,14 +827,10 @@ public class G3DCamera
     #endregion
 
     #region Updates
-    private bool mainCamInactiveLastFrame = false;
-    private bool windowMovedLastFrame = false;
-    private bool windowResizedLastFrame = false;
-
     void Update()
     {
-        windowMovedLastFrame = windowMoved();
-        windowResizedLastFrame = windowResized();
+        bool windowMovedLastFrame = windowMoved();
+        bool windowResizedLastFrame = windowResized();
 
         if (mainCamera.enabled == false)
         {
@@ -1061,11 +856,7 @@ public class G3DCamera
         // update the shader parameters (only in diorama mode)
         if (mode == G3DCameraMode.DIORAMA)
         {
-            libInterface.calculateShaderParameters(latencyCorrectionMode);
-            lock (shaderLock)
-            {
-                shaderParameters = libInterface.getCurrentShaderParameters();
-            }
+            headtrackingConnection.calculateShaderParameters();
         }
 
         bool cameraCountChanged = updateCameraCountBasedOnMode();
@@ -1111,26 +902,7 @@ public class G3DCamera
         }
         else
         {
-            try
-            {
-                // This is the size of the entire monitor screen
-                libInterface.setScreenSize(displayResolution.x, displayResolution.y);
-
-                // this refers to the window in which the 3D effect is rendered (including eg windows top window menu)
-                libInterface.setWindowSize(Screen.width, Screen.height);
-                libInterface.setWindowPosition(
-                    Screen.mainWindowPosition.x,
-                    Screen.mainWindowPosition.y
-                );
-
-                // This refers to the actual viewport in which the 3D effect is rendered
-                libInterface.setViewportSize(Screen.width, Screen.height);
-                libInterface.setViewportOffset(0, 0);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to update screen viewport properties: " + e.Message);
-            }
+            headtrackingConnection.updateScreenViewportProperties(displayResolution);
         }
 
         // this parameter is used in the shader to invert the y axis
@@ -1223,7 +995,7 @@ public class G3DCamera
         }
     }
 
-    void updateCameras()
+    private void updateCameras()
     {
         Vector3 targetPosition = new Vector3(0, 0, -scaledFocusDistance); // position for the camera center (base position from which all other cameras are offset)
         float targetViewSeparation = 0.0f;
@@ -1231,23 +1003,11 @@ public class G3DCamera
         // calculate the camera center position and eye separation if head tracking and the diorama effect are enabled
         if (mode == G3DCameraMode.DIORAMA)
         {
-            HeadPosition headPosition;
-            if (usePositionFiltering())
-            {
-                headPosition = getFilteredHeadPosition();
-            }
-            else
-            {
-                headPosition = getHeadPosition();
-            }
-
-            headtrackingHandler.handleHeadTrackingState(
-                ref headPosition,
+            headtrackingConnection.handleHeadTrackingState(
                 ref targetPosition,
                 ref targetViewSeparation,
                 scaledViewSeparation,
-                scaledFocusDistance,
-                cameraParent.transform.localPosition
+                scaledFocusDistance
             );
         }
         else if (mode == G3DCameraMode.MULTIVIEW)
@@ -1513,160 +1273,6 @@ public class G3DCamera
     }
     #endregion
 
-    #region callback handling
-    void ITNewHeadPositionCallback.NewHeadPositionCallback(
-        bool headDetected,
-        bool imagePosIsValid,
-        int imagePosX,
-        int imagePosY,
-        double worldPosX,
-        double worldPosY,
-        double worldPosZ
-    )
-    {
-        lock (headPosLock)
-        {
-            string logEntry =
-                DateTime.Now.ToString("HH:mm::ss.fff")
-                + ";"
-                + worldPosX
-                + ";"
-                + worldPosY
-                + ";"
-                + worldPosZ
-                + ";"
-                + headDetected
-                + ";"
-                + imagePosIsValid
-                + ";";
-
-            headPosition.headDetected = headDetected;
-            headPosition.imagePosIsValid = imagePosIsValid;
-
-            int millimeterToMeter = 1000;
-
-            Vector3 headPos = new Vector3(
-                (float)-worldPosX / millimeterToMeter,
-                (float)worldPosY / millimeterToMeter,
-                (float)-worldPosZ / millimeterToMeter
-            );
-
-            int scaleFactorInt = (int)sceneScaleFactor * (int)headTrackingScale;
-            float scaleFactor = sceneScaleFactor * headTrackingScale;
-
-            headPosition.imagePosX = imagePosX / (int)millimeterToMeter * scaleFactorInt;
-            headPosition.imagePosY = imagePosY / (int)millimeterToMeter * scaleFactorInt;
-            headPosition.worldPosX = headPos.x * scaleFactor;
-            headPosition.worldPosY = headPos.y * scaleFactor;
-            headPosition.worldPosZ = headPos.z * sceneScaleFactor;
-
-            if (usePositionFiltering())
-            {
-                double filteredPositionX;
-                double filteredPositionY;
-                double filteredPositionZ;
-
-                if (headDetected)
-                {
-                    try
-                    {
-                        libInterface.applyPositionFilter(
-                            worldPosX,
-                            worldPosY,
-                            worldPosZ,
-                            out filteredPositionX,
-                            out filteredPositionY,
-                            out filteredPositionZ
-                        );
-
-                        filteredHeadPosition.worldPosX =
-                            -filteredPositionX / millimeterToMeter * scaleFactor;
-                        filteredHeadPosition.worldPosY =
-                            filteredPositionY / millimeterToMeter * scaleFactor;
-                        filteredHeadPosition.worldPosZ =
-                            -filteredPositionZ / millimeterToMeter * sceneScaleFactor;
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError("Failed to apply position filter: " + e.Message);
-                    }
-                }
-
-                filteredHeadPosition.headDetected = headDetected;
-                filteredHeadPosition.imagePosIsValid = imagePosIsValid;
-
-                logEntry +=
-                    filteredHeadPosition.worldPosX
-                    + ";"
-                    + filteredHeadPosition.worldPosY
-                    + ";"
-                    + filteredHeadPosition.worldPosZ
-                    + ";";
-            }
-
-            headPositionLog.Enqueue(logEntry);
-        }
-    }
-
-    void ITNewErrorMessageCallback.NewErrorMessageCallback(
-        EMessageSeverity severity,
-        string sender,
-        string caption,
-        string cause,
-        string remedy
-    )
-    {
-        string messageText = formatErrorMessage(caption, cause, remedy);
-        switch (severity)
-        {
-            case EMessageSeverity.MS_EXCEPTION:
-                Debug.LogError(messageText);
-                break;
-            case EMessageSeverity.MS_ERROR:
-                Debug.LogError(messageText);
-                break;
-            case EMessageSeverity.MS_WARNING:
-                Debug.LogWarning(messageText);
-                break;
-            case EMessageSeverity.MS_INFO:
-
-                Debug.Log(messageText);
-                break;
-            default:
-                Debug.Log(messageText);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// The shader parameters contain everything necessary for the shader to render the 3D effect.
-    /// These are updated every time a new head position is received.
-    /// They do not update the head position itself.
-    /// </summary>
-    /// <param name="shaderParameters"></param>
-    void ITNewShaderParametersCallback.NewShaderParametersCallback(
-        G3DShaderParameters shaderParameters
-    )
-    {
-        lock (shaderLock)
-        {
-            this.shaderParameters = shaderParameters;
-        }
-    }
-
-    private string formatErrorMessage(string caption, string cause, string remedy)
-    {
-        string messageText = caption + ": " + cause;
-
-        if (string.IsNullOrEmpty(remedy) == false)
-        {
-            messageText = messageText + "\\n" + remedy;
-        }
-
-        return messageText;
-    }
-    #endregion
-
     #region Debugging
 #if UNITY_EDITOR
     void OnDrawGizmos()
@@ -1812,14 +1418,5 @@ public class G3DCamera
         int flip = mirrorViews ? 1 : -1;
 
         return offset * flip;
-    }
-
-    /// <summary>
-    /// Returns false if all values of the position filter are set to zero.
-    /// </summary>
-    /// <returns></returns>
-    private bool usePositionFiltering()
-    {
-        return headPositionFilter.x != 0 || headPositionFilter.y != 0 || headPositionFilter.z != 0;
     }
 }
