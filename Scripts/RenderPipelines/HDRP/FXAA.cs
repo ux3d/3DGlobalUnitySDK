@@ -17,8 +17,6 @@ namespace G3D.RenderPipeline.HDRP
         private ComputeShader fxaaCompShader;
         private int fxaaKernel;
 
-        public Vector2Int renderResolution = new Vector2Int(1920, 1080);
-
         protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
         {
             fxaaCompShader = Resources.Load<ComputeShader>("G3DFXAA");
@@ -31,18 +29,7 @@ namespace G3D.RenderPipeline.HDRP
             );
         }
 
-        public void updateRenderResolution(Vector2Int resolution)
-        {
-            if (renderResolution.x == resolution.x && renderResolution.y == resolution.y)
-            {
-                return;
-            }
-
-            renderResolution = resolution;
-            CreateComputeShaderResultTexture();
-        }
-
-        private void CreateComputeShaderResultTexture()
+        public void CreateFXAATextures(int width, int height)
         {
             // release old texture if it exists
             computeShaderResultTextureHandle?.Release();
@@ -50,8 +37,8 @@ namespace G3D.RenderPipeline.HDRP
             computeShaderResultTextureHandle = Helpers
                 .GetRTHandleSystem()
                 .Alloc(
-                    renderResolution.x,
-                    renderResolution.y,
+                    width,
+                    height,
                     colorFormat: UnityEngine.Experimental.Rendering.GraphicsFormat.R8G8B8A8_UNorm,
                     enableRandomWrite: true
                 );

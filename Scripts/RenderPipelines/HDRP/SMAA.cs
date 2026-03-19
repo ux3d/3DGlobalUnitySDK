@@ -19,8 +19,6 @@ namespace G3D.RenderPipeline.HDRP
 
         private Material smaaMaterial;
 
-        public Vector2Int renderResolution = new Vector2Int(1920, 1080);
-
         protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
         {
             smaaMaterial = new Material(Shader.Find("G3D/SMAA"));
@@ -35,18 +33,7 @@ namespace G3D.RenderPipeline.HDRP
             );
         }
 
-        public void updateRenderResolution(Vector2Int resolution)
-        {
-            if (renderResolution.x == resolution.x && renderResolution.y == resolution.y)
-            {
-                return;
-            }
-
-            renderResolution = resolution;
-            CreateSMAATextures(renderResolution.x, renderResolution.y);
-        }
-
-        private void CreateSMAATextures(int width, int height)
+        public void CreateSMAATextures(int width, int height)
         {
             releaseSMAATextures();
 

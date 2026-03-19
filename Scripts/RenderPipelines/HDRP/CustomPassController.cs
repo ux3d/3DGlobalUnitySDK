@@ -19,8 +19,10 @@ namespace G3D.RenderPipeline.HDRP
             .AntialiasingMode
             .None;
 
-        private ViewGeneration viewGenerationPass;
         private DepthMaps depthMosaicPass;
+        private ViewGeneration viewGenerationPass;
+        private SMAA smaaPass;
+        private FXAA fxaaPass;
 
         /// <summary>
         /// Used for view generation mosaic rendering.
@@ -131,6 +133,9 @@ namespace G3D.RenderPipeline.HDRP
 
         private void initViewGeneration(CustomPassVolume customPassVolume)
         {
+            recreateMosaicTexture();
+            recreateDepthTextures();
+
             // add depth mosaic generation pass
             depthMosaicPass =
                 customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.DepthMaps))
@@ -139,7 +144,7 @@ namespace G3D.RenderPipeline.HDRP
             depthMosaicPass.cameras = cameras;
             depthMosaicPass.internalCameraCount = internalCameraCount;
 
-            // add multiview generation pass
+            // add iview generation pass
             viewGenerationPass =
                 customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.ViewGeneration))
                 as G3D.RenderPipeline.HDRP.ViewGeneration;
@@ -150,26 +155,33 @@ namespace G3D.RenderPipeline.HDRP
             viewGenerationPass.cameras = cameras;
             viewGenerationPass.internalCameraCount = internalCameraCount;
 
-            recreateDepthTextures();
             viewGenerationPass.indivDepthMaps = depthMosaicPass.indivDepthTextures;
             viewGenerationPass.debugRendering = debugRendering;
 
+            // add antialiasing pass if needed
             G3D.RenderPipeline.AntialiasingMode aaMode = getCameraAAMode();
             if (aaMode == G3D.RenderPipeline.AntialiasingMode.SMAA)
             {
                 // add SMAA pass
+                smaaPass =
+                    customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.SMAA))
+                    as G3D.RenderPipeline.HDRP.SMAA;
+                smaaPass.CreateSMAATextures(mainCamera.pixelWidth, mainCamera.pixelHeight);
+                smaaPass.mosaicImageHandle = rtHandleMosaic;
             }
             else if (aaMode == G3D.RenderPipeline.AntialiasingMode.FXAA)
             {
                 // add FXAA pass
+                fxaaPass =
+                    customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.FXAA))
+                    as G3D.RenderPipeline.HDRP.FXAA;
+                fxaaPass.CreateFXAATextures(mainCamera.pixelWidth, mainCamera.pixelHeight);
+                fxaaPass.mosaicImageHandle = rtHandleMosaic;
             }
             else if (aaMode == G3D.RenderPipeline.AntialiasingMode.TAA)
             {
                 viewGenerationMaterial.EnableKeyword("TAA");
             }
-
-            // add autostereo mosaic generation pass
-            recreateMosaicTexture();
 
             if (debugRendering == false)
             {
@@ -210,6 +222,15 @@ namespace G3D.RenderPipeline.HDRP
 
             material.SetTexture("_colorMosaic", rtHandleMosaic);
             viewGenerationPass.mosaicImageHandle = rtHandleMosaic;
+
+            if (smaaPass != null)
+            {
+                smaaPass.mosaicImageHandle = rtHandleMosaic;
+            }
+            if (fxaaPass != null)
+            {
+                fxaaPass.mosaicImageHandle = rtHandleMosaic;
+            }
         }
 
         private bool windowResized()
@@ -227,6 +248,22 @@ namespace G3D.RenderPipeline.HDRP
         {
             recreateDepthTextures();
             recreateMosaicTexture();
+
+            if (
+                antialiasingMode
+                == HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing
+            )
+            {
+                smaaPass.CreateSMAATextures(mainCamera.pixelWidth, mainCamera.pixelHeight);
+            }
+            else if (
+                antialiasingMode
+                == HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing
+            )
+            {
+                // recreate FXAA render textures
+            }
+            // TODO recreate FXAA/ SMAA render textures if needed
         }
 
         private G3D.RenderPipeline.AntialiasingMode getCameraAAMode()
