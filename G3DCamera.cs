@@ -55,8 +55,6 @@ public class G3DCamera
 
     [Tooltip("Only actually renders three views. The rest are generated. IF turned on anti ali")]
     public bool generateViews = true;
-
-    private bool useVectorMapViewGeneration = false;
     #endregion
 
 
@@ -350,31 +348,6 @@ public class G3DCamera
             invertIndexMap,
             invertIndexMapIndices
         );
-
-        if (useVectorMapViewGeneration)
-        {
-            int invert = shaderParameters.leftLensOrientation == 1 ? 1 : -1;
-            Texture2D viewMap = ViewmapGeneratorInterface.getViewMap(
-                (uint)shaderParameters.screenWidth, // PixelCountX
-                (uint)shaderParameters.screenHeight, // PixelCountY
-                (uint)shaderParameters.nativeViewCount, // ViewCount
-                (uint)shaderParameters.angleRatioDenominator, // LensWidth
-                invert * shaderParameters.angleRatioNumerator, // LensAngleCounter
-                false, // ViewOrderInverted
-                false, // Rotated
-                false, // FullPixel
-                shaderParameters.BGRPixelLayout != 0 // BGRMode
-            );
-            viewMap.Apply();
-            material?.SetTexture("_viewMap", viewMap);
-
-            float[] indexMap = new float[shaderParameters.nativeViewCount];
-            for (int i = 0; i < shaderParameters.nativeViewCount; i++)
-            {
-                indexMap[i] = i;
-            }
-            material?.SetFloatArray("indexMap", indexMap);
-        }
     }
 
     void OnApplicationQuit()
@@ -1038,11 +1011,7 @@ public class G3DCamera
     {
         if (mode == G3DCameraMode.MULTIVIEW)
         {
-            if (useVectorMapViewGeneration && generateViews)
-            {
-                material = new Material(Shader.Find("G3D/MultiviewMosaicVector"));
-            }
-            else if (!useVectorMapViewGeneration && generateViews)
+            if (generateViews)
             {
                 material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
             }
