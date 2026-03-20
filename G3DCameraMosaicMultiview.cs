@@ -90,7 +90,6 @@ namespace G3D
 
 
         #region Private variables
-        private PreviousValues previousValues = new PreviousValues();
         private IndexMap indexMap = IndexMap.Instance;
         private Camera mainCamera;
         private Material material;
@@ -156,8 +155,6 @@ namespace G3D
             setupTextureMode();
             reinitializeShader();
 
-            previousValues.init();
-
             if (dimensionsFromFilename)
             {
                 extractDimensionsFromFile();
@@ -188,44 +185,6 @@ namespace G3D
 
         #region Updates
 
-        /// <summary>
-        /// OnValidate gets called every time the script is changed in the editor.
-        /// This is used to react to changes made to the parameters.
-        /// </summary>
-        void OnValidate()
-        {
-            if (isActiveAndEnabled == false)
-            {
-                // do not run this code if the script is not enabled
-                return;
-            }
-
-            if (calibrationFile != previousValues.calibrationFile)
-            {
-                previousValues.calibrationFile = calibrationFile;
-                updateShaderFromCalibrationFile();
-            }
-
-            if (
-                previousValues.indexMapYoyoStart != indexMapYoyoStart
-                || previousValues.invertIndexMap != invertIndexMap
-                || previousValues.invertIndexMapIndices != invertIndexMapIndices
-            )
-            {
-                previousValues.indexMapYoyoStart = indexMapYoyoStart;
-                previousValues.invertIndexMap = invertIndexMap;
-                previousValues.invertIndexMapIndices = invertIndexMapIndices;
-
-                indexMap.UpdateIndexMap(
-                    shaderParameters.nativeViewCount,
-                    mosaicColumnCount * mosaicRowCount,
-                    indexMapYoyoStart,
-                    invertIndexMap,
-                    invertIndexMapIndices
-                );
-            }
-        }
-
         void Update()
         {
             updateShaderParameters();
@@ -234,6 +193,23 @@ namespace G3D
             {
                 updateScreenViewportProperties();
             }
+        }
+
+        public void updateIndexMap()
+        {
+            int availableViews = shaderParameters.nativeViewCount;
+            if (useHQViews)
+            {
+                availableViews = shaderParameters.hqViewCount;
+            }
+
+            indexMap.UpdateIndexMap(
+                availableViews,
+                mosaicColumnCount * mosaicRowCount,
+                indexMapYoyoStart,
+                invertIndexMap,
+                invertIndexMapIndices
+            );
         }
 
         public void reinitializeShader()
@@ -351,23 +327,6 @@ namespace G3D
             {
                 Debug.LogError("Failed to update shader parameters from json: " + e.Message);
             }
-        }
-
-        private void updateIndexMap()
-        {
-            int availableViews = shaderParameters.nativeViewCount;
-            if (useHQViews)
-            {
-                availableViews = shaderParameters.hqViewCount;
-            }
-
-            indexMap.UpdateIndexMap(
-                availableViews,
-                mosaicColumnCount * mosaicRowCount,
-                indexMapYoyoStart,
-                invertIndexMap,
-                invertIndexMapIndices
-            );
         }
 
         private void extractDimensionsFromFile()

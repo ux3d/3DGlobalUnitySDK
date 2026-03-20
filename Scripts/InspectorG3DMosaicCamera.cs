@@ -13,6 +13,10 @@ namespace G3D
 
         private PropertyField dimensionsFromFilename;
         private PropertyField modeField;
+        private PropertyField calibrationFileField;
+        private PropertyField indexMapYoyoStartField;
+        private PropertyField invertIndexMapField;
+        private PropertyField invertIndexMapIndicesField;
 
         private PropertyField renderTexture;
         private PropertyField image;
@@ -84,8 +88,42 @@ namespace G3D
             );
 
             // setup UI
+            calibrationFileField = mainInspector.Q<PropertyField>("calibrationFile");
+            indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
+            invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
+            invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
+            setupValueChangeInteractions();
 
             return mainInspector;
+        }
+
+        private void setupValueChangeInteractions()
+        {
+            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+            calibrationFileField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateShaderFromCalibrationFile();
+                }
+            );
+            indexMapYoyoStartField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                }
+            );
+            invertIndexMapField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                }
+            );
+            invertIndexMapIndicesField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                }
+            );
         }
     }
 }

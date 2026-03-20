@@ -94,26 +94,4 @@ namespace G3D
             zCompensationValue = Shader.PropertyToID("zkom");
         }
     }
-
-    public struct PreviousValues
-    {
-        public TextAsset calibrationFile;
-        public G3DCameraMode mode;
-        public float sceneScaleFactor;
-
-        public float indexMapYoyoStart;
-        public bool invertIndexMap;
-        public bool invertIndexMapIndices;
-
-        public void init()
-        {
-            calibrationFile = null;
-            mode = G3DCameraMode.DIORAMA;
-            sceneScaleFactor = 1.0f;
-
-            indexMapYoyoStart = 0.0f;
-            invertIndexMap = false;
-            invertIndexMapIndices = false;
-        }
-    }
 }

@@ -13,9 +13,13 @@ namespace G3D
         public VisualTreeAsset inspectorXML;
 
         private PropertyField modeField;
+        private PropertyField calibrationFileField;
+        private PropertyField sceneScaleFactorField;
+        private PropertyField indexMapYoyoStartField;
+        private PropertyField invertIndexMapField;
+        private PropertyField invertIndexMapIndicesField;
         private PropertyField generateViewsField;
 
-        private PropertyField calibrationFileField;
         private PropertyField headtrackingScaleField;
 
         private PropertyField viewOffsetField;
@@ -110,7 +114,61 @@ namespace G3D
             setViewgenerationDisplay((target as G3DCamera).generateViews);
 #endif
 
+            calibrationFileField = mainInspector.Q<PropertyField>("calibrationFile");
+            sceneScaleFactorField = mainInspector.Q<PropertyField>("sceneScaleFactor");
+            indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
+            invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
+            invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
+            setupValueChangeInteractions();
+
             return mainInspector;
+        }
+
+        private void setupValueChangeInteractions()
+        {
+            G3DCamera camera = (G3DCamera)target;
+            calibrationFileField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.setupCameras();
+                }
+            );
+            sceneScaleFactorField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.setupCameras();
+                    if (camera.headtrackingConnection != null)
+                    {
+                        camera.headtrackingConnection.sceneScaleFactor =
+                            evt.changedProperty.floatValue;
+                    }
+                }
+            );
+            modeField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateMode();
+                }
+            );
+
+            indexMapYoyoStartField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                }
+            );
+            invertIndexMapField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                }
+            );
+            invertIndexMapIndicesField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                }
+            );
         }
 
         private void setViewgenerationDisplay(bool enabled)

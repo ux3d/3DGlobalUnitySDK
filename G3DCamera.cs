@@ -134,7 +134,6 @@ namespace G3D
         #endregion
 
         #region Private variables
-        private PreviousValues previousValues;
         private IndexMap indexMap = IndexMap.Instance;
 
         // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
@@ -237,8 +236,6 @@ namespace G3D
 
         void Start()
         {
-            previousValues.init();
-
             oldRenderResolutionScale = renderResolutionScale;
             setupCameras();
 
@@ -359,93 +356,48 @@ namespace G3D
 #endif
 
         /// <summary>
-        /// OnValidate gets called every time the script is changed in the editor.
-        /// This is used to react to changes made to the parameters.
-        /// </summary>
-        void OnValidate()
-        {
-            if (enabled == false)
-            {
-                // do not run this code if the script is not enabled
-                return;
-            }
-
-            // reset cameras if calibration file or scene scale factor changed
-            if (
-                calibrationFile != previousValues.calibrationFile
-                || previousValues.sceneScaleFactor != sceneScaleFactor
-            )
-            {
-                previousValues.calibrationFile = calibrationFile;
-                setupCameras(true);
-            }
-
-            // update cached calibration file if it changed
-            if (calibrationFile != previousValues.calibrationFile)
-            {
-                previousValues.calibrationFile = calibrationFile;
-            }
-
-            // update cached scene scale factor if it changed
-            if (previousValues.sceneScaleFactor != sceneScaleFactor)
-            {
-                if (headtrackingConnection != null)
-                {
-                    headtrackingConnection.sceneScaleFactor = sceneScaleFactor;
-                }
-                previousValues.sceneScaleFactor = sceneScaleFactor;
-            }
-
-            if (previousValues.mode != mode)
-            {
-                previousValues.mode = mode;
-                if (mode == G3DCameraMode.MULTIVIEW)
-                {
-                    CalibrationProvider calibration = CalibrationProvider.getFromString(
-                        calibrationFile.text
-                    );
-                    internalCameraCount = getCameraCountFromCalibrationFile(calibration);
-                    if (generateViews)
-                    {
-                        // TODO DO NOT HARD CODE THIS VALUE!
-                        internalCameraCount = 16;
-                    }
-                    loadMultiviewViewSeparationFromCalibration(calibration);
-                }
-                else
-                {
-                    viewSeparation = 0.065f;
-                }
-
-                updateCameraCountBasedOnMode();
-            }
-
-            if (
-                previousValues.indexMapYoyoStart != indexMapYoyoStart
-                || previousValues.invertIndexMap != invertIndexMap
-                || previousValues.invertIndexMapIndices != invertIndexMapIndices
-            )
-            {
-                previousValues.indexMapYoyoStart = indexMapYoyoStart;
-                previousValues.invertIndexMap = invertIndexMap;
-                previousValues.invertIndexMapIndices = invertIndexMapIndices;
-
-                indexMap.UpdateIndexMap(
-                    getCameraCountFromCalibrationFile(),
-                    internalCameraCount,
-                    indexMapYoyoStart,
-                    invertIndexMap,
-                    invertIndexMapIndices
-                );
-            }
-        }
-
-        /// <summary>
-        /// Us this to run OnValidate after parameters changed from a script.
+        /// Us this to run setupCameras after calibration or other camera parameters have been changedfrom a script.
         /// </summary>
         public void Validate()
         {
-            OnValidate();
+            setupCameras(true);
+        }
+
+        /// <summary>
+        /// Call this function after the mode has been changed (e.g. multiview to headtracking)
+        /// </summary>
+        public void updateMode()
+        {
+            if (mode == G3DCameraMode.MULTIVIEW)
+            {
+                CalibrationProvider calibration = CalibrationProvider.getFromString(
+                    calibrationFile.text
+                );
+                internalCameraCount = getCameraCountFromCalibrationFile(calibration);
+                if (generateViews)
+                {
+                    // TODO DO NOT HARD CODE THIS VALUE!
+                    internalCameraCount = 16;
+                }
+                loadMultiviewViewSeparationFromCalibration(calibration);
+            }
+            else
+            {
+                viewSeparation = 0.065f;
+            }
+
+            updateCameraCountBasedOnMode();
+        }
+
+        public void updateIndexMap()
+        {
+            indexMap.UpdateIndexMap(
+                getCameraCountFromCalibrationFile(),
+                internalCameraCount,
+                indexMapYoyoStart,
+                invertIndexMap,
+                invertIndexMapIndices
+            );
         }
 
         public void loadShaderParametersFromCalibrationFile()
