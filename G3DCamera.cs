@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using G3D.RenderPipeline;
 using UnityEngine;
 using UnityEngine.Rendering;
 #if G3D_HDRP
@@ -36,11 +37,17 @@ namespace G3D
         public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
         [Tooltip(
-            "This value can be used to scale the real world values used to calibrate the extension. For example if your scene is 10 times larger than the real world, you can set this value to 10. Do NOT change this while the game is already running!"
+            "This value can be used to scale the real world values used to calibrate the extension."
+                + "For example if your scene is 10 times larger than the real world, you can set this value to 10."
         )]
         [Min(0.000001f)]
         public float sceneScaleFactor = 1.0f;
 
+        [Tooltip(
+            "Distance between the camera and the focus plane in meters."
+                + "The focus plane is the plane all views converge and no 3d effect is visible."
+        )]
+        [Min(0.000001f)]
         public float distanceToFocusPlane = 2.0f;
 
         [Tooltip(
@@ -169,7 +176,11 @@ namespace G3D
 #endif
 #if G3D_URP
         private G3D.RenderPipeline.URP.ScriptableRP customPass;
-        private AntialiasingMode antialiasingMode = AntialiasingMode.None;
+        private UnityEngine.Rendering.Universal.AntialiasingMode antialiasingMode = UnityEngine
+            .Rendering
+            .Universal
+            .AntialiasingMode
+            .None;
 #endif
 
         private ShaderHandles shaderHandles;
@@ -260,7 +271,11 @@ namespace G3D
 #if G3D_URP
             customPass = new G3D.RenderPipeline.URP.ScriptableRP(material);
             antialiasingMode = mainCamera.GetUniversalAdditionalCameraData().antialiasing;
-            mainCamera.GetUniversalAdditionalCameraData().antialiasing = AntialiasingMode.None;
+            mainCamera.GetUniversalAdditionalCameraData().antialiasing = UnityEngine
+                .Rendering
+                .Universal
+                .AntialiasingMode
+                .None;
 #endif
 
             shaderHandles = new ShaderHandles();
@@ -732,18 +747,12 @@ namespace G3D
                 for (int i = 0; i < MAX_CAMERAS; i++)
                 {
                     cameras.Add(new GameObject(CAMERA_NAME_PREFIX + i).AddComponent<Camera>());
+
+                    copyCameraSettings(mainCamera, cameras[i]);
+
                     cameras[i].transform.SetParent(cameraParent.transform, true);
                     cameras[i].gameObject.SetActive(false);
                     cameras[i].transform.localRotation = Quaternion.identity;
-                    cameras[i].clearFlags = originalMainClearFlags;
-                    cameras[i].backgroundColor = mainCamera.backgroundColor;
-                    cameras[i].targetDisplay = mainCamera.targetDisplay;
-                    cameras[i].cullingMask = mainCamCullingMask;
-
-                    cameras[i].depth = mainCamera.depth - 1; // make sure the main camera renders on top of the secondary cameras
-#if G3D_HDRP
-                    cameras[i].gameObject.AddComponent<HDAdditionalCameraData>();
-#endif
                 }
             }
         }
@@ -1128,6 +1137,7 @@ namespace G3D
 
         /// <summary>
         /// copies relevant camera settings from the source camera to the destination camera.
+        /// Ensures that destination camera is setup correctly.
         /// </summary>
         /// <param name="source">The source camera from which to copy settings.</param>
         /// <param name="cameraParent">The parent transform of the destination camera.</param>
@@ -1135,48 +1145,65 @@ namespace G3D
         private void copyCameraSettings(
             Camera source,
             Camera destination,
-            Quaternion destLocalRotation
+            Quaternion destLocalRotation = default(Quaternion)
         )
         {
-            destination.fieldOfView = source.fieldOfView;
-            destination.farClipPlane = source.farClipPlane;
-            destination.nearClipPlane = source.nearClipPlane;
-            destination.projectionMatrix = source.projectionMatrix;
+            RenderTexture currentTargetTexture = destination.targetTexture;
+            destination.CopyFrom(source);
+            destination.targetTexture = currentTargetTexture; // ensure that the target texture is not overwritten
             destination.transform.localRotation = destLocalRotation;
+            destination.cullingMask = mainCamCullingMask;
+            destination.clearFlags = originalMainClearFlags;
+            destination.depth = source.depth - 1; // make sure the main camera renders on top of the secondary cameras
+#if G3D_HDRP
+            HDAdditionalCameraData sourceHDData = source.GetComponent<HDAdditionalCameraData>();
+            HDAdditionalCameraData destinationHDData =
+                destination.GetComponent<HDAdditionalCameraData>();
+            if (destinationHDData == null)
+            {
+                destinationHDData = destination.gameObject.AddComponent<HDAdditionalCameraData>();
+            }
+            if (sourceHDData != null)
+            {
+                sourceHDData.CopyTo(destinationHDData);
+            }
+
+            if (generateViews)
+            {
+                // antialiasing is performed in the custom pass.
+                destinationHDData.antialiasing = HDAdditionalCameraData.AntialiasingMode.None;
+            }
+#endif
+#if G3D_URP
+            UniversalAdditionalCameraData sourceURPData =
+                source.GetComponent<UniversalAdditionalCameraData>();
+            UniversalAdditionalCameraData destinationURPData =
+                destination.GetComponent<UniversalAdditionalCameraData>();
+            if (destinationURPData == null)
+            {
+                destinationURPData =
+                    destination.gameObject.AddComponent<UniversalAdditionalCameraData>();
+            }
+
+            if (sourceURPData != null)
+            {
+                Helpers.copyToCameraTarget(sourceURPData, destinationURPData);
+            }
 
             if (generateViews == false)
             {
-#if G3D_URP
                 destination.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
-#endif
-#if G3D_HDRP
-                HDAdditionalCameraData destinationHDData =
-                    destination.gameObject.GetComponent<HDAdditionalCameraData>();
-                if (destinationHDData != null)
-                {
-                    HDAdditionalCameraData sourceData =
-                        source.GetComponent<HDAdditionalCameraData>();
-                    destinationHDData.antialiasing = antialiasingMode;
-                    if (
-                        antialiasingMode
-                        == HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing
-                    )
-                    {
-                        destinationHDData.taaAntiFlicker = sourceData.taaAntiFlicker;
-                        destinationHDData.taaAntiHistoryRinging = sourceData.taaAntiHistoryRinging;
-                        destinationHDData.taaBaseBlendFactor = sourceData.taaBaseBlendFactor;
-                        destinationHDData.taaHistorySharpening = sourceData.taaHistorySharpening;
-                        destinationHDData.taaJitterScale = sourceData.taaJitterScale;
-                        destinationHDData.taaMotionVectorRejection =
-                            sourceData.taaMotionVectorRejection;
-                        destinationHDData.taaRingingReduction = sourceData.taaRingingReduction;
-                        destinationHDData.taaSharpenMode = sourceData.taaSharpenMode;
-                        destinationHDData.taaSharpenStrength = sourceData.taaSharpenStrength;
-                        destinationHDData.TAAQuality = sourceData.TAAQuality;
-                    }
-                }
-#endif
             }
+            else
+            {
+                // antialiasing is performed in the render pass.
+                destination.GetUniversalAdditionalCameraData().antialiasing = UnityEngine
+                    .Rendering
+                    .Universal
+                    .AntialiasingMode
+                    .None;
+            }
+#endif
         }
 
         /// <summary>

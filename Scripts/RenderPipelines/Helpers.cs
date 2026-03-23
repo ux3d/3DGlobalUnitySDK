@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 #if G3D_HDRP
 using UnityEngine.Rendering.HighDefinition;
 #endif
@@ -58,5 +59,33 @@ namespace G3D.RenderPipeline
 
             return true;
         }
+
+#if G3D_URP
+        public static void copyToCameraTarget(
+            UniversalAdditionalCameraData source,
+            UniversalAdditionalCameraData destination
+        )
+        {
+            destination.allowHDROutput = source.allowHDROutput;
+            // destination.allowXRRendering = source.allowXRRendering;
+            destination.antialiasing = source.antialiasing;
+            destination.antialiasingQuality = source.antialiasingQuality;
+            // destination.cameraStack = source.cameraStack;
+            destination.dithering = source.dithering;
+            destination.renderPostProcessing = source.renderPostProcessing;
+            destination.renderShadows = source.renderShadows;
+            destination.renderType = source.renderType;
+            destination.screenCoordScaleBias = source.screenCoordScaleBias;
+            destination.screenSizeOverride = source.screenSizeOverride;
+            destination.stopNaN = source.stopNaN;
+
+            destination.taaSettings = source.taaSettings;
+
+            destination.useScreenCoordOverride = source.useScreenCoordOverride;
+            destination.volumeLayerMask = source.volumeLayerMask;
+            destination.volumeStack = source.volumeStack;
+            destination.volumeTrigger = source.volumeTrigger;
+        }
+#endif
     }
 }
