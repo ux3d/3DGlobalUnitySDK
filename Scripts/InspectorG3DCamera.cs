@@ -12,12 +12,14 @@ namespace G3D
     {
         public VisualTreeAsset inspectorXML;
 
+        private PropertyField placementField;
         private PropertyField modeField;
         private PropertyField calibrationFileField;
         private PropertyField sceneScaleFactorField;
         private PropertyField indexMapYoyoStartField;
         private PropertyField invertIndexMapField;
         private PropertyField invertIndexMapIndicesField;
+
         private PropertyField generateViewsField;
 
         private PropertyField headtrackingScaleField;
@@ -48,6 +50,14 @@ namespace G3D
 
             // Instantiate the UXML.
             mainInspector = inspectorXML.Instantiate();
+
+            placementField = mainInspector.Q<PropertyField>("placementMode");
+            placementField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
+                }
+            );
 
             // Find the PropertyField in the Inspector XML.
             modeField = mainInspector.Q<PropertyField>("mode");

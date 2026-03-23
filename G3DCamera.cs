@@ -30,6 +30,8 @@ namespace G3D
         public string calibrationPathOverwrite = "";
 
         #region 3D Effect settings
+        public G3DPlacementMode placementMode = G3DPlacementMode.FOVBased;
+
         public G3DCameraMode mode = G3DCameraMode.DIORAMA;
         public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
@@ -38,6 +40,8 @@ namespace G3D
         )]
         [Min(0.000001f)]
         public float sceneScaleFactor = 1.0f;
+
+        public float distanceToFocusPlane = 2.0f;
 
         [Tooltip(
             "If set to true, the views will be flipped horizontally. This is necessary for holoboxes."
@@ -1012,13 +1016,6 @@ namespace G3D
             float verticalOffset = targetPosition.y;
 
             float currentFocusDistance = -cameraParent.transform.localPosition.z;
-            float dollyZoomOffset = currentFocusDistance - currentFocusDistance * dollyZoom;
-
-            float focusDistanceWithDollyZoom = currentFocusDistance - dollyZoomOffset;
-            mainCamera.fieldOfView =
-                2
-                * Mathf.Atan(scaledHalfCameraWidthAtStart / focusDistanceWithDollyZoom)
-                * Mathf.Rad2Deg;
 
             // set the camera parent position to the focus distance
             cameraParent.transform.localPosition = new Vector3(
@@ -1027,53 +1024,29 @@ namespace G3D
                 -currentFocusDistance
             );
 
+            float finalFocusDistance;
+
+            if (placementMode == G3DPlacementMode.FOVBased)
+            {
+                finalFocusDistance = distanceToFocusPlane;
+            }
+            else
+            {
+                // virtual window mode
+                float dollyZoomOffset = currentFocusDistance - currentFocusDistance * dollyZoom;
+                float focusDistanceWithDollyZoom = currentFocusDistance - dollyZoomOffset;
+                finalFocusDistance = focusDistanceWithDollyZoom;
+                mainCamera.fieldOfView =
+                    2
+                    * Mathf.Atan(scaledHalfCameraWidthAtStart / focusDistanceWithDollyZoom)
+                    * Mathf.Rad2Deg;
+            }
+
             //calculate camera positions and matrices
             for (int i = 0; i < internalCameraCount; i++)
             {
                 var camera = cameras[i];
-                //copy any changes to the main camera
-                camera.fieldOfView = mainCamera.fieldOfView;
-                camera.farClipPlane = mainCamera.farClipPlane;
-                camera.nearClipPlane = mainCamera.nearClipPlane;
-                camera.projectionMatrix = mainCamera.projectionMatrix;
-                camera.transform.localRotation = cameraParent.transform.localRotation;
-                if (generateViews == false)
-                {
-#if G3D_URP
-                    camera.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
-#endif
-#if G3D_HDRP
-                    HDAdditionalCameraData hdAdditionalCameraData =
-                        camera.gameObject.GetComponent<HDAdditionalCameraData>();
-                    if (hdAdditionalCameraData != null)
-                    {
-                        HDAdditionalCameraData mainData =
-                            mainCamera.GetComponent<HDAdditionalCameraData>();
-                        hdAdditionalCameraData.antialiasing = antialiasingMode;
-                        if (
-                            antialiasingMode
-                            == HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing
-                        )
-                        {
-                            hdAdditionalCameraData.taaAntiFlicker = mainData.taaAntiFlicker;
-                            hdAdditionalCameraData.taaAntiHistoryRinging =
-                                mainData.taaAntiHistoryRinging;
-                            hdAdditionalCameraData.taaBaseBlendFactor = mainData.taaBaseBlendFactor;
-                            hdAdditionalCameraData.taaHistorySharpening =
-                                mainData.taaHistorySharpening;
-                            hdAdditionalCameraData.taaJitterScale = mainData.taaJitterScale;
-                            hdAdditionalCameraData.taaMotionVectorRejection =
-                                mainData.taaMotionVectorRejection;
-                            hdAdditionalCameraData.taaRingingReduction =
-                                mainData.taaRingingReduction;
-                            hdAdditionalCameraData.taaSharpenMode = mainData.taaSharpenMode;
-                            hdAdditionalCameraData.taaSharpenStrength = mainData.taaSharpenStrength;
-                            hdAdditionalCameraData.TAAQuality = mainData.TAAQuality;
-                        }
-                    }
-
-#endif
-                }
+                copyCameraSettings(mainCamera, camera, cameraParent.transform.localRotation);
 
                 float localCameraOffset = calculateCameraOffset(
                     i,
@@ -1082,19 +1055,17 @@ namespace G3D
                 );
 
                 // apply new projection matrix
-                Matrix4x4 projMatrix = calculateCameraProjectionMatrix(
-                    localCameraOffset,
-                    horizontalOffset,
+                camera.projectionMatrix = calculateCameraProjectionMatrix(
+                    localCameraOffset + horizontalOffset,
                     verticalOffset,
-                    focusDistanceWithDollyZoom,
+                    finalFocusDistance,
                     camera.projectionMatrix
                 );
-
-                camera.projectionMatrix = projMatrix;
+                ;
 
                 camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
 
-                // if generate views only enable the leftmost and rightmost camera
+                // if generate views only enable the leftmost, middle, and rightmost camera
                 if (generateViews)
                 {
                     if (i == 0 || i == internalCameraCount / 2 || i == internalCameraCount - 1)
@@ -1113,7 +1084,7 @@ namespace G3D
                 }
             }
 
-            //disable all the other cameras, we are not using them with this cameracount
+            //disable all the other cameras, we are not using
             for (int i = internalCameraCount; i < MAX_CAMERAS; i++)
             {
                 cameras[i].gameObject.SetActive(false);
@@ -1153,6 +1124,59 @@ namespace G3D
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// copies relevant camera settings from the source camera to the destination camera.
+        /// </summary>
+        /// <param name="source">The source camera from which to copy settings.</param>
+        /// <param name="cameraParent">The parent transform of the destination camera.</param>
+        /// <param name="destination">The destination camera to which settings will be copied.</param>
+        private void copyCameraSettings(
+            Camera source,
+            Camera destination,
+            Quaternion destLocalRotation
+        )
+        {
+            destination.fieldOfView = source.fieldOfView;
+            destination.farClipPlane = source.farClipPlane;
+            destination.nearClipPlane = source.nearClipPlane;
+            destination.projectionMatrix = source.projectionMatrix;
+            destination.transform.localRotation = destLocalRotation;
+
+            if (generateViews == false)
+            {
+#if G3D_URP
+                destination.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
+#endif
+#if G3D_HDRP
+                HDAdditionalCameraData destinationHDData =
+                    destination.gameObject.GetComponent<HDAdditionalCameraData>();
+                if (destinationHDData != null)
+                {
+                    HDAdditionalCameraData sourceData =
+                        source.GetComponent<HDAdditionalCameraData>();
+                    destinationHDData.antialiasing = antialiasingMode;
+                    if (
+                        antialiasingMode
+                        == HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing
+                    )
+                    {
+                        destinationHDData.taaAntiFlicker = sourceData.taaAntiFlicker;
+                        destinationHDData.taaAntiHistoryRinging = sourceData.taaAntiHistoryRinging;
+                        destinationHDData.taaBaseBlendFactor = sourceData.taaBaseBlendFactor;
+                        destinationHDData.taaHistorySharpening = sourceData.taaHistorySharpening;
+                        destinationHDData.taaJitterScale = sourceData.taaJitterScale;
+                        destinationHDData.taaMotionVectorRejection =
+                            sourceData.taaMotionVectorRejection;
+                        destinationHDData.taaRingingReduction = sourceData.taaRingingReduction;
+                        destinationHDData.taaSharpenMode = sourceData.taaSharpenMode;
+                        destinationHDData.taaSharpenStrength = sourceData.taaSharpenStrength;
+                        destinationHDData.TAAQuality = sourceData.TAAQuality;
+                    }
+                }
+#endif
+            }
         }
 
         /// <summary>
@@ -1232,7 +1256,6 @@ namespace G3D
         /// <param name="mainCamProjectionMatrix"></param>
         /// <returns></returns>
         private Matrix4x4 calculateCameraProjectionMatrix(
-            float localCameraOffset,
             float horizontalOffset,
             float verticalOffset,
             float focusDistance,
@@ -1240,7 +1263,7 @@ namespace G3D
         )
         {
             // horizontal obliqueness
-            float horizontalObl = -(localCameraOffset + horizontalOffset) / focusDistance;
+            float horizontalObl = -horizontalOffset / focusDistance;
             float vertObl = -verticalOffset / focusDistance;
 
             // focus distance is in view space. Writing directly into projection matrix would require focus distance to be in projection space
@@ -1296,23 +1319,25 @@ namespace G3D
                 }
             }
 
-            float dollyZoomFactor = scaledFocusDistance - scaledFocusDistance * dollyZoom;
-
-            float tmpHalfCameraWidthAtStart =
-                Mathf.Tan(baseFieldOfView * Mathf.Deg2Rad / 2) * scaledFocusDistance;
-
-            float focusDistanceWithDollyZoom = scaledFocusDistance - dollyZoomFactor;
-            float tmpFieldOfView =
-                2
-                * Mathf.Atan(tmpHalfCameraWidthAtStart / focusDistanceWithDollyZoom)
-                * Mathf.Rad2Deg;
-            float fieldOfViewWithoutDolly =
-                2 * Mathf.Atan(tmpHalfCameraWidthAtStart / scaledFocusDistance) * Mathf.Rad2Deg;
-
-            Vector3 basePosition = new Vector3(0, 0, focusDistanceWithDollyZoom);
+            float finalFOV;
+            float finalFocusDistance;
+            if (placementMode == G3DPlacementMode.FOVBased)
+            {
+                finalFocusDistance = distanceToFocusPlane;
+                finalFOV = mainCamera.fieldOfView;
+            }
+            else
+            {
+                float tmpHalfCameraWidthAtStart =
+                    Mathf.Tan(baseFieldOfView * Mathf.Deg2Rad / 2) * scaledFocusDistance;
+                float dollyZoomFactor = scaledFocusDistance - scaledFocusDistance * dollyZoom;
+                finalFocusDistance = scaledFocusDistance - dollyZoomFactor;
+                finalFOV =
+                    2 * Mathf.Atan(tmpHalfCameraWidthAtStart / finalFocusDistance) * Mathf.Rad2Deg;
+            }
+            Vector3 basePosition = new Vector3(0, 0, finalFocusDistance);
 
             Vector3 position;
-            // draw eye separation
             Gizmos.color = new Color(0, 0, 1, 0.75F);
             Gizmos.matrix = transform.localToWorldMatrix;
             // draw camera position spheres
@@ -1323,9 +1348,9 @@ namespace G3D
                     scaledViewSeparation,
                     internalCameraCount
                 );
-                Vector3 camPos = basePosition - new Vector3(0, 0, focusDistanceWithDollyZoom);
+                Vector3 camPos = basePosition - new Vector3(0, 0, finalFocusDistance);
                 camPos += new Vector3(1, 0, 0) * localCameraOffset;
-                Gizmos.DrawSphere(camPos, 0.2f * gizmoSize * sceneScaleFactor);
+                Gizmos.DrawSphere(camPos, 0.2f * gizmoSize);
             }
 
             // draw camera frustums
@@ -1348,8 +1373,7 @@ namespace G3D
                 Matrix4x4 projMatrix = calculateCameraProjectionMatrix(
                     localCameraOffset,
                     0,
-                    0,
-                    focusDistanceWithDollyZoom,
+                    finalFocusDistance,
                     localProjectionMatrix
                 );
 
@@ -1357,7 +1381,7 @@ namespace G3D
 
                 Gizmos.DrawFrustum(
                     Vector3.zero,
-                    tmpFieldOfView,
+                    finalFOV,
                     mainCamera.farClipPlane,
                     mainCamera.nearClipPlane,
                     mainCamera.aspect
@@ -1367,23 +1391,36 @@ namespace G3D
             Gizmos.matrix = transform.localToWorldMatrix;
 
             // draw focus plane
+            if (placementMode == G3DPlacementMode.FOVBased)
+            {
+                drawFocusPlane(finalFOV, finalFocusDistance, finalFocusDistance);
+            }
+            else
+            {
+                float tmpHalfCameraWidthAtStart =
+                    Mathf.Tan(baseFieldOfView * Mathf.Deg2Rad / 2) * scaledFocusDistance;
+                float fieldOfViewWithoutDolly =
+                    2 * Mathf.Atan(tmpHalfCameraWidthAtStart / scaledFocusDistance) * Mathf.Rad2Deg;
+                drawFocusPlane(fieldOfViewWithoutDolly, scaledFocusDistance, finalFocusDistance);
+            }
+        }
+
+        private void drawFocusPlane(float FOV, float focusDist, float zPosition)
+        {
             Gizmos.color = new Color(0, 0, 1, 0.25F);
-            position = new Vector3(0, 0, 1) * focusDistanceWithDollyZoom;
-            float frustumWidth =
-                Mathf.Tan(fieldOfViewWithoutDolly * Mathf.Deg2Rad / 2) * scaledFocusDistance * 2;
+            Vector3 position = new Vector3(0, 0, zPosition);
+            float frustumWidth = Mathf.Tan(FOV * Mathf.Deg2Rad / 2) * focusDist * 2;
             float frustumHeight =
                 Mathf.Tan(
-                    Camera.VerticalToHorizontalFieldOfView(
-                        fieldOfViewWithoutDolly,
-                        mainCamera.aspect
-                    )
+                    Camera.VerticalToHorizontalFieldOfView(FOV, mainCamera.aspect)
                         * Mathf.Deg2Rad
                         / 2
                 )
-                * scaledFocusDistance
+                * focusDist
                 * 2;
             Gizmos.DrawCube(position, new Vector3(frustumHeight, frustumWidth, 0.001f));
         }
+
 #endif
         #endregion
 

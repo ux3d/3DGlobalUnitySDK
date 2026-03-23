@@ -1,4 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <uie:PropertyField binding-path="placementMode" name="placementMode" />
+    <uie:PropertyField binding-path="distanceToFocusPlane" name="distanceToFocusPlane" />
     <uie:PropertyField binding-path="mode" name="mode" />
     <ui:Label text="The head tracking library will search for " name="DioramaCalibrationFolder" style="-unity-font-style: bold-and-italic; -unity-text-align: upper-center; white-space: normal; margin-bottom: 8px;" />
     <uie:PropertyField name="calibrationFile" binding-path="calibrationFile" />
