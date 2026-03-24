@@ -173,9 +173,6 @@ namespace G3D
         private Vector2Int cachedWindowPosition;
         private Vector2Int cachedWindowSize;
 
-        // half of the width of field of view at start at focus distance
-        private float halfCameraWidthAtStart = 1.0f;
-
         /// <summary>
         /// This value is calculated based on the calibration file
         /// </summary>
@@ -188,6 +185,11 @@ namespace G3D
         private float scaledViewSeparation
         {
             get { return viewSeparation * viewOffsetScale; }
+        }
+
+        private float focusDistWithDollyZoom
+        {
+            get { return focusDistance * dollyZoom; }
         }
 
         #endregion
@@ -432,17 +434,13 @@ namespace G3D
                 Debug.LogError(
                     "No calibration file set. Please set a calibration file. Using default values."
                 );
-                focusDistance = 0.7f;
+                updateFocusDistance(0.7f);
                 viewSeparation = 0.065f;
                 headtrackingConnection?.setBasicWorkingDistance(focusDistance);
 
                 if (mode == G3DCameraMode.MULTIVIEW)
                 {
                     viewSeparation = 0.031f;
-                }
-                if (focusPlaneObject != null)
-                {
-                    focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
                 }
                 return;
             }
@@ -469,7 +467,7 @@ namespace G3D
             displayFOV = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
 
             // set focus distance
-            focusDistance = BasicWorkingDistanceMeter;
+            updateFocusDistance(BasicWorkingDistanceMeter);
             headtrackingConnection?.setBasicWorkingDistance(BasicWorkingDistanceMeter);
 
             // calculate eye separation/ view separation
@@ -492,23 +490,6 @@ namespace G3D
             }
 
             updateCameraCountBasedOnMode();
-
-            // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
-            if (Application.isPlaying)
-            {
-                // update focus plane distance
-                if (focusPlaneObject != null)
-                {
-                    focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
-                }
-                if (cameraParent != null)
-                {
-                    cameraParent.transform.localPosition = new Vector3(0, 0, -focusDistance);
-                }
-            }
-
-            halfCameraWidthAtStart =
-                Mathf.Tan(mainCamera.fieldOfView * Mathf.Deg2Rad / 2) * focusDistance;
 
             loadShaderParametersFromCalibrationFile();
         }
@@ -621,6 +602,31 @@ namespace G3D
             {
                 originalMainFOV = mainCamera.fieldOfView;
                 mainCamera.fieldOfView = displayFOV;
+            }
+        }
+
+        /// <summary>
+        /// if no value or NAN is passed he focus distance will not be updated, but the focus plane object position will updated
+        /// </summary>
+        /// <param name="newFocusDistance"></param>
+        public void updateFocusDistance(float newFocusDistance = float.NaN)
+        {
+            if (!float.IsNaN(newFocusDistance))
+            {
+                focusDistance = newFocusDistance;
+            }
+            // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
+            if (Application.isPlaying)
+            {
+                // update focus plane distance
+                if (focusPlaneObject != null)
+                {
+                    focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
+                }
+                if (cameraParent != null)
+                {
+                    cameraParent.transform.localPosition = new Vector3(0, 0, -focusDistance);
+                }
             }
         }
 
@@ -833,6 +839,14 @@ namespace G3D
             if (recreatedRenderTextures)
             {
                 updateShaderRenderTextures();
+            }
+        }
+
+        private void updateFocusPlane()
+        {
+            if (focusPlaneObject != null)
+            {
+                focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
             }
         }
 
@@ -1283,9 +1297,8 @@ namespace G3D
                 }
             }
 
-            float dollyZoomFactor = focusDistance - focusDistance * dollyZoom;
-            float focusDistWithDolly = focusDistance - dollyZoomFactor;
-            Vector3 basePosition = new Vector3(0, 0, focusDistWithDolly);
+            Vector3 basePosition = new Vector3(0, 0, focusDistance);
+            float dollyDifference = focusDistance - focusDistWithDollyZoom;
 
             Vector3 position;
             Gizmos.color = new Color(0, 0, 1, 0.75F);
@@ -1298,9 +1311,9 @@ namespace G3D
                     scaledViewSeparation,
                     internalCameraCount
                 );
-                Vector3 camPos = basePosition - new Vector3(0, 0, focusDistWithDolly);
+                Vector3 camPos = basePosition - new Vector3(0, 0, focusDistWithDollyZoom);
                 camPos += new Vector3(1, 0, 0) * localCameraOffset;
-                Gizmos.DrawSphere(camPos, 0.2f * gizmoSize);
+                Gizmos.DrawSphere(camPos, 0.01f * gizmoSize);
             }
 
             // draw camera frustums
@@ -1312,7 +1325,10 @@ namespace G3D
                     scaledViewSeparation,
                     internalCameraCount
                 );
+
                 position = transform.position + transform.right * localCameraOffset;
+                // apply dolly zoom to position
+                position += transform.forward * dollyDifference;
 
                 // apply new projection matrix
                 Matrix4x4 localProjectionMatrix = Matrix4x4.TRS(
@@ -1323,7 +1339,7 @@ namespace G3D
                 Matrix4x4 projMatrix = calculateCameraProjectionMatrix(
                     localCameraOffset,
                     0,
-                    focusDistWithDolly,
+                    focusDistWithDollyZoom,
                     localProjectionMatrix
                 );
 
@@ -1331,7 +1347,7 @@ namespace G3D
 
                 Gizmos.DrawFrustum(
                     Vector3.zero,
-                    mainCamera.fieldOfView,
+                    calcNewFOV(),
                     mainCamera.farClipPlane,
                     mainCamera.nearClipPlane,
                     mainCamera.aspect
@@ -1339,7 +1355,7 @@ namespace G3D
             }
 
             Gizmos.matrix = transform.localToWorldMatrix;
-            drawFocusPlane(mainCamera.fieldOfView, focusDistWithDolly);
+            drawFocusPlane(mainCamera.fieldOfView, focusDistance);
         }
 
         private void drawFocusPlane(float FOV, float focusDist)
@@ -1356,6 +1372,15 @@ namespace G3D
                 * focusDist
                 * 2;
             Gizmos.DrawCube(position, new Vector3(frustumHeight, frustumWidth, 0.001f));
+        }
+
+        private float calcNewFOV()
+        {
+            float halfFOVRad = mainCamera.fieldOfView * Mathf.Deg2Rad / 2;
+            float a = Mathf.Tan(halfFOVRad) * focusDistance;
+
+            float newHalfFOVRad = Mathf.Atan(a / focusDistWithDollyZoom);
+            return newHalfFOVRad * Mathf.Rad2Deg * 2;
         }
 
 #endif

@@ -23,6 +23,7 @@ namespace G3D
         private PropertyField headtrackingScaleField;
 
         private PropertyField viewOffsetField;
+        private PropertyField focusDistanceField;
         private Button toggleCameraFOVButton;
 
         private Label calibFolderLabel;
@@ -85,6 +86,8 @@ namespace G3D
             headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
 
             viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
+
+            focusDistanceField = mainInspector.Q<PropertyField>("focusDistance");
 
             string calibrationPath = System.Environment.GetFolderPath(
                 Environment.SpecialFolder.CommonDocuments
@@ -162,6 +165,13 @@ namespace G3D
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                }
+            );
+
+            focusDistanceField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateFocusDistance();
                 }
             );
         }

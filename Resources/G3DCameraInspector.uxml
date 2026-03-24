@@ -14,11 +14,11 @@
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings" style="margin-top: 10px;">
         <uie:PropertyField binding-path="viewOffset" name="viewOffset" />
         <uie:PropertyField name="mirrorViews" binding-path="mirrorViews" />
+        <uie:PropertyField name="invertViewsInDiorama" binding-path="invertViewsInDiorama" />
         <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" style="margin-top: 10px;" />
         <ui:Label text="Debug settings" name="DebuggingSettings" style="-unity-font-style: bold; margin-top: 13px; margin-right: 2px; margin-bottom: 4px;" />
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
-        <uie:PropertyField name="invertViewsInDiorama" binding-path="invertViewsInDiorama" />
         <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
         <uie:PropertyField name="indexMapYoyoStart" binding-path="indexMapYoyoStart" />
         <uie:PropertyField name="invertIndexMap" binding-path="invertIndexMap" />
