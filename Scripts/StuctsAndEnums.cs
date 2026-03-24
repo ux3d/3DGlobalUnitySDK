@@ -19,12 +19,6 @@ namespace G3D
         MULTIVIEW
     }
 
-    public enum G3DPlacementMode
-    {
-        FOVBased,
-        VirtualWindow
-    }
-
     /// <summary>
     /// This struct is used to store the shader parameter handles for the individual shader parameters.
     /// Its members should always be updated when the G3DShaderParameters struct changes.
