@@ -58,7 +58,7 @@ namespace G3D
                 (evt) =>
                 {
                     G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
-                    if (newMode == G3DCameraMode.DIORAMA)
+                    if (newMode == G3DCameraMode.HEADTRACKING)
                     {
                         calibFolderLabel.style.display = DisplayStyle.Flex;
                         headtrackingScaleField.style.display = DisplayStyle.Flex;

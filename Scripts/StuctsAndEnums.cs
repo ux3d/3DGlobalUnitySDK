@@ -15,7 +15,7 @@ namespace G3D
 
     public enum G3DCameraMode
     {
-        DIORAMA,
+        HEADTRACKING,
         MULTIVIEW
     }
 

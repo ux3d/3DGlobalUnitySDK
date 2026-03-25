@@ -31,7 +31,7 @@ namespace G3D
         public string configurationPathOverwrite = "";
 
         #region 3D Effect settings
-        public G3DCameraMode mode = G3DCameraMode.DIORAMA;
+        public G3DCameraMode mode = G3DCameraMode.MULTIVIEW;
         public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
         [Tooltip(
@@ -251,7 +251,7 @@ namespace G3D
                 headPositionFilter,
                 latencyCorrectionMode
             );
-            if (mode == G3DCameraMode.DIORAMA)
+            if (mode == G3DCameraMode.HEADTRACKING)
             {
                 headtrackingConnection.initLibrary();
                 headtrackingConnection.startHeadTracking();
@@ -817,7 +817,7 @@ namespace G3D
             mainCamInactiveLastFrame = false;
 
             // update the shader parameters (only in diorama mode)
-            if (mode == G3DCameraMode.DIORAMA)
+            if (mode == G3DCameraMode.HEADTRACKING)
             {
                 headtrackingConnection.calculateShaderParameters();
             }
@@ -983,7 +983,7 @@ namespace G3D
             float targetViewSeparation = 0.0f;
 
             // calculate the camera center position and eye separation if head tracking and the diorama effect are enabled
-            if (mode == G3DCameraMode.DIORAMA)
+            if (mode == G3DCameraMode.HEADTRACKING)
             {
                 headtrackingConnection.handleHeadTrackingState(
                     ref targetPosition,
@@ -1067,7 +1067,7 @@ namespace G3D
         private bool updateCameraCountBasedOnMode()
         {
             int previousCameraCount = internalCameraCount;
-            if (mode == G3DCameraMode.DIORAMA)
+            if (mode == G3DCameraMode.HEADTRACKING)
             {
                 internalCameraCount = 2;
             }
