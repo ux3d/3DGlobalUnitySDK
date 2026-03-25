@@ -87,7 +87,7 @@ namespace G3D
             "Scales the strength of the head tracking effect. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance."
         )]
         [Min(0.0f)]
-        public float headTrackingScale = 1.0f; // scale the head tracking effect
+        public float headTrackingSensitivity = 1.0f; // scale the head tracking effect
         #endregion
 
         #region Advanced settings
@@ -244,7 +244,7 @@ namespace G3D
 
             headtrackingConnection = new HeadtrackingConnection(
                 focusDistance,
-                headTrackingScale,
+                headTrackingSensitivity,
                 configurationPathOverwrite,
                 this,
                 debugMessages,

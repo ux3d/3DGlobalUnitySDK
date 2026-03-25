@@ -18,7 +18,7 @@ namespace G3D
         public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
         public float basicWorkingDistance = 1.0f;
-        public float headTrackingScale = 1.0f;
+        public float headTrackingSensitivity = 1.0f;
         private bool debugMessages;
 
         private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
@@ -56,7 +56,7 @@ namespace G3D
 
         public HeadtrackingConnection(
             float basicWorkingDistance,
-            float headTrackingScale,
+            float headTrackingSensitivity,
             string configurationPathOverwrite,
             G3DCamera g3dCamera,
             bool debugMessages = false,
@@ -66,7 +66,7 @@ namespace G3D
         {
             lastHeadPosition = new Vector3(0, 0, -basicWorkingDistance);
             this.basicWorkingDistance = basicWorkingDistance;
-            this.headTrackingScale = headTrackingScale;
+            this.headTrackingSensitivity = headTrackingSensitivity;
 
             calibrationPath = System.Environment.GetFolderPath(
                 Environment.SpecialFolder.CommonDocuments
@@ -630,13 +630,13 @@ namespace G3D
                     (float)-worldPosZ / millimeterToMeter
                 );
 
-                int scaleFactorInt = (int)headTrackingScale;
+                int scaleFactorInt = (int)headTrackingSensitivity;
 
                 headPosition.imagePosX = imagePosX / (int)millimeterToMeter * scaleFactorInt;
                 headPosition.imagePosY = imagePosY / (int)millimeterToMeter * scaleFactorInt;
-                headPosition.worldPosX = headPos.x * headTrackingScale;
-                headPosition.worldPosY = headPos.y * headTrackingScale;
-                headPosition.worldPosZ = headPos.z * headTrackingScale;
+                headPosition.worldPosX = headPos.x * headTrackingSensitivity;
+                headPosition.worldPosY = headPos.y * headTrackingSensitivity;
+                headPosition.worldPosZ = headPos.z * headTrackingSensitivity;
 
                 if (usePositionFiltering())
                 {
@@ -658,11 +658,11 @@ namespace G3D
                             );
 
                             filteredHeadPosition.worldPosX =
-                                -filteredPositionX / millimeterToMeter * headTrackingScale;
+                                -filteredPositionX / millimeterToMeter * headTrackingSensitivity;
                             filteredHeadPosition.worldPosY =
-                                filteredPositionY / millimeterToMeter * headTrackingScale;
+                                filteredPositionY / millimeterToMeter * headTrackingSensitivity;
                             filteredHeadPosition.worldPosZ =
-                                -filteredPositionZ / millimeterToMeter * headTrackingScale;
+                                -filteredPositionZ / millimeterToMeter * headTrackingSensitivity;
                         }
                         catch (Exception e)
                         {

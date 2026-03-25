@@ -15,7 +15,7 @@
         <uie:PropertyField binding-path="viewOffset" name="viewOffset" />
         <uie:PropertyField name="mirrorViews" binding-path="mirrorViews" />
         <uie:PropertyField name="invertViewsInDiorama" binding-path="invertViewsInDiorama" />
-        <uie:PropertyField name="headTrackingScale" binding-path="headTrackingScale" style="margin-top: 10px;" />
+        <uie:PropertyField name="headTrackingSensitivity" binding-path="headTrackingSensitivity" style="margin-top: 10px;" />
         <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
         <uie:PropertyField name="indexMapYoyoStart" binding-path="indexMapYoyoStart" />
         <uie:PropertyField name="invertIndexMap" binding-path="invertIndexMap" />

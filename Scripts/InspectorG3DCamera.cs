@@ -84,7 +84,7 @@ namespace G3D
                 }
             );
 
-            headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
+            headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingSensitivity");
 
             viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
 
