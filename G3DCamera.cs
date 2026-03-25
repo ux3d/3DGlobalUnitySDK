@@ -1073,6 +1073,7 @@ namespace G3D
                     // TODO DO NOT HARD CODE THIS VALUE!
                     internalCameraCount = 16;
                 }
+                else
                 {
                     internalCameraCount = getCameraCountFromConfigurationFile();
                 }
