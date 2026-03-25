@@ -182,10 +182,14 @@ namespace G3D
             ref Vector3 targetPosition,
             ref float targetViewSeparation,
             float viewSeparation,
-            float basicWorkingDistance
+            float currentFocusDistance
         )
         {
             HeadPosition headPos = getHeadPosition();
+            headPos.worldPosZ = convertWorldPosZToTrackedPosition(
+                (float)headPos.worldPosZ,
+                currentFocusDistance
+            );
             // get new state
             HeadTrackingState newState = getNewTrackingState(prevHeadTrackingState, ref headPos);
 
@@ -194,7 +198,7 @@ namespace G3D
             // handle lost state
             if (newState == HeadTrackingState.LOST)
             {
-                targetPosition = new Vector3(0, 0, -basicWorkingDistance);
+                targetPosition = new Vector3(0, 0, -currentFocusDistance);
                 targetViewSeparation = 0.0f;
             }
             // handle tracking state
@@ -235,7 +239,7 @@ namespace G3D
             {
                 // init with values for transition to lost
                 Vector3 originPosition = lastHeadPosition;
-                Vector3 transitionTargetPosition = new Vector3(0, 0, -basicWorkingDistance);
+                Vector3 transitionTargetPosition = new Vector3(0, 0, -currentFocusDistance);
                 float transitionViewSeparation = 0.0f;
                 float originSeparation = viewSeparation;
 
@@ -251,6 +255,10 @@ namespace G3D
                             (float)headPos.worldPosX,
                             (float)headPos.worldPosY,
                             (float)headPos.worldPosZ
+                        );
+                        headPositionWorld.z = convertWorldPosZToTrackedPosition(
+                            headPositionWorld.z,
+                            currentFocusDistance
                         );
                         transitionTargetPosition = headPositionWorld;
                     }
@@ -491,6 +499,20 @@ namespace G3D
             {
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Converts the input position (in real world head space) to a position relative to the input focus distance.
+        /// </summary>
+        /// <param name="worldPosZ"></param>
+        /// <param name="focusDistance"></param>
+        /// <returns></returns>
+        private float convertWorldPosZToTrackedPosition(float worldPosZ, float focusDistance)
+        {
+            // convert from mm to m and apply scale factor
+            float zOffset = basicWorkingDistance + worldPosZ; // worldposZ is negative when in front of the camera, so we add it to the basic working distance
+            float convertedZ = focusDistance - zOffset;
+            return -convertedZ; // invert to be in right coordinate system for camera position
         }
 
         private HeadTrackingState getNewTrackingState(
