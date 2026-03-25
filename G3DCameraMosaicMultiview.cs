@@ -79,12 +79,8 @@ namespace G3D
 
         public VideoClip videoClip;
 
-        #region 3D Effect settings
-        [Header("3D Effect settings")]
         [Tooltip("If set to true, the views will be flipped horizontally.")]
         public bool mirrorViews = false;
-        #endregion
-
 
         #region Private variables
         private IndexMap indexMap = IndexMap.Instance;

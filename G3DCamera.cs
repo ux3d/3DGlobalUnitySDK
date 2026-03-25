@@ -30,7 +30,6 @@ namespace G3D
         )]
         public string configurationPathOverwrite = "";
 
-        #region 3D Effect settings
         public G3DCameraMode mode = G3DCameraMode.MULTIVIEW;
         public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
@@ -39,7 +38,6 @@ namespace G3D
         )]
         public bool mirrorViews = false;
 
-        #region Performance
         [Tooltip(
             "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4. Adapt Render Resolution To Views takes precedence."
         )]
@@ -54,8 +52,6 @@ namespace G3D
         )]
         public bool generateViews = false;
 #endif
-        #endregion
-
 
         [Tooltip(
             "Set the dolly zoom effekt. 1 correponds to no dolly zoom. 0 is all the way zoomed in to the focus plane. 3 is all the way zoomed out."
@@ -88,8 +84,6 @@ namespace G3D
         )]
         [Min(0.0f)]
         public float headTrackingSensitivity = 1.0f; // scale the head tracking effect
-        #endregion
-
         #region Advanced settings
         [Tooltip(
             "Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
