@@ -34,18 +34,21 @@ Example for shifted FOV in diorama mode:
 
 # Parameters
 
-| Name                    | Description                                                                       |
-| ----------------------- | --------------------------------------------------------------------------------- |
-| Mode                    | Switch between Diorama and Multiview modes.                                       |
-| Calibration file        | The calibration file used to calibrate multiview mode.                            |
-| Scene scale factor      | Scales display calibration to fit larger scenes.                                  |
-| Dolly zoom              | Mimics a dolly zoom effect.                                                       |
-| View offset scale       | Scales the view disparity (e.g pushes 3d cameras closer together/ further apart). |
-| Render resolution scale | Size of the individual autostereo camera render textures in percent.              |
+| Name                    | Description                                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Mode                    | Switch between Diorama and Multiview modes.                                                                                          |
+| Calibration file        | The configuration file used to calibrate multiview mode.                                                                             |
+| Scene scale factor      | Scales display configuration to fit larger scenes.                                                                                   |
+| Dolly zoom              | Mimics a dolly zoom effect.                                                                                                          |
+| View offset scale       | Scales the view disparity (e.g pushes 3d cameras closer together/ further apart).                                                    |
+| Render resolution scale | Size of the individual autostereo camera render textures in percent.                                                                 |
+| Generate Views          | If set to true, only the outer most and the middle view will be rendered. The rest is generated based on these.                      |
+| Fill holes              | If set to true, small holes in the generated views will be filled.                                                                   |
+| Hole filling radius     | How far around the missing pixels the algorithm searches for a usable pixel. Larger values result in better results but take longer. |
 
 ### Calibration file
 
-This takes an ini file (the same ini files as can be found in the displays calibration folder) that contains the calibration data for the display. This is only needed in multiview mode. In diorama mode the calibration files are read from the default calibration folder of 3D Global. You can still provide a calibration file in diorama mode. It will only be used for drawing the helper gizmos in the scene view. During play it will not be used (in diorama mode).
+This takes an ini file (the same ini files as can be found in the displays configuration folder) that contains the configuration data for the display. This is only needed in multiview mode. In diorama mode the configuration files are read from the default configuration folder of 3D Global. You can still provide a configuration file in diorama mode. It will only be used for drawing the helper gizmos in the scene view. During play it will not be used (in diorama mode).
 
 Unfortunatly for now unity does not support "\*.ini" files as TextAsset. Therefore you have to rename the file extension to "\*.txt" to be able to use it in Unity.
 
@@ -80,15 +83,27 @@ This mode uses a head tracking camera integrated into a 3d Global display to adj
 
 #### Diorama Calibration files
 
-It requires the displays calibration files to be copied to "C:\Users\Public\Documents\3D Global\calibrations" (Windows). Each individual physical display has its own calibration files. These can be found on the display. The calibration for one display is contained in a folder named after the used head tracking camera (e.g "HimaxD2XX#DK0HLRO3"). Inside this folder are two files (one ini file and one image file). Copy this entire folder to the calibration folder mentioned earlier.
+It requires the displays configuration files to be copied to "C:\Users\Public\Documents\3D Global\calibrations" (Windows). Each individual physical display has its own configuration files. These can be found on the display. The configuration for one display is contained in a folder named after the used head tracking camera (e.g "HimaxD2XX#DK0HLRO3"). Inside this folder are two files (one ini file and one image file). Copy this entire folder to the configuration folder mentioned earlier.
 
 ### Multiview mode
 
-In this mode the plugin renders multiple views without any head tracking and spreads them equally accross the displays available views. This mode works on all 3D Global displays. This mode only requires general calibration information contained in the calibration.ini file. Therefore you can reuse the same calibration file on multiple displays of the same type.
+In this mode the plugin renders multiple views without any head tracking and spreads them equally accross the displays available views. This mode works on all 3D Global displays. This mode only requires general configuration information contained in the configuration.ini file. Therefore you can reuse the same configuration file on multiple displays of the same type.
 
 # Performance
 
 As each view only shows a subset of the displays pixels, you can use the "Render resolution scale" parameter to reduce the resolution of the individual camera render textures. This can significantly increase performance while barely impacting quality.
+
+# View Generation
+
+When this is enabled only the outer most and the middle view are rendered. The other views are generated based on these two views.
+
+## Anti Aliasing
+
+Only FXAA and SMAA work when view generation is enabled. When the cameras anti aliasing is set to TAA no anti aliasing is applied to the rendered views.
+
+## Bloom
+
+Bloom does not work correctly when view generation is enabled. Bloom results in weird halo like effects around objects in the generated views. It is recommended to disable bloom when using view generation.
 
 # Switching render pipelines
 

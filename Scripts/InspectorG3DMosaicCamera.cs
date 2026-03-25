@@ -4,86 +4,153 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
-[CustomEditor(typeof(G3DCameraMosaicMultiview))]
-public class InspectorG3DMosaicCamera1 : Editor
+namespace G3D
 {
-    public VisualTreeAsset inspectorXML;
-
-    private PropertyField dimensionsFromFilename;
-    private PropertyField modeField;
-
-    private PropertyField renderTexture;
-    private PropertyField image;
-    private PropertyField videoClip;
-
-    private static bool isAdvancedSettingsVisible = false;
-    private Foldout advancedSettingsFoldout;
-
-    public override VisualElement CreateInspectorGUI()
+    [CustomEditor(typeof(G3DCameraMosaicMultiview))]
+    public class InspectorG3DMosaicCamera : Editor
     {
-        G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+        public VisualTreeAsset inspectorXML;
 
-        // Create a new VisualElement to be the root of our Inspector UI.
-        VisualElement mainInspector = new VisualElement();
+        private PropertyField dimensionsFromFilename;
+        private PropertyField modeField;
+        private PropertyField calibrationFileField;
+        private PropertyField indexMapYoyoStartField;
+        private PropertyField invertIndexMapField;
+        private PropertyField invertIndexMapIndicesField;
+        private PropertyField useHQViewsField;
 
-        // Load the UXML file.
-        inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-            "Packages/com.3dglobal.core/Resources/G3DMosaicCameraInspector.uxml"
-        );
+        private PropertyField renderTexture;
+        private PropertyField image;
+        private PropertyField videoClip;
 
-        // Instantiate the UXML.
-        mainInspector = inspectorXML.Instantiate();
+        private static bool isAdvancedSettingsVisible = false;
+        private Foldout advancedSettingsFoldout;
 
-        dimensionsFromFilename = mainInspector.Q<PropertyField>("dimensionsFromFilename");
+        private Label IndexMap;
 
-        modeField = mainInspector.Q<PropertyField>("mosaicMode");
-        renderTexture = mainInspector.Q<PropertyField>("renderTexture");
-        image = mainInspector.Q<PropertyField>("image");
-        videoClip = mainInspector.Q<PropertyField>("videoClip");
+        public override VisualElement CreateInspectorGUI()
+        {
+            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
 
-        // Find the PropertyField in the Inspector XML.
-        modeField = mainInspector.Q<PropertyField>("mosaicMode");
-        modeField.RegisterValueChangeCallback(
-            (evt) =>
-            {
-                MosaicMode newMode = (MosaicMode)evt.changedProperty.enumValueIndex;
-                switch (newMode)
+            // Create a new VisualElement to be the root of our Inspector UI.
+            VisualElement mainInspector = new VisualElement();
+
+            // Load the UXML file.
+            inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+                "Packages/com.3dglobal.core/Resources/G3DMosaicCameraInspector.uxml"
+            );
+
+            // Instantiate the UXML.
+            mainInspector = inspectorXML.Instantiate();
+
+            dimensionsFromFilename = mainInspector.Q<PropertyField>("dimensionsFromFilename");
+
+            modeField = mainInspector.Q<PropertyField>("mosaicMode");
+            renderTexture = mainInspector.Q<PropertyField>("renderTexture");
+            image = mainInspector.Q<PropertyField>("image");
+            videoClip = mainInspector.Q<PropertyField>("videoClip");
+
+            // Find the PropertyField in the Inspector XML.
+            modeField = mainInspector.Q<PropertyField>("mosaicMode");
+            modeField.RegisterValueChangeCallback(
+                (evt) =>
                 {
-                    case MosaicMode.Image:
-                        renderTexture.style.display = DisplayStyle.None;
-                        image.style.display = DisplayStyle.Flex;
-                        videoClip.style.display = DisplayStyle.None;
+                    MosaicMode newMode = (MosaicMode)evt.changedProperty.enumValueIndex;
+                    switch (newMode)
+                    {
+                        case MosaicMode.Image:
+                            renderTexture.style.display = DisplayStyle.None;
+                            image.style.display = DisplayStyle.Flex;
+                            videoClip.style.display = DisplayStyle.None;
 
-                        dimensionsFromFilename.SetEnabled(true);
-                        break;
-                    case MosaicMode.RenderTexture:
-                        renderTexture.style.display = DisplayStyle.Flex;
-                        image.style.display = DisplayStyle.None;
-                        videoClip.style.display = DisplayStyle.None;
-                        dimensionsFromFilename.SetEnabled(false);
-                        break;
-                    case MosaicMode.Video:
-                        renderTexture.style.display = DisplayStyle.None;
-                        image.style.display = DisplayStyle.None;
-                        videoClip.style.display = DisplayStyle.Flex;
-                        dimensionsFromFilename.SetEnabled(true);
-                        break;
+                            dimensionsFromFilename.SetEnabled(true);
+                            break;
+                        case MosaicMode.RenderTexture:
+                            renderTexture.style.display = DisplayStyle.Flex;
+                            image.style.display = DisplayStyle.None;
+                            videoClip.style.display = DisplayStyle.None;
+                            dimensionsFromFilename.SetEnabled(false);
+                            break;
+                        case MosaicMode.Video:
+                            renderTexture.style.display = DisplayStyle.None;
+                            image.style.display = DisplayStyle.None;
+                            videoClip.style.display = DisplayStyle.Flex;
+                            dimensionsFromFilename.SetEnabled(true);
+                            break;
+                    }
                 }
-            }
-        );
+            );
 
-        advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
-        advancedSettingsFoldout.value = isAdvancedSettingsVisible;
-        advancedSettingsFoldout.RegisterValueChangedCallback(
-            (evt) =>
-            {
-                isAdvancedSettingsVisible = evt.newValue;
-            }
-        );
+            advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
+            advancedSettingsFoldout.value = isAdvancedSettingsVisible;
+            advancedSettingsFoldout.RegisterValueChangedCallback(
+                (evt) =>
+                {
+                    isAdvancedSettingsVisible = evt.newValue;
+                }
+            );
 
-        // setup UI
+            // setup UI
+            calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
+            indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
+            invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
+            invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
+            useHQViewsField = mainInspector.Q<PropertyField>("useHQViews");
+            setupValueChangeInteractions();
 
-        return mainInspector;
+            IndexMap = mainInspector.Q<Label>("IndexMap");
+            IndexMap.style.unityTextAutoSize = new StyleTextAutoSize(
+                new TextAutoSize(TextAutoSizeMode.BestFit, minSize: 10, maxSize: 100)
+            );
+            updateIndexMapDisplay();
+
+            return mainInspector;
+        }
+
+        private void setupValueChangeInteractions()
+        {
+            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+            calibrationFileField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateShaderFromConfigurationFile();
+                }
+            );
+            indexMapYoyoStartField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                    updateIndexMapDisplay();
+                }
+            );
+            invertIndexMapField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                    updateIndexMapDisplay();
+                }
+            );
+            invertIndexMapIndicesField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                    updateIndexMapDisplay();
+                }
+            );
+            useHQViewsField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                    updateIndexMapDisplay();
+                }
+            );
+        }
+
+        private void updateIndexMapDisplay()
+        {
+            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+            IndexMap.text = camera.indexMapToString();
+        }
     }
 }
 #endif

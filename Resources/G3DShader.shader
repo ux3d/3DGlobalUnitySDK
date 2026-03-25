@@ -33,7 +33,7 @@ Shader "G3D/Autostereo"
         // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
         int  yScreenCoords = int(i.screenPos.y) + v_pos_y;     // transform y position from viewport to screen coordinates
         if (isleft == 0) {
-            yScreenCoords = s_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
+            yScreenCoords = s_height - yScreenCoords;        // invertieren für rechts geneigte Linse
         }
         int  yw = int(yScreenCoords * zwinkel) / nwinkel;        // Winkelberechnung für die Renderberechnung
 

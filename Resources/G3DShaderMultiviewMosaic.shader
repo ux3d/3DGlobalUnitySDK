@@ -10,8 +10,9 @@ Shader "G3D/AutostereoMultiviewMosaic"
     int mosaic_rows = 1; // number of rows in the mosaic
     int mosaic_columns = 1; // number of columns in the mosaic
     
-    Texture2D mosaictexture;
-    SamplerState samplermosaictexture;
+
+    Texture2D _colorMosaic;
+    SamplerState sampler_colorMosaic;
 
     int map(int x, int in_min, int in_max, int out_min, int out_max)
     {
@@ -65,17 +66,17 @@ Shader "G3D/AutostereoMultiviewMosaic"
             // 250 corresponds to a black view
             if(viewIndices.x != 250) {
                 float2 mappedUVCoords = calculateUVForMosaic(viewIndices.x, uvCoords);
-                float4 tmpColorX = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                float4 tmpColorX = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
                 color.x = tmpColorX.x;
             }
             if(viewIndices.y != 250) {
                 float2 mappedUVCoords = calculateUVForMosaic(viewIndices.y, uvCoords);
-                float4 tmpColorY = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                float4 tmpColorY = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
                 color.y = tmpColorY.y;
             }
             if(viewIndices.z != 250) {
                 float2 mappedUVCoords = calculateUVForMosaic(viewIndices.z, uvCoords);
-                float4 tmpColorZ = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                float4 tmpColorZ = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
                 color.z = tmpColorZ.z;
             }
         }
