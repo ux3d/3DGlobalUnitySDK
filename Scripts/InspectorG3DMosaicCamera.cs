@@ -17,6 +17,7 @@ namespace G3D
         private PropertyField indexMapYoyoStartField;
         private PropertyField invertIndexMapField;
         private PropertyField invertIndexMapIndicesField;
+        private PropertyField useHQViewsField;
 
         private PropertyField renderTexture;
         private PropertyField image;
@@ -24,6 +25,8 @@ namespace G3D
 
         private static bool isAdvancedSettingsVisible = false;
         private Foldout advancedSettingsFoldout;
+
+        private Label IndexMap;
 
         public override VisualElement CreateInspectorGUI()
         {
@@ -88,11 +91,18 @@ namespace G3D
             );
 
             // setup UI
-            calibrationFileField = mainInspector.Q<PropertyField>("calibrationFile");
+            calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
             invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
             invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
+            useHQViewsField = mainInspector.Q<PropertyField>("useHQViews");
             setupValueChangeInteractions();
+
+            IndexMap = mainInspector.Q<Label>("IndexMap");
+            IndexMap.style.unityTextAutoSize = new StyleTextAutoSize(
+                new TextAutoSize(TextAutoSizeMode.BestFit, minSize: 10, maxSize: 100)
+            );
+            updateIndexMapDisplay();
 
             return mainInspector;
         }
@@ -103,27 +113,43 @@ namespace G3D
             calibrationFileField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.updateShaderFromCalibrationFile();
+                    camera.updateShaderFromConfigurationFile();
                 }
             );
             indexMapYoyoStartField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
             invertIndexMapField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
             invertIndexMapIndicesField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
+            useHQViewsField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateIndexMap();
+                    updateIndexMapDisplay();
+                }
+            );
+        }
+
+        private void updateIndexMapDisplay()
+        {
+            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+            IndexMap.text = camera.indexMapToString();
         }
     }
 }

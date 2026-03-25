@@ -34,6 +34,8 @@ namespace G3D
         private Foldout advancedSettingsFoldout;
         private VisualElement viewGenerationContainer;
 
+        private Label IndexMap;
+
         public override VisualElement CreateInspectorGUI()
         {
             G3DCamera camera = (G3DCamera)target;
@@ -58,7 +60,7 @@ namespace G3D
                 (evt) =>
                 {
                     G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
-                    if (newMode == G3DCameraMode.DIORAMA)
+                    if (newMode == G3DCameraMode.HEADTRACKING)
                     {
                         calibFolderLabel.style.display = DisplayStyle.Flex;
                         headtrackingScaleField.style.display = DisplayStyle.Flex;
@@ -84,7 +86,10 @@ namespace G3D
                 }
             );
 
-            headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
+            IndexMap = mainInspector.Q<Label>("IndexMap");
+            updateIndexMapDisplay();
+
+            headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingSensitivity");
 
             viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
 
@@ -118,7 +123,7 @@ namespace G3D
             setViewgenerationDisplay((target as G3DCamera).generateViews);
 #endif
 
-            calibrationFileField = mainInspector.Q<PropertyField>("calibrationFile");
+            calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
             invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
             invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
@@ -126,7 +131,7 @@ namespace G3D
 
             toggleCameraFOVButton = mainInspector.Q<Button>("toggleCameraFOV");
             toggleCameraFOVButton.tooltip =
-                "Toggle between natural FOV and the display FOV from the calibration file.";
+                "Toggle between natural FOV and the display FOV from the configuration file.";
             toggleCameraFOVButton.clicked += () =>
             {
                 camera.toggleCameraFOV();
@@ -157,18 +162,21 @@ namespace G3D
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
             invertIndexMapField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
             invertIndexMapIndicesField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
 
@@ -210,6 +218,12 @@ namespace G3D
             {
                 toggleCameraFOVButton.text = "Set FOV to display FOV";
             }
+        }
+
+        private void updateIndexMapDisplay()
+        {
+            G3DCamera camera = (G3DCamera)target;
+            IndexMap.text = camera.indexMapToString();
         }
     }
 }

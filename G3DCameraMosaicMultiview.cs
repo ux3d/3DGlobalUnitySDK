@@ -32,9 +32,8 @@ namespace G3D
     [RequireComponent(typeof(Camera))]
     public class G3DCameraMosaicMultiview : MonoBehaviour
     {
-        #region Calibration
-        [Tooltip("Drop the calibration file for the display you want to use here.")]
-        public TextAsset calibrationFile;
+        [Tooltip("Drop the configuration file for the display you want to use here.")]
+        public TextAsset configurationFile;
 
         [Min(1)]
         public int mosaicRowCount = 3;
@@ -48,7 +47,7 @@ namespace G3D
         public bool dimensionsFromFilename = false;
 
         [Tooltip(
-            "Does not check if the amount of HQ views specified in the calibration file fits the provided mosaic."
+            "Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic."
         )]
         public bool useHQViews = false;
 
@@ -66,8 +65,6 @@ namespace G3D
         public bool invertIndexMapIndices = false;
 
         [Space(10)]
-        #endregion
-
         /// <summary>
         /// Shifts the individual views to the left or right by the specified number of views.
         /// </summary>
@@ -82,12 +79,8 @@ namespace G3D
 
         public VideoClip videoClip;
 
-        #region 3D Effect settings
-        [Header("3D Effect settings")]
         [Tooltip("If set to true, the views will be flipped horizontally.")]
         public bool mirrorViews = false;
-        #endregion
-
 
         #region Private variables
         private IndexMap indexMap = IndexMap.Instance;
@@ -148,10 +141,9 @@ namespace G3D
 #endif
 
             // Do this last to ensure custom passes are already set up
-            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
-                calibrationFile.text
-            );
-            shaderParameters = defaultCalibrationProvider.getShaderParameters();
+            ConfigurationProvider defaultConfigurationProvider =
+                ConfigurationProvider.getFromString(configurationFile.text);
+            shaderParameters = defaultConfigurationProvider.getShaderParameters();
             setupTextureMode();
             reinitializeShader();
 
@@ -212,6 +204,11 @@ namespace G3D
             );
         }
 
+        public string indexMapToString()
+        {
+            return indexMap.currentMapToString();
+        }
+
         public void reinitializeShader()
         {
             material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
@@ -228,31 +225,31 @@ namespace G3D
 #endif
         }
 
-        public void updateShaderFromCalibrationFile(TextAsset calibrationFile)
+        public void updateShaderFromConfigurationFile(TextAsset configurationFile)
         {
-            if (calibrationFile == null || calibrationFile.text == "")
+            if (configurationFile == null || configurationFile.text == "")
             {
                 return;
             }
-            this.calibrationFile = calibrationFile;
-            updateShaderFromCalibrationFile();
+            this.configurationFile = configurationFile;
+            updateShaderFromConfigurationFile();
         }
 
-        public void updateShaderFromCalibrationFile()
+        public void updateShaderFromConfigurationFile()
         {
-            if (calibrationFile == null || calibrationFile.text == "")
+            if (configurationFile == null || configurationFile.text == "")
             {
                 return;
             }
 
-            CalibrationProvider calibrationProvider = CalibrationProvider.getFromString(
-                calibrationFile.text
+            ConfigurationProvider calibrationProvider = ConfigurationProvider.getFromString(
+                configurationFile.text
             );
             shaderParameters = calibrationProvider.getShaderParameters();
         }
 
         /// <summary>
-        /// The provided file uri has to be a display calibration ini file.
+        /// The provided file uri has to be a display configuration ini file.
         /// </summary>
         /// <param name="uri"></param>
         public void UpdateShaderParametersFromURI(string uri)
@@ -264,15 +261,16 @@ namespace G3D
 
             try
             {
-                CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromURI(
-                    uri,
-                    (CalibrationProvider provider) =>
-                    {
-                        shaderParameters = provider.getShaderParameters();
-                        updateShaderParameters();
-                        return 0;
-                    }
-                );
+                ConfigurationProvider defaultConfigurationProvider =
+                    ConfigurationProvider.getFromURI(
+                        uri,
+                        (ConfigurationProvider provider) =>
+                        {
+                            shaderParameters = provider.getShaderParameters();
+                            updateShaderParameters();
+                            return 0;
+                        }
+                    );
             }
             catch (Exception e)
             {
@@ -281,7 +279,7 @@ namespace G3D
         }
 
         /// <summary>
-        /// The provided file path has to be a display calibration ini file.
+        /// The provided file path has to be a display configuration ini file.
         /// </summary>
         /// <param name="filePath"></param>
         public void UpdateShaderParametersFromFile(string filePath)
@@ -293,9 +291,9 @@ namespace G3D
 
             try
             {
-                CalibrationProvider defaultCalibrationProvider =
-                    CalibrationProvider.getFromConfigFile(filePath);
-                shaderParameters = defaultCalibrationProvider.getShaderParameters();
+                ConfigurationProvider defaultConfigurationProvider =
+                    ConfigurationProvider.getFromConfigFile(filePath);
+                shaderParameters = defaultConfigurationProvider.getShaderParameters();
                 updateShaderParameters();
             }
             catch (Exception e)
@@ -305,7 +303,7 @@ namespace G3D
         }
 
         /// <summary>
-        /// The provided string has to be a display calibration ini file.
+        /// The provided string has to be a display configuration ini file.
         /// </summary>
         /// <param name="json"></param>
         public void UpdateShaderParametersFromINIString(string iniFile)
@@ -317,10 +315,9 @@ namespace G3D
 
             try
             {
-                CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
-                    iniFile
-                );
-                shaderParameters = defaultCalibrationProvider.getShaderParameters();
+                ConfigurationProvider defaultConfigurationProvider =
+                    ConfigurationProvider.getFromString(iniFile);
+                shaderParameters = defaultConfigurationProvider.getShaderParameters();
                 updateShaderParameters();
             }
             catch (Exception e)
