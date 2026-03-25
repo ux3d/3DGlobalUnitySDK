@@ -18,8 +18,6 @@ namespace G3D
         private PropertyField invertIndexMapField;
         private PropertyField invertIndexMapIndicesField;
 
-        private PropertyField generateViewsField;
-
         private PropertyField headtrackingScaleField;
 
         private PropertyField viewOffsetField;
@@ -32,7 +30,6 @@ namespace G3D
 
         private static bool isAdvancedSettingsVisible = false;
         private Foldout advancedSettingsFoldout;
-        private VisualElement viewGenerationContainer;
 
         private Label IndexMap;
 
@@ -105,24 +102,6 @@ namespace G3D
 
             DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
 
-            viewGenerationContainer = mainInspector.Q<VisualElement>("viewGenerationContainer");
-            generateViewsField = mainInspector.Q<PropertyField>("generateViews");
-            generateViewsField.RegisterValueChangeCallback(
-                (evt) =>
-                {
-                    bool newMode = evt.changedProperty.boolValue;
-                    setViewgenerationDisplay(newMode);
-                }
-            );
-
-#if G3D_URP
-            // hide in URP
-            viewGenerationContainer.style.display = DisplayStyle.None;
-#elif G3D_HDRP
-            // setup UI
-            setViewgenerationDisplay((target as G3DCamera).generateViews);
-#endif
-
             calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
             invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
@@ -193,18 +172,6 @@ namespace G3D
                     camera.updateFocusDistance();
                 }
             );
-        }
-
-        private void setViewgenerationDisplay(bool enabled)
-        {
-            if (enabled)
-            {
-                viewGenerationContainer.style.display = DisplayStyle.Flex;
-            }
-            else
-            {
-                viewGenerationContainer.style.display = DisplayStyle.None;
-            }
         }
 
         private void setToggleFOVButtonText()
