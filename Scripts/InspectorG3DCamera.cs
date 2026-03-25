@@ -118,7 +118,7 @@ namespace G3D
             setViewgenerationDisplay((target as G3DCamera).generateViews);
 #endif
 
-            calibrationFileField = mainInspector.Q<PropertyField>("calibrationFile");
+            calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
             invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
             invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
@@ -126,7 +126,7 @@ namespace G3D
 
             toggleCameraFOVButton = mainInspector.Q<Button>("toggleCameraFOV");
             toggleCameraFOVButton.tooltip =
-                "Toggle between natural FOV and the display FOV from the calibration file.";
+                "Toggle between natural FOV and the display FOV from the configuration file.";
             toggleCameraFOVButton.clicked += () =>
             {
                 camera.toggleCameraFOV();

@@ -57,7 +57,7 @@ namespace G3D
         public HeadtrackingConnection(
             float basicWorkingDistance,
             float headTrackingScale,
-            string calibrationPathOverwrite,
+            string configurationPathOverwrite,
             G3DCamera g3dCamera,
             bool debugMessages = false,
             Vector3Int headPositionFilter = new Vector3Int(),
@@ -72,9 +72,9 @@ namespace G3D
                 Environment.SpecialFolder.CommonDocuments
             );
             calibrationPath = Path.Combine(calibrationPath, "3D Global", "calibrations");
-            if (!string.IsNullOrEmpty(calibrationPathOverwrite))
+            if (!string.IsNullOrEmpty(configurationPathOverwrite))
             {
-                calibrationPath = calibrationPathOverwrite;
+                calibrationPath = configurationPathOverwrite;
             }
 
             this.debugMessages = debugMessages;

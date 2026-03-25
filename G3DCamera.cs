@@ -22,13 +22,13 @@ namespace G3D
     [DisallowMultipleComponent]
     public class G3DCamera : MonoBehaviour
     {
-        [Tooltip("Drop the calibration file for the display you want to use here.")]
-        public TextAsset calibrationFile;
+        [Tooltip("Drop the configuration file for the display you want to use here.")]
+        public TextAsset configurationFile;
 
         [Tooltip(
-            "This path has to be set to the directory where the folder containing the calibration files for your monitor are located. The folder has to have the same name as your camera model."
+            "This path has to be set to the directory where the folder containing the configuration files for your monitor are located. The folder has to have the same name as your camera model."
         )]
-        public string calibrationPathOverwrite = "";
+        public string configurationPathOverwrite = "";
 
         #region 3D Effect settings
         public G3DCameraMode mode = G3DCameraMode.DIORAMA;
@@ -71,8 +71,7 @@ namespace G3D
 
         /// <summary>
         /// The distance between the camera and the focus plane in meters. Default is 70 cm.
-        /// Is read from calibration file at startup.
-        /// DO NOT SET THIS PARAMETER DIRECTLY. Use the SetFocusDistance function instead.
+        /// Is read from configuration file at startup.
         /// </summary>
         public float focusDistance = 0.7f;
 
@@ -174,7 +173,7 @@ namespace G3D
         private Vector2Int cachedWindowSize;
 
         /// <summary>
-        /// This value is calculated based on the calibration file
+        /// This value is calculated based on the configuration file
         /// </summary>
         private float displayFOV = 16.0f;
 
@@ -246,7 +245,7 @@ namespace G3D
             headtrackingConnection = new HeadtrackingConnection(
                 focusDistance,
                 headTrackingScale,
-                calibrationPathOverwrite,
+                configurationPathOverwrite,
                 this,
                 debugMessages,
                 headPositionFilter,
@@ -260,7 +259,7 @@ namespace G3D
 
             updateScreenViewportProperties();
 
-            loadShaderParametersFromCalibrationFile();
+            loadShaderParametersFromConfigurationFile();
             updateShaderParameters();
 
             updateCameras();
@@ -274,7 +273,7 @@ namespace G3D
             cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
             indexMap.UpdateIndexMap(
-                getCameraCountFromCalibrationFile(),
+                getCameraCountFromConfigurationFile(),
                 internalCameraCount,
                 indexMapYoyoStart,
                 invertIndexMap,
@@ -335,11 +334,11 @@ namespace G3D
 #endif
 
         /// <summary>
-        /// Us this to run setupCameras after calibration or other camera parameters have been changedfrom a script.
+        /// Us this to run setupCameras after configuration or other camera parameters have been changed from a script.
         /// </summary>
         public void Validate()
         {
-            setupCameras(true);
+            setupCameras();
         }
 
         /// <summary>
@@ -349,16 +348,16 @@ namespace G3D
         {
             if (mode == G3DCameraMode.MULTIVIEW)
             {
-                CalibrationProvider calibration = CalibrationProvider.getFromString(
-                    calibrationFile.text
+                ConfigurationProvider configuration = ConfigurationProvider.getFromString(
+                    configurationFile.text
                 );
-                internalCameraCount = getCameraCountFromCalibrationFile(calibration);
+                internalCameraCount = getCameraCountFromConfigurationFile(configuration);
                 if (generateViews)
                 {
                     // TODO DO NOT HARD CODE THIS VALUE!
                     internalCameraCount = 16;
                 }
-                loadMultiviewViewSeparationFromCalibration(calibration);
+                loadMultiviewViewSeparationFromConfiguration(configuration);
             }
             else
             {
@@ -371,7 +370,7 @@ namespace G3D
         public void updateIndexMap()
         {
             indexMap.UpdateIndexMap(
-                getCameraCountFromCalibrationFile(),
+                getCameraCountFromConfigurationFile(),
                 internalCameraCount,
                 indexMapYoyoStart,
                 invertIndexMap,
@@ -379,58 +378,58 @@ namespace G3D
             );
         }
 
-        public void loadShaderParametersFromCalibrationFile()
+        public void loadShaderParametersFromConfigurationFile()
         {
-            if (calibrationFile == null)
+            if (configurationFile == null)
             {
                 Debug.LogError(
-                    "No calibration file set. Please set a calibration file. Using default values."
+                    "No configuration file set. Please set a configuration file. Using default values."
                 );
                 return;
             }
 
             lock (shaderLock)
             {
-                CalibrationProvider calibrationProvider = CalibrationProvider.getFromString(
-                    calibrationFile.text
+                ConfigurationProvider configurationProvider = ConfigurationProvider.getFromString(
+                    configurationFile.text
                 );
-                shaderParameters = calibrationProvider.getShaderParameters();
+                shaderParameters = configurationProvider.getShaderParameters();
             }
         }
 
         /// <summary>
-        /// Updates all camera parameters based on the calibration file (i.e. focus distance, fov, etc.).
+        /// Updates all camera parameters based on the configuration file (i.e. focus distance, fov, etc.).
         /// Includes shader parameters (i.e. lense shear angle, camera count, etc.).
         ///
-        /// Updates calibration file as well.
+        /// Updates configuration file as well.
         /// </summary>
-        public void setupCameras(TextAsset calibrationFile, bool calledFromValidate = false)
+        public void setupCameras(TextAsset configurationFile)
         {
-            this.calibrationFile = calibrationFile;
-            setupCameras(calledFromValidate);
+            this.configurationFile = configurationFile;
+            setupCameras();
         }
 
         /// <summary>
-        /// Sets up all camera parameters based on the calibration file (i.e. focus distance, fov, etc.).
+        /// Sets up all camera parameters based on the configuration file (i.e. focus distance, fov, etc.).
         /// Includes shader parameters (i.e. lense shear angle, camera count, etc.).
         ///
-        /// Does not update calibration file.
+        /// Does not update configuration file.
         /// </summary>
-        public void setupCameras(bool calledFromValidate = false)
+        public void setupCameras()
         {
             if (mainCamera == null)
             {
                 InitMainCamera();
             }
-            if (Application.isPlaying && !calledFromValidate)
+            if (Application.isPlaying)
             {
-                // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
+                // only run this code if not in editor mode
                 initCamerasAndParents();
             }
-            if (calibrationFile == null)
+            if (configurationFile == null)
             {
                 Debug.LogError(
-                    "No calibration file set. Please set a calibration file. Using default values."
+                    "No configuration file set. Please set a configuration file. Using default values."
                 );
                 updateFocusDistance(0.7f);
                 viewSeparation = 0.065f;
@@ -443,15 +442,15 @@ namespace G3D
                 return;
             }
 
-            // load values from calibration file
-            CalibrationProvider calibration = CalibrationProvider.getFromString(
-                calibrationFile.text
+            // load values from configuration file
+            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
+                configurationFile.text
             );
-            int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
-            float PhysicalSizeInch = calibration.getFloat("PhysicalSizeInch");
-            int NativeViewcount = calibration.getInt("NativeViewcount");
-            int HorizontalResolution = calibration.getInt("HorizontalResolution");
-            int VerticalResolution = calibration.getInt("VerticalResolution");
+            int BasicWorkingDistanceMM = configuration.getInt("BasicWorkingDistanceMM");
+            float PhysicalSizeInch = configuration.getFloat("PhysicalSizeInch");
+            int NativeViewcount = configuration.getInt("NativeViewcount");
+            int HorizontalResolution = configuration.getInt("HorizontalResolution");
+            int VerticalResolution = configuration.getInt("VerticalResolution");
 
             // calculate intermediate values
             float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
@@ -471,7 +470,7 @@ namespace G3D
             // calculate eye separation/ view separation
             if (mode == G3DCameraMode.MULTIVIEW)
             {
-                loadMultiviewViewSeparationFromCalibration(calibration);
+                loadMultiviewViewSeparationFromConfiguration(configuration);
                 // TODO DO NOT HARD CODE THIS VALUE!
                 if (generateViews)
                 {
@@ -489,7 +488,7 @@ namespace G3D
 
             updateCameraCountBasedOnMode();
 
-            loadShaderParametersFromCalibrationFile();
+            loadShaderParametersFromConfigurationFile();
         }
 
         public void updateShaderRenderTextures()
@@ -599,13 +598,17 @@ namespace G3D
             }
             else
             {
-                // set to display FOV from calibration file
+                // set to display FOV from configuration file
                 mainCamera.fieldOfView = displayFOV;
             }
         }
 
         public bool isCameraFOVSetToDisplayFOV()
         {
+            if (mainCamera == null)
+            {
+                return false;
+            }
             return Mathf.Abs(mainCamera.fieldOfView - displayFOV) < 0.01f;
         }
 
@@ -619,7 +622,7 @@ namespace G3D
             {
                 focusDistance = newFocusDistance;
             }
-            // only run this code if not in editor mode (this function (setupCameras()) is called from OnValidate as well -> from editor ui)
+            // only run this code if not in editor mode
             if (Application.isPlaying)
             {
                 // update focus plane distance
@@ -649,19 +652,21 @@ namespace G3D
             originalMainClearFlags = mainCamera.clearFlags;
         }
 
-        private void loadMultiviewViewSeparationFromCalibration(CalibrationProvider calibration)
+        private void loadMultiviewViewSeparationFromConfiguration(
+            ConfigurationProvider configuration
+        )
         {
             if (mode != G3DCameraMode.MULTIVIEW)
             {
                 return;
             }
 
-            int BasicWorkingDistanceMM = calibration.getInt("BasicWorkingDistanceMM");
-            int NativeViewcount = calibration.getInt("NativeViewcount");
+            int BasicWorkingDistanceMM = configuration.getInt("BasicWorkingDistanceMM");
+            int NativeViewcount = configuration.getInt("NativeViewcount");
             float ApertureAngle = 14.0f;
             try
             {
-                ApertureAngle = calibration.getFloat("ApertureAngle");
+                ApertureAngle = configuration.getFloat("ApertureAngle");
             }
             catch (Exception e)
             {
@@ -722,45 +727,45 @@ namespace G3D
             }
         }
 
-        private int getCameraCountFromCalibrationFile()
+        private int getCameraCountFromConfigurationFile()
         {
-            if (calibrationFile == null)
+            if (configurationFile == null)
             {
                 Debug.LogError(
-                    "No calibration file set. Please set a calibration file. Using default values."
+                    "No configuration file set. Please set a configuration file. Using default values."
                 );
                 return 2;
             }
 
-            // TODO do not recreate the calibration provider every time
+            // TODO do not recreate the configuration provider every time
             // This gets called every frame in UpdateCameraCountBasedOnMode
-            CalibrationProvider calibration = CalibrationProvider.getFromString(
-                calibrationFile.text
+            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
+                configurationFile.text
             );
-            return getCameraCountFromCalibrationFile(calibration);
+            return getCameraCountFromConfigurationFile(configuration);
         }
 
-        private int getCameraCountFromCalibrationFile(CalibrationProvider calibration)
+        private int getCameraCountFromConfigurationFile(ConfigurationProvider configuration)
         {
-            int NativeViewcount = calibration.getInt("NativeViewcount");
+            int NativeViewcount = configuration.getInt("NativeViewcount");
             return NativeViewcount;
         }
 
-        private Vector2Int getDisplayResolutionFromCalibrationFile()
+        private Vector2Int getDisplayResolutionFromConfigurationFile()
         {
-            if (calibrationFile == null)
+            if (configurationFile == null)
             {
                 Debug.LogError(
-                    "No calibration file set. Please set a calibration file. Using default values."
+                    "No configuration file set. Please set a configuration file. Using default values."
                 );
                 return new Vector2Int(1920, 1080);
             }
 
-            CalibrationProvider calibration = CalibrationProvider.getFromString(
-                calibrationFile.text
+            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
+                configurationFile.text
             );
-            int HorizontalResolution = calibration.getInt("HorizontalResolution");
-            int VerticalResolution = calibration.getInt("VerticalResolution");
+            int HorizontalResolution = configuration.getInt("HorizontalResolution");
+            int VerticalResolution = configuration.getInt("VerticalResolution");
             return new Vector2Int(HorizontalResolution, VerticalResolution);
         }
 
@@ -860,7 +865,7 @@ namespace G3D
 
         private void updateScreenViewportProperties()
         {
-            Vector2Int displayResolution = getDisplayResolutionFromCalibrationFile();
+            Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
             if (mode == G3DCameraMode.MULTIVIEW)
             {
                 shaderParameters.screenWidth = displayResolution.x;
@@ -1074,7 +1079,7 @@ namespace G3D
                     internalCameraCount = 16;
                 }
                 {
-                    internalCameraCount = getCameraCountFromCalibrationFile();
+                    internalCameraCount = getCameraCountFromConfigurationFile();
                 }
                 if (internalCameraCount > MAX_CAMERAS)
                 {

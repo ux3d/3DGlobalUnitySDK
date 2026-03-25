@@ -9,11 +9,11 @@ using UnityEngine.Networking;
 
 namespace G3D
 {
-    public class CalibrationProvider
+    public class ConfigurationProvider
     {
         private IniData iniData;
 
-        private CalibrationProvider() { }
+        private ConfigurationProvider() { }
 
         /// <summary>
         ///
@@ -21,12 +21,12 @@ namespace G3D
         /// <param name="uri"></param>
         /// <param name="callback">int return parameter can be ignored</param>
         /// <returns></returns>
-        public static CalibrationProvider getFromURI(
+        public static ConfigurationProvider getFromURI(
             string uri,
-            Func<CalibrationProvider, int> callback
+            Func<ConfigurationProvider, int> callback
         )
         {
-            CalibrationProvider provider = new CalibrationProvider();
+            ConfigurationProvider provider = new ConfigurationProvider();
             if (uri == null || uri.Length == 0)
             {
                 return provider;
@@ -43,10 +43,10 @@ namespace G3D
                     return;
                 }
 
-                string calibrationData = webRequest.downloadHandler.text;
+                string configurationData = webRequest.downloadHandler.text;
 
                 IniDataParser parser = new IniDataParser();
-                provider.iniData = parser.Parse(calibrationData);
+                provider.iniData = parser.Parse(configurationData);
 
                 callback(provider);
             };
@@ -54,27 +54,27 @@ namespace G3D
             return provider;
         }
 
-        public static CalibrationProvider getFromConfigFile(string calibrationFile)
+        public static ConfigurationProvider getFromConfigFile(string configurationFile)
         {
-            CalibrationProvider provider = new CalibrationProvider();
-            if (calibrationFile == null || !File.Exists(calibrationFile))
+            ConfigurationProvider provider = new ConfigurationProvider();
+            if (configurationFile == null || !File.Exists(configurationFile))
             {
                 return provider;
             }
             FileIniDataParser parser = new FileIniDataParser();
-            provider.iniData = parser.ReadFile(calibrationFile);
+            provider.iniData = parser.ReadFile(configurationFile);
             return provider;
         }
 
-        public static CalibrationProvider getFromString(string calibrationData)
+        public static ConfigurationProvider getFromString(string configurationData)
         {
-            CalibrationProvider provider = new CalibrationProvider();
-            if (calibrationData == null || calibrationData.Length == 0)
+            ConfigurationProvider provider = new ConfigurationProvider();
+            if (configurationData == null || configurationData.Length == 0)
             {
                 return provider;
             }
             IniDataParser parser = new IniDataParser();
-            provider.iniData = parser.Parse(calibrationData);
+            provider.iniData = parser.Parse(configurationData);
             return provider;
         }
 

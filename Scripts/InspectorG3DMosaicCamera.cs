@@ -88,7 +88,7 @@ namespace G3D
             );
 
             // setup UI
-            calibrationFileField = mainInspector.Q<PropertyField>("calibrationFile");
+            calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
             invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
             invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
@@ -103,7 +103,7 @@ namespace G3D
             calibrationFileField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.updateShaderFromCalibrationFile();
+                    camera.updateShaderFromConfigurationFile();
                 }
             );
             indexMapYoyoStartField.RegisterValueChangeCallback(
