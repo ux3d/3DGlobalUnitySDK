@@ -180,8 +180,6 @@ namespace G3D
 
         private bool showTestFrame = false;
 
-        private float originalMainFOV;
-
         private float scaledViewSeparation
         {
             get { return viewSeparation * viewOffsetScale; }
@@ -594,15 +592,21 @@ namespace G3D
 
         public void toggleCameraFOV()
         {
-            if (Mathf.Abs(mainCamera.fieldOfView - displayFOV) < 0.01f)
+            if (isCameraFOVSetToDisplayFOV())
             {
-                mainCamera.fieldOfView = originalMainFOV;
+                // set to natural FOV
+                mainCamera.fieldOfView = 60;
             }
             else
             {
-                originalMainFOV = mainCamera.fieldOfView;
+                // set to display FOV from calibration file
                 mainCamera.fieldOfView = displayFOV;
             }
+        }
+
+        public bool isCameraFOVSetToDisplayFOV()
+        {
+            return Mathf.Abs(mainCamera.fieldOfView - displayFOV) < 0.01f;
         }
 
         /// <summary>

@@ -125,10 +125,14 @@ namespace G3D
             setupValueChangeInteractions();
 
             toggleCameraFOVButton = mainInspector.Q<Button>("toggleCameraFOV");
+            toggleCameraFOVButton.tooltip =
+                "Toggle between natural FOV and the display FOV from the calibration file.";
             toggleCameraFOVButton.clicked += () =>
             {
                 camera.toggleCameraFOV();
+                setToggleFOVButtonText();
             };
+            setToggleFOVButtonText();
 
             return mainInspector;
         }
@@ -192,6 +196,19 @@ namespace G3D
             else
             {
                 viewGenerationContainer.style.display = DisplayStyle.None;
+            }
+        }
+
+        private void setToggleFOVButtonText()
+        {
+            G3DCamera camera = (G3DCamera)target;
+            if (camera.isCameraFOVSetToDisplayFOV())
+            {
+                toggleCameraFOVButton.text = "Set FOV to natural FOV";
+            }
+            else
+            {
+                toggleCameraFOVButton.text = "Set FOV to display FOV";
             }
         }
     }
