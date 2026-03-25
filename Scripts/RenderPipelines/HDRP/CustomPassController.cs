@@ -64,6 +64,7 @@ namespace G3D.RenderPipeline.HDRP
 
             g3dCamera = GetComponent<G3DCamera>();
             mainCamera = GetComponent<Camera>();
+            generateViews = g3dCamera.generateViews;
 
             antialiasingMode = mainCamera.GetComponent<HDAdditionalCameraData>().antialiasing;
             initCustomPass();
@@ -111,7 +112,7 @@ namespace G3D.RenderPipeline.HDRP
                 recreatedRenderTextures = true;
             }
 
-            if (recreatedRenderTextures)
+            if (recreatedRenderTextures && generateViews)
             {
                 recreateRenderTextures();
             }

@@ -19,12 +19,6 @@ namespace G3D
         MULTIVIEW
     }
 
-    public enum G3DPlacementMode
-    {
-        FOVBased,
-        VirtualWindow
-    }
-
     /// <summary>
     /// This struct is used to store the shader parameter handles for the individual shader parameters.
     /// Its members should always be updated when the G3DShaderParameters struct changes.
@@ -92,28 +86,6 @@ namespace G3D
             bre = Shader.PropertyToID("bre");
             zCorrectionValue = Shader.PropertyToID("tvx");
             zCompensationValue = Shader.PropertyToID("zkom");
-        }
-    }
-
-    public struct PreviousValues
-    {
-        public TextAsset calibrationFile;
-        public G3DCameraMode mode;
-        public float sceneScaleFactor;
-
-        public float indexMapYoyoStart;
-        public bool invertIndexMap;
-        public bool invertIndexMapIndices;
-
-        public void init()
-        {
-            calibrationFile = null;
-            mode = G3DCameraMode.DIORAMA;
-            sceneScaleFactor = 1.0f;
-
-            indexMapYoyoStart = 0.0f;
-            invertIndexMap = false;
-            invertIndexMapIndices = false;
         }
     }
 }

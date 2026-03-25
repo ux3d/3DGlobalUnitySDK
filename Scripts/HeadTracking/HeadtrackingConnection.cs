@@ -10,19 +10,15 @@ namespace G3D
             ITNewShaderParametersCallback,
             ITNewErrorMessageCallback
     {
-        [Tooltip("Time it takes till the reset animation starts in seconds.")]
         public float headLostTimeoutInSec = 3.0f;
 
-        [Tooltip("Reset animation duratuion in seconds.")]
         public float transitionDuration = 0.5f;
 
         public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
         public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
-        public float focusDistance = 1.0f;
+        public float basicWorkingDistance = 1.0f;
         public float headTrackingScale = 1.0f;
-        public float sceneScaleFactor = 1.0f;
-
         private bool debugMessages;
 
         private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
@@ -53,16 +49,14 @@ namespace G3D
         private HeadPosition filteredHeadPosition;
 
         private static object headPosLock = new object();
-        private static object shaderLock = new object();
 
         private Queue<string> headPositionLog;
 
         private G3DCamera g3dCamera;
 
         public HeadtrackingConnection(
-            float focusDistance,
+            float basicWorkingDistance,
             float headTrackingScale,
-            float sceneScaleFactor,
             string calibrationPathOverwrite,
             G3DCamera g3dCamera,
             bool debugMessages = false,
@@ -70,10 +64,9 @@ namespace G3D
             LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE
         )
         {
-            lastHeadPosition = new Vector3(0, 0, -focusDistance);
-            this.focusDistance = focusDistance;
+            lastHeadPosition = new Vector3(0, 0, -basicWorkingDistance);
+            this.basicWorkingDistance = basicWorkingDistance;
             this.headTrackingScale = headTrackingScale;
-            this.sceneScaleFactor = sceneScaleFactor;
 
             calibrationPath = System.Environment.GetFolderPath(
                 Environment.SpecialFolder.CommonDocuments
@@ -189,10 +182,14 @@ namespace G3D
             ref Vector3 targetPosition,
             ref float targetViewSeparation,
             float viewSeparation,
-            float focusDistance
+            float currentFocusDistance
         )
         {
             HeadPosition headPos = getHeadPosition();
+            headPos.worldPosZ = convertWorldPosZToTrackedPosition(
+                (float)headPos.worldPosZ,
+                currentFocusDistance
+            );
             // get new state
             HeadTrackingState newState = getNewTrackingState(prevHeadTrackingState, ref headPos);
 
@@ -201,7 +198,7 @@ namespace G3D
             // handle lost state
             if (newState == HeadTrackingState.LOST)
             {
-                targetPosition = new Vector3(0, 0, -focusDistance);
+                targetPosition = new Vector3(0, 0, -currentFocusDistance);
                 targetViewSeparation = 0.0f;
             }
             // handle tracking state
@@ -242,13 +239,13 @@ namespace G3D
             {
                 // init with values for transition to lost
                 Vector3 originPosition = lastHeadPosition;
-                Vector3 transitionTargetPosition = new Vector3(0, 0, -focusDistance);
+                Vector3 transitionTargetPosition = new Vector3(0, 0, -currentFocusDistance);
                 float transitionViewSeparation = 0.0f;
                 float originSeparation = viewSeparation;
 
                 if (newState == HeadTrackingState.TRANSITIONTOTRACKING)
                 {
-                    originPosition = new Vector3(0, 0, -focusDistance);
+                    originPosition = new Vector3(0, 0, -basicWorkingDistance);
                     transitionViewSeparation = viewSeparation;
                     originSeparation = 0.0f;
 
@@ -258,6 +255,10 @@ namespace G3D
                             (float)headPos.worldPosX,
                             (float)headPos.worldPosY,
                             (float)headPos.worldPosZ
+                        );
+                        headPositionWorld.z = convertWorldPosZToTrackedPosition(
+                            headPositionWorld.z,
+                            currentFocusDistance
                         );
                         transitionTargetPosition = headPositionWorld;
                     }
@@ -349,7 +350,7 @@ namespace G3D
                 imagePosY = 0,
                 worldPosX = 0.0,
                 worldPosY = 0.0,
-                worldPosZ = -focusDistance
+                worldPosZ = -basicWorkingDistance
             };
             filteredHeadPosition = new HeadPosition
             {
@@ -359,7 +360,7 @@ namespace G3D
                 imagePosY = 0,
                 worldPosX = 0.0,
                 worldPosY = 0.0,
-                worldPosZ = -focusDistance
+                worldPosZ = -basicWorkingDistance
             };
 
             if (usePositionFiltering())
@@ -447,6 +448,11 @@ namespace G3D
             }
         }
 
+        public void setBasicWorkingDistance(float distance)
+        {
+            basicWorkingDistance = distance;
+        }
+
         /// <summary>
         /// returns true if transition end is reached
         ///
@@ -493,6 +499,20 @@ namespace G3D
             {
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Converts the input position (in real world head space) to a position relative to the input focus distance.
+        /// </summary>
+        /// <param name="worldPosZ"></param>
+        /// <param name="focusDistance"></param>
+        /// <returns></returns>
+        private float convertWorldPosZToTrackedPosition(float worldPosZ, float focusDistance)
+        {
+            // convert from mm to m and apply scale factor
+            float zOffset = basicWorkingDistance + worldPosZ; // worldposZ is negative when in front of the camera, so we add it to the basic working distance
+            float convertedZ = focusDistance - zOffset;
+            return -convertedZ; // invert to be in right coordinate system for camera position
         }
 
         private HeadTrackingState getNewTrackingState(
@@ -610,14 +630,13 @@ namespace G3D
                     (float)-worldPosZ / millimeterToMeter
                 );
 
-                int scaleFactorInt = (int)sceneScaleFactor * (int)headTrackingScale;
-                float scaleFactor = sceneScaleFactor * headTrackingScale;
+                int scaleFactorInt = (int)headTrackingScale;
 
                 headPosition.imagePosX = imagePosX / (int)millimeterToMeter * scaleFactorInt;
                 headPosition.imagePosY = imagePosY / (int)millimeterToMeter * scaleFactorInt;
-                headPosition.worldPosX = headPos.x * scaleFactor;
-                headPosition.worldPosY = headPos.y * scaleFactor;
-                headPosition.worldPosZ = headPos.z * sceneScaleFactor;
+                headPosition.worldPosX = headPos.x * headTrackingScale;
+                headPosition.worldPosY = headPos.y * headTrackingScale;
+                headPosition.worldPosZ = headPos.z * headTrackingScale;
 
                 if (usePositionFiltering())
                 {
@@ -639,11 +658,11 @@ namespace G3D
                             );
 
                             filteredHeadPosition.worldPosX =
-                                -filteredPositionX / millimeterToMeter * scaleFactor;
+                                -filteredPositionX / millimeterToMeter * headTrackingScale;
                             filteredHeadPosition.worldPosY =
-                                filteredPositionY / millimeterToMeter * scaleFactor;
+                                filteredPositionY / millimeterToMeter * headTrackingScale;
                             filteredHeadPosition.worldPosZ =
-                                -filteredPositionZ / millimeterToMeter * sceneScaleFactor;
+                                -filteredPositionZ / millimeterToMeter * headTrackingScale;
                         }
                         catch (Exception e)
                         {
