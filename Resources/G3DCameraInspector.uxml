@@ -20,6 +20,9 @@
         <uie:PropertyField name="indexMapYoyoStart" binding-path="indexMapYoyoStart" />
         <uie:PropertyField name="invertIndexMap" binding-path="invertIndexMap" />
         <uie:PropertyField name="invertIndexMapIndices" binding-path="invertIndexMapIndices" />
+        <ui:Foldout text="Index Map" enabled="true" value="false" name="IndexMapDisplay">
+            <ui:Label text="" name="IndexMap" />
+        </ui:Foldout>
         <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
         <uie:PropertyField name="generateViews" binding-path="generateViews" />
         <ui:VisualElement name="viewGenerationContainer" style="flex-grow: 1; margin-bottom: 15px;">

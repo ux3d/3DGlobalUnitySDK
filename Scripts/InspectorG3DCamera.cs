@@ -34,6 +34,8 @@ namespace G3D
         private Foldout advancedSettingsFoldout;
         private VisualElement viewGenerationContainer;
 
+        private Label IndexMap;
+
         public override VisualElement CreateInspectorGUI()
         {
             G3DCamera camera = (G3DCamera)target;
@@ -83,6 +85,9 @@ namespace G3D
                     isAdvancedSettingsVisible = evt.newValue;
                 }
             );
+
+            IndexMap = mainInspector.Q<Label>("IndexMap");
+            updateIndexMapDisplay();
 
             headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingSensitivity");
 
@@ -157,18 +162,21 @@ namespace G3D
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
             invertIndexMapField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
             invertIndexMapIndicesField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateIndexMap();
+                    updateIndexMapDisplay();
                 }
             );
 
@@ -210,6 +218,12 @@ namespace G3D
             {
                 toggleCameraFOVButton.text = "Set FOV to display FOV";
             }
+        }
+
+        private void updateIndexMapDisplay()
+        {
+            G3DCamera camera = (G3DCamera)target;
+            IndexMap.text = camera.indexMapToString();
         }
     }
 }

@@ -372,6 +372,11 @@ namespace G3D
             );
         }
 
+        public string indexMapToString()
+        {
+            return indexMap.currentMapToString();
+        }
+
         public void loadShaderParametersFromConfigurationFile()
         {
             if (configurationFile == null)

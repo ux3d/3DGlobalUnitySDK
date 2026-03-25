@@ -204,6 +204,11 @@ namespace G3D
             );
         }
 
+        public string indexMapToString()
+        {
+            return indexMap.currentMapToString();
+        }
+
         public void reinitializeShader()
         {
             material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));

@@ -17,6 +17,9 @@
         <uie:PropertyField name="indexMapYoyoStart" binding-path="indexMapYoyoStart" />
         <uie:PropertyField name="invertIndexMap" binding-path="invertIndexMap" />
         <uie:PropertyField name="invertIndexMapIndices" binding-path="invertIndexMapIndices" />
+        <ui:Foldout text="Index Map" enabled="true" value="false" name="IndexMapDisplay">
+            <ui:Label text="" name="IndexMap" />
+        </ui:Foldout>
     </ui:Foldout>
     <ui:Label text="See readme for details." style="margin-top: 10px; -unity-font-style: bold;" />
 </ui:UXML>
