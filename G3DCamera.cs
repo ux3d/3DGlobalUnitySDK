@@ -625,7 +625,11 @@ namespace G3D
                 }
                 if (cameraParent != null)
                 {
-                    cameraParent.transform.localPosition = new Vector3(0, 0, -focusDistance);
+                    cameraParent.transform.localPosition = new Vector3(
+                        0,
+                        0,
+                        -focusDistWithDollyZoom
+                    );
                 }
             }
         }
@@ -966,7 +970,7 @@ namespace G3D
 
         private void updateCameras()
         {
-            Vector3 targetPosition = new Vector3(0, 0, -focusDistance); // position for the camera center (base position from which all other cameras are offset)
+            Vector3 targetPosition = new Vector3(0, 0, -focusDistWithDollyZoom); // position for the camera center (base position from which all other cameras are offset)
             float targetViewSeparation = 0.0f;
 
             // calculate the camera center position and eye separation if head tracking and the diorama effect are enabled
@@ -976,7 +980,7 @@ namespace G3D
                     ref targetPosition,
                     ref targetViewSeparation,
                     scaledViewSeparation,
-                    focusDistance
+                    focusDistWithDollyZoom
                 );
             }
             else if (mode == G3DCameraMode.MULTIVIEW)
@@ -998,15 +1002,12 @@ namespace G3D
                 -currentFocusDistance
             );
 
-            // virtual window mode
-            float dollyZoomOffset = currentFocusDistance - currentFocusDistance * dollyZoom;
-            float focusDistanceWithDollyZoom = currentFocusDistance - dollyZoomOffset;
-
             //calculate camera positions and matrices
             for (int i = 0; i < internalCameraCount; i++)
             {
                 var camera = cameras[i];
                 copyCameraSettings(mainCamera, camera, cameraParent.transform.localRotation);
+                camera.fieldOfView = calcNewFOV(currentFocusDistance);
 
                 float localCameraOffset = calculateCameraOffset(
                     i,
@@ -1018,10 +1019,9 @@ namespace G3D
                 camera.projectionMatrix = calculateCameraProjectionMatrix(
                     localCameraOffset + horizontalOffset,
                     verticalOffset,
-                    focusDistanceWithDollyZoom,
+                    focusDistWithDollyZoom,
                     camera.projectionMatrix
                 );
-                ;
 
                 camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
 
@@ -1376,10 +1376,15 @@ namespace G3D
 
         private float calcNewFOV()
         {
+            return calcNewFOV(focusDistWithDollyZoom);
+        }
+
+        private float calcNewFOV(float actualFocusDistance)
+        {
             float halfFOVRad = mainCamera.fieldOfView * Mathf.Deg2Rad / 2;
             float a = Mathf.Tan(halfFOVRad) * focusDistance;
 
-            float newHalfFOVRad = Mathf.Atan(a / focusDistWithDollyZoom);
+            float newHalfFOVRad = Mathf.Atan(a / actualFocusDistance);
             return newHalfFOVRad * Mathf.Rad2Deg * 2;
         }
 

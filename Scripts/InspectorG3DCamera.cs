@@ -24,6 +24,7 @@ namespace G3D
 
         private PropertyField viewOffsetField;
         private PropertyField focusDistanceField;
+        private PropertyField dollyZoomField;
         private Button toggleCameraFOVButton;
 
         private Label calibFolderLabel;
@@ -88,15 +89,14 @@ namespace G3D
             viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
 
             focusDistanceField = mainInspector.Q<PropertyField>("focusDistance");
+            dollyZoomField = mainInspector.Q<PropertyField>("dollyZoom");
 
             string calibrationPath = System.Environment.GetFolderPath(
                 Environment.SpecialFolder.CommonDocuments
             );
             calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
             calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
-            calibFolderLabel.text =
-                "The headtracking library will search for display calibrations in this folder:\n"
-                + calibrationPath;
+            calibFolderLabel.text = "It will search in:\n" + calibrationPath;
 
             DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
 
@@ -169,6 +169,13 @@ namespace G3D
             );
 
             focusDistanceField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateFocusDistance();
+                }
+            );
+
+            dollyZoomField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateFocusDistance();
