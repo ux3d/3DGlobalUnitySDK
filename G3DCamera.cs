@@ -954,14 +954,10 @@ namespace G3D
                 }
                 else
                 {
-                    if (invertViewsInDiorama)
-                    {
-                        material.SetInt(Shader.PropertyToID("invertViews"), 1);
-                    }
-                    else
-                    {
-                        material.SetInt(Shader.PropertyToID("invertViews"), 0);
-                    }
+                    material.SetInt(
+                        Shader.PropertyToID("invertViews"),
+                        invertViewsInDiorama ? 1 : 0
+                    );
                 }
                 material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
                 material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
