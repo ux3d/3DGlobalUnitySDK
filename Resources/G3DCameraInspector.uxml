@@ -1,7 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
     <uie:PropertyField name="configurationFile" binding-path="configurationFile" />
-    <ui:Label text="In diorama mode this might not be the configuration file actually used during play as diorama mode chooses its configuration file from the folder shown in the text below based on the connected display." name="DioramaCalibFileInfo" style="-unity-font-style: italic; font-size: 12px; margin-left: 15px; white-space: normal;" />
-    <ui:Label text="The head tracking library will search for " name="DioramaCalibrationFolder" style="-unity-font-style: bold-and-italic; -unity-text-align: upper-center; white-space: normal; margin-bottom: 8px;" />
+    <ui:Label text="In headtracking mode this might not be the configuration file actually used during play as headtracking mode chooses its configuration file from the folder shown in the text below based on the connected display." name="HeadtrackingCalibFileInfo" style="-unity-font-style: italic; font-size: 12px; margin-left: 15px; white-space: normal;" />
+    <ui:Label text="The head tracking library will search for " name="HeadtrackingCalibrationFolder" style="-unity-font-style: bold-and-italic; -unity-text-align: upper-center; white-space: normal; margin-bottom: 8px;" />
     <uie:PropertyField binding-path="mode" name="mode" style="margin-top: 20px;" />
     <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
     <ui:Label text="Camera settings" name="CameraPlacement" style="margin-top: 10px; -unity-font-style: bold;" />
@@ -14,7 +14,7 @@
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings" style="margin-top: 10px;">
         <uie:PropertyField binding-path="viewOffset" name="viewOffset" />
         <uie:PropertyField name="mirrorViews" binding-path="mirrorViews" />
-        <uie:PropertyField name="invertViewsInDiorama" binding-path="invertViewsInDiorama" />
+        <uie:PropertyField name="invertViewsInHeadtracking" binding-path="invertViewsInHeadtracking" />
         <uie:PropertyField name="headTrackingSensitivity" binding-path="headTrackingSensitivity" style="margin-top: 10px;" />
         <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
         <uie:PropertyField name="indexMapYoyoStart" binding-path="indexMapYoyoStart" />

@@ -26,7 +26,7 @@ namespace G3D
         private Button toggleCameraFOVButton;
 
         private Label calibFolderLabel;
-        private Label DioramaCalibFileInfo;
+        private Label HeadtrackingCalibFileInfo;
 
         private static bool isAdvancedSettingsVisible = false;
         private Foldout advancedSettingsFoldout;
@@ -61,14 +61,14 @@ namespace G3D
                     {
                         calibFolderLabel.style.display = DisplayStyle.Flex;
                         headtrackingScaleField.style.display = DisplayStyle.Flex;
-                        DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
+                        HeadtrackingCalibFileInfo.style.display = DisplayStyle.Flex;
                         viewOffsetField.style.display = DisplayStyle.None;
                     }
                     else
                     {
                         calibFolderLabel.style.display = DisplayStyle.None;
                         headtrackingScaleField.style.display = DisplayStyle.None;
-                        DioramaCalibFileInfo.style.display = DisplayStyle.None;
+                        HeadtrackingCalibFileInfo.style.display = DisplayStyle.None;
                         viewOffsetField.style.display = DisplayStyle.Flex;
                     }
                 }
@@ -97,10 +97,10 @@ namespace G3D
                 Environment.SpecialFolder.CommonDocuments
             );
             calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
-            calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
+            calibFolderLabel = mainInspector.Q<Label>("HeadtrackingCalibrationFolder");
             calibFolderLabel.text = "It will search in:\n" + calibrationPath;
 
-            DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
+            HeadtrackingCalibFileInfo = mainInspector.Q<Label>("HeadtrackingCalibFileInfo");
 
             calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");

@@ -101,7 +101,7 @@ namespace G3D
         [Range(0.005f, 1.0f)]
         public float gizmoSize = 0.2f;
 
-        public bool invertViewsInDiorama = false;
+        public bool invertViewsInHeadtracking = false;
 
         [Tooltip(
             "Where the views start to yoyo in the index map. Index map contains the order of views."
@@ -122,7 +122,7 @@ namespace G3D
         #region Private variables
         private IndexMap indexMap = IndexMap.Instance;
 
-        // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
+        // distance between the two cameras for headtracking mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
         private float viewSeparation = 0.065f;
 
         private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
@@ -760,7 +760,7 @@ namespace G3D
 
             mainCamInactiveLastFrame = false;
 
-            // update the shader parameters (only in diorama mode)
+            // update the shader parameters (only in headtracking mode)
             if (mode == G3DCameraMode.HEADTRACKING)
             {
                 headtrackingConnection.calculateShaderParameters();
@@ -894,7 +894,7 @@ namespace G3D
                 {
                     material.SetInt(
                         Shader.PropertyToID("invertViews"),
-                        invertViewsInDiorama ? 1 : 0
+                        invertViewsInHeadtracking ? 1 : 0
                     );
                 }
                 material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
@@ -907,7 +907,7 @@ namespace G3D
             Vector3 targetPosition = new Vector3(0, 0, -focusDistWithDollyZoom); // position for the camera center (base position from which all other cameras are offset)
             float targetViewSeparation = 0.0f;
 
-            // calculate the camera center position and eye separation if head tracking and the diorama effect are enabled
+            // calculate the camera center position and eye separation if head tracking and the headtracking effect are enabled
             if (mode == G3DCameraMode.HEADTRACKING)
             {
                 headtrackingConnection.handleHeadTrackingState(
@@ -971,7 +971,7 @@ namespace G3D
         }
 
         /// <summary>
-        /// Sets the camera count to two if we are in diorama mode. Sets it to the maximum amount of views the display is capable of if we are in multiview mode.
+        /// Sets the camera count to two if we are in headtracking mode. Sets it to the maximum amount of views the display is capable of if we are in multiview mode.
         /// </summary>
         /// <returns>true if camera count was changed.</returns>
         private bool updateCameraCountBasedOnMode()
