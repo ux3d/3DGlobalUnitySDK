@@ -104,10 +104,10 @@ namespace G3D
         public bool invertViewsInHeadtracking = false;
 
         [Tooltip(
-            "Where the views start to yoyo in the index map. Index map contains the order of views."
+            "Where the views start to yoyo in the index map in percent. Index map contains the order of views."
         )]
-        [Range(0.0f, 1.0f)]
-        public float indexMapYoyoStart = 0.0f;
+        [Range(0, 100)]
+        public int indexMapYoyoStart = 0;
 
         [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
         public bool invertIndexMap = false;
@@ -253,7 +253,7 @@ namespace G3D
             indexMap.UpdateIndexMap(
                 getCameraCountFromConfigurationFile(),
                 internalCameraCount,
-                indexMapYoyoStart,
+                indexMapYoyoStart / 100.0f,
                 invertIndexMap,
                 invertIndexMapIndices
             );
@@ -345,7 +345,7 @@ namespace G3D
             indexMap.UpdateIndexMap(
                 getCameraCountFromConfigurationFile(),
                 internalCameraCount,
-                indexMapYoyoStart,
+                indexMapYoyoStart / 100.0f,
                 invertIndexMap,
                 invertIndexMapIndices
             );
@@ -540,27 +540,10 @@ namespace G3D
             }
         }
 
-        public void toggleCameraFOV()
+        public void setCameraFOVToDisplayFOV()
         {
-            if (isCameraFOVSetToDisplayFOV())
-            {
-                // set to natural FOV
-                mainCamera.fieldOfView = 60;
-            }
-            else
-            {
-                // set to display FOV from configuration file
-                mainCamera.fieldOfView = displayFOV;
-            }
-        }
-
-        public bool isCameraFOVSetToDisplayFOV()
-        {
-            if (mainCamera == null)
-            {
-                return false;
-            }
-            return Mathf.Abs(mainCamera.fieldOfView - displayFOV) < 0.01f;
+            // set to display FOV from configuration file
+            mainCamera.fieldOfView = displayFOV;
         }
 
         /// <summary>
