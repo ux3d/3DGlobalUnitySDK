@@ -26,7 +26,7 @@ namespace G3D
         private Button toggleCameraFOVButton;
 
         private Label calibFolderLabel;
-        private Label DioramaCalibFileInfo;
+        private Label HeadtrackingCalibFileInfo;
 
         private static bool isAdvancedSettingsVisible = false;
         private Foldout advancedSettingsFoldout;
@@ -61,14 +61,14 @@ namespace G3D
                     {
                         calibFolderLabel.style.display = DisplayStyle.Flex;
                         headtrackingScaleField.style.display = DisplayStyle.Flex;
-                        DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
+                        HeadtrackingCalibFileInfo.style.display = DisplayStyle.Flex;
                         viewOffsetField.style.display = DisplayStyle.None;
                     }
                     else
                     {
                         calibFolderLabel.style.display = DisplayStyle.None;
                         headtrackingScaleField.style.display = DisplayStyle.None;
-                        DioramaCalibFileInfo.style.display = DisplayStyle.None;
+                        HeadtrackingCalibFileInfo.style.display = DisplayStyle.None;
                         viewOffsetField.style.display = DisplayStyle.Flex;
                     }
                 }
@@ -84,7 +84,7 @@ namespace G3D
             );
 
             IndexMap = mainInspector.Q<Label>("IndexMap");
-            updateIndexMapDisplay();
+            updateIndexMap();
 
             headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingSensitivity");
 
@@ -97,10 +97,10 @@ namespace G3D
                 Environment.SpecialFolder.CommonDocuments
             );
             calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
-            calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
-            calibFolderLabel.text = "It will search in:\n" + calibrationPath;
+            calibFolderLabel = mainInspector.Q<Label>("HeadtrackingCalibrationFolder");
+            calibFolderLabel.text = calibrationPath;
 
-            DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
+            HeadtrackingCalibFileInfo = mainInspector.Q<Label>("HeadtrackingCalibFileInfo");
 
             calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
@@ -110,13 +110,11 @@ namespace G3D
 
             toggleCameraFOVButton = mainInspector.Q<Button>("toggleCameraFOV");
             toggleCameraFOVButton.tooltip =
-                "Toggle between natural FOV and the display FOV from the configuration file.";
+                "Set the camera FOV to the natural field of view the display actually covers in your field of vision if you sit at the recommended distance.";
             toggleCameraFOVButton.clicked += () =>
             {
-                camera.toggleCameraFOV();
-                setToggleFOVButtonText();
+                camera.setCameraFOVToDisplayFOV();
             };
-            setToggleFOVButtonText();
 
             return mainInspector;
         }
@@ -128,34 +126,33 @@ namespace G3D
                 (evt) =>
                 {
                     camera.setupCameras();
+                    updateIndexMap();
                 }
             );
             modeField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateMode();
+                    updateIndexMap();
                 }
             );
 
             indexMapYoyoStartField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.updateIndexMap();
-                    updateIndexMapDisplay();
+                    updateIndexMap();
                 }
             );
             invertIndexMapField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.updateIndexMap();
-                    updateIndexMapDisplay();
+                    updateIndexMap();
                 }
             );
             invertIndexMapIndicesField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.updateIndexMap();
-                    updateIndexMapDisplay();
+                    updateIndexMap();
                 }
             );
 
@@ -174,22 +171,10 @@ namespace G3D
             );
         }
 
-        private void setToggleFOVButtonText()
+        private void updateIndexMap()
         {
             G3DCamera camera = (G3DCamera)target;
-            if (camera.isCameraFOVSetToDisplayFOV())
-            {
-                toggleCameraFOVButton.text = "Set FOV to natural FOV";
-            }
-            else
-            {
-                toggleCameraFOVButton.text = "Set FOV to display FOV";
-            }
-        }
-
-        private void updateIndexMapDisplay()
-        {
-            G3DCamera camera = (G3DCamera)target;
+            camera.updateIndexMap();
             IndexMap.text = camera.indexMapToString();
         }
     }
