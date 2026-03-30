@@ -99,8 +99,8 @@ namespace G3D
         public bool showGizmos = true;
 
         [Tooltip("Scales the gizmos. Affectd by scene scale factor.")]
-        [Range(0.005f, 1.0f)]
-        public float gizmoSize = 0.2f;
+        [Range(0.005f, 5.0f)]
+        public float gizmoSize = 1.0f;
 
         public bool invertViewsInHeadtracking = false;
 
