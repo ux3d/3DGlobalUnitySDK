@@ -53,7 +53,7 @@ namespace G3D
         [Tooltip(
             "Scale the view offset up or down. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance. This can be used to adjust the view offset down for very large scenes."
         )]
-        [Range(0.0f, 5.0f)]
+        [Range(0.0f, 20.0f)]
         public float viewOffsetScale = 1.0f; // scale the view offset to the focus distance. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
 
         /// <summary>
