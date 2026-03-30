@@ -8,7 +8,8 @@
     <uie:PropertyField binding-path="focusDistance" name="focusDistance" />
     <uie:PropertyField binding-path="viewOffsetScale" name="viewOffsetScale" />
     <uie:PropertyField name="dollyZoom" binding-path="dollyZoom" />
-    <ui:Button text="Set FOV to display FOV" name="toggleCameraFOV"/>
+    <ui:Button text="Use display native Field of View" name="setCameraFOV"/>
+    <ui:Button text="Use display native Focus Distance" name="setFocusDistance"/>
     <ui:Label text="Performance" name="Performance" style="margin-top: 20px; -unity-font-style: bold;" />
     <uie:PropertyField name="renderResolutionScale" binding-path="renderResolutionScale" />
     <ui:Foldout text="Advanced" enabled="true" value="false" name="AdvancedSettings" style="margin-top: 10px;">

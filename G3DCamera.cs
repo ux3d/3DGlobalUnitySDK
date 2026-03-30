@@ -60,6 +60,7 @@ namespace G3D
         /// The distance between the camera and the focus plane in meters. Default is 70 cm.
         /// Is read from configuration file at startup.
         /// </summary>
+        [Min(0.0f)]
         public float focusDistance = 0.7f;
 
         /// <summary>
@@ -546,8 +547,27 @@ namespace G3D
             mainCamera.fieldOfView = displayFOV;
         }
 
+        public void setFocusDistanceToDisplay()
+        {
+            if (configurationFile == null)
+            {
+                Debug.LogError(
+                    "No configuration file set. Please set a configuration file. Using default values."
+                );
+                updateFocusDistance(0.7f);
+                return;
+            }
+
+            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
+                configurationFile.text
+            );
+            int BasicWorkingDistanceMM = configuration.getInt("BasicWorkingDistanceMM");
+            float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
+            updateFocusDistance(BasicWorkingDistanceMeter);
+        }
+
         /// <summary>
-        /// if no value or NAN is passed he focus distance will not be updated, but the focus plane object position will updated
+        /// if no value or NAN is passed the focus distance will not be updated, but the focus plane object position will be updated
         /// </summary>
         /// <param name="newFocusDistance"></param>
         public void updateFocusDistance(float newFocusDistance = float.NaN)
