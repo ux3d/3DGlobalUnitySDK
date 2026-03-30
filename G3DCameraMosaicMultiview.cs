@@ -36,19 +36,32 @@ namespace G3D
         public TextAsset configurationFile;
 
         [Min(1)]
+        /// <summary>
+        /// The number of rows in the mosaic.
+        /// </summary>
         public int mosaicRowCount = 3;
 
         [Min(1)]
+        /// <summary>
+        /// The number of columns in the mosaic.
+        /// </summary>
         public int mosaicColumnCount = 3;
 
         [Tooltip(
             "If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3\nONLY WORKS FOR IMAGE AND VIDEO MODES"
         )]
+        /// <summary>
+        /// If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3
+        /// ONLY WORKS FOR IMAGE AND VIDEO MODES
+        /// </summary>
         public bool dimensionsFromFilename = false;
 
         [Tooltip(
-            "Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic."
+            "Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic."
         )]
+        /// <summary>
+        /// Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic.
+        /// </summary>
         public bool useHQViews = false;
 
         [Space(10)]
@@ -56,17 +69,29 @@ namespace G3D
             "Where the views start to yoyo in the index map. Index map contains the order of views."
         )]
         [Range(0.0f, 1.0f)]
+        /// <summary>
+        /// Where the views start to yoyo in the index map in percent. Index map contains the order of views.
+        /// [0, 1, 2, 3, 4, 5, 6, 7] with yoyo start at 50% would become [6, 5, 4, 3, 4, 5, 6]
+        /// </summary>
         public float indexMapYoyoStart = 0.0f;
 
         [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+        /// <summary>
+        /// Inverts the entire index map. Index map contains the order of views.
+        /// [0, 1, 2, 3, 4, 5, 6, 7] would become [7, 6, 5, 4, 3, 2, 1, 0]
+        /// </summary>
         public bool invertIndexMap = false;
 
         [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+        /// <summary>
+        /// Inverts the individual indices in the index map. Index map contains the order of views.
+        /// [6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]
+        /// </summary>
         public bool invertIndexMapIndices = false;
 
-        [Space(10)]
         /// <summary>
         /// Shifts the individual views to the left or right by the specified number of views.
+        /// This does not shift the cameras. This shifts the views you see on the display.
         /// </summary>
         [Tooltip(
             "Shifts the individual views to the left or right by the specified number of views."
@@ -74,6 +99,11 @@ namespace G3D
         public int viewOffset = 0;
 
         public MosaicMode mosaicMode = MosaicMode.RenderTexture;
+
+        /// <summary>
+        /// Render Texture used for rendertexture mosaic mode.
+        /// In video mode this gets overwritten by this script with the provided image/ video texture.
+        /// </summary>
         public RenderTexture renderTexture;
         public Texture2D image;
 
@@ -225,6 +255,10 @@ namespace G3D
 #endif
         }
 
+        /// <summary>
+        /// Updates the shader parameters based on the provided configuration file.
+        /// </summary>
+        /// <param name="configurationFile"></param>
         public void updateShaderFromConfigurationFile(TextAsset configurationFile)
         {
             if (configurationFile == null || configurationFile.text == "")
@@ -235,6 +269,9 @@ namespace G3D
             updateShaderFromConfigurationFile();
         }
 
+        /// <summary>
+        /// Updates the shader parameters based on the configuration file already set.
+        /// </summary>
         public void updateShaderFromConfigurationFile()
         {
             if (configurationFile == null || configurationFile.text == "")

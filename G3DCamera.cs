@@ -28,9 +28,16 @@ namespace G3D
         [Tooltip(
             "This path has to be set to the directory where the folder containing the configuration files for your monitor are located. The folder has to have the same name as your camera model."
         )]
+        /// <summary>
+        /// This path has to be set to the directory where the folder containing the configuration files for your monitor are located. The folder has to have the same name as your camera model.
+        /// </summary>
         public string configurationPathOverwrite = "";
 
         public G3DCameraMode mode = G3DCameraMode.MULTIVIEW;
+
+        /// <summary>
+        /// prefix added to the cameras created by this script.
+        /// </summary>
         public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
         [Tooltip(
@@ -39,9 +46,14 @@ namespace G3D
         public bool mirrorViews = false;
 
         [Tooltip(
-            "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4. Adapt Render Resolution To Views takes precedence."
+            "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4."
         )]
         [Range(1, 100)]
+        /// <summary>
+        /// "Set a percentage value to render only that percentage of the width and height per view.
+        /// E.g. a reduction of 50% will reduce the rendered size by a factor of 4.
+
+        /// </summary>
         public int renderResolutionScale = 100;
 
         [Tooltip(
@@ -54,17 +66,25 @@ namespace G3D
             "Scale the view offset up or down. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance. This can be used to adjust the view offset down for very large scenes."
         )]
         [Range(0.0f, 20.0f)]
-        public float viewOffsetScale = 1.0f; // scale the view offset to the focus distance. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
+        /// <summary>
+        /// Scale the distance between the individual views (cameras). The base value is calculated from the configuration file.
+        /// 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
+        /// </summary>
+        public float viewOffsetScale = 1.0f;
 
         /// <summary>
         /// The distance between the camera and the focus plane in meters. Default is 70 cm.
         /// Is read from configuration file at startup.
         /// </summary>
+        [Tooltip(
+            "The distance between the camera and the focus plane in meters. Default is 70 cm. Is read from configuration file at startup."
+        )]
         [Min(0.0f)]
         public float focusDistance = 0.7f;
 
         /// <summary>
         /// Shifts the individual views to the left or right by the specified number of views.
+        /// This does not shift the cameras. This shifts the views you see on the display.
         /// </summary>
         [Tooltip(
             "Shifts the individual views to the left or right by the specified number of views."
@@ -75,23 +95,28 @@ namespace G3D
             "Scales the strength of the head tracking effect. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance."
         )]
         [Min(0.0f)]
+        /// <summary>
+        /// Scale the head tracking effect. Dont set this lower than 0.0f.
+        /// </summary>
         public float headTrackingSensitivity = 1.0f; // scale the head tracking effect
         #region Advanced settings
-        [Tooltip(
-            "Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
-        )]
+        /// <summary>
+        /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
+        /// </summary>
         public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
+
+        /// <summary>
+        /// How latency correction is handled by the headtracking library.
+        /// </summary>
         public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
         [Tooltip(
             "If set to true, the head tracking library will print debug messages to the console."
         )]
+        /// <summary>
+        /// If set to true, the head tracking library will print debug messages to the console.
+        /// </summary>
         public bool debugMessages = false;
-
-        [Tooltip(
-            "If set to true, shows the individual views as a mosaic instead of the autostereo effect."
-        )]
-        public bool debugRendering;
 
         [Tooltip(
             "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
@@ -108,12 +133,24 @@ namespace G3D
             "Where the views start to yoyo in the index map in percent. Index map contains the order of views."
         )]
         [Range(0, 100)]
+        /// <summary>
+        /// Where the views start to yoyo in the index map in percent. Index map contains the order of views.
+        /// [0, 1, 2, 3, 4, 5, 6, 7] with yoyo start at 50% would become [6, 5, 4, 3, 4, 5, 6]
+        /// </summary>
         public int indexMapYoyoStart = 0;
 
         [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+        /// <summary>
+        /// Inverts the entire index map. Index map contains the order of views.
+        /// [0, 1, 2, 3, 4, 5, 6, 7] would become [7, 6, 5, 4, 3, 2, 1, 0]
+        /// </summary>
         public bool invertIndexMap = false;
 
         [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+        /// <summary>
+        /// Inverts the individual indices in the index map. Index map contains the order of views.
+        /// [6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]
+        /// </summary>
         public bool invertIndexMapIndices = false;
 
         public HeadtrackingConnection headtrackingConnection;
@@ -242,7 +279,7 @@ namespace G3D
             updateShaderParameters();
 
             updateCameras();
-            updateShaderRenderTextures();
+            updateRenderTextures();
 
             // This has to be done after the cameras are updated
             cachedWindowPosition = new Vector2Int(
@@ -313,14 +350,6 @@ namespace G3D
 #endif
 
         /// <summary>
-        /// Us this to run setupCameras after configuration or other camera parameters have been changed from a script.
-        /// </summary>
-        public void Validate()
-        {
-            setupCameras();
-        }
-
-        /// <summary>
         /// Call this function after the mode has been changed (e.g. multiview to headtracking)
         /// </summary>
         public void updateMode()
@@ -357,6 +386,9 @@ namespace G3D
             return indexMap.currentMapToString();
         }
 
+        /// <summary>
+        /// Load shader parameters from current configuration file.
+        /// </summary>
         public void loadShaderParametersFromConfigurationFile()
         {
             if (configurationFile == null)
@@ -462,7 +494,7 @@ namespace G3D
             loadShaderParametersFromConfigurationFile();
         }
 
-        public void updateShaderRenderTextures()
+        public void updateRenderTextures()
         {
             if (material == null)
                 return;
@@ -493,6 +525,10 @@ namespace G3D
             headtrackingConnection.logCameraPositionsToFile();
         }
 
+        /// <summary>
+        /// Shifts views to the left. This does not shift the cameras. This shifts the views you see on the display.
+        /// Only works in headtracking mode, in multiview use viewOffset.
+        /// </summary>
         public void shiftViewToLeft()
         {
             if (mode == G3DCameraMode.MULTIVIEW)
@@ -502,6 +538,10 @@ namespace G3D
             headtrackingConnection.shiftViewToLeft();
         }
 
+        /// <summary>
+        /// Shifts views to the right. This does not shift the cameras. This shifts the views you see on the display.
+        /// Only works in headtracking mode, in multiview use viewOffset.
+        /// </summary>
         public void shiftViewToRight()
         {
             if (mode == G3DCameraMode.MULTIVIEW)
@@ -541,12 +581,19 @@ namespace G3D
             }
         }
 
+        /// <summary>
+        /// Set the cameras FOV to the fov calculated from the configuration file.
+        /// Sets the filed of view to the natural field of view the display actually covers in your field of vision if you sit at the recommended distance.
+        /// </summary>
         public void setCameraFOVToDisplayFOV()
         {
             // set to display FOV from configuration file
             mainCamera.fieldOfView = displayFOV;
         }
 
+        /// <summary>
+        /// Set the focus distance to the native focus distance of the dispaly. Native focus distance is the distance the viewer has to be from the display for the 3d effect to look best.
+        /// </summary>
         public void setFocusDistanceToDisplay()
         {
             if (configurationFile == null)
@@ -567,7 +614,7 @@ namespace G3D
         }
 
         /// <summary>
-        /// if no value or NAN is passed the focus distance will not be updated, but the focus plane object position will be updated
+        /// If no value or NAN is passed the focus distance will not be updated, but the focus plane object position will be updated
         /// </summary>
         /// <param name="newFocusDistance"></param>
         public void updateFocusDistance(float newFocusDistance = float.NaN)
@@ -791,7 +838,7 @@ namespace G3D
 
             if (recreatedRenderTextures)
             {
-                updateShaderRenderTextures();
+                updateRenderTextures();
             }
         }
 
