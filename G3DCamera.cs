@@ -45,9 +45,7 @@ namespace G3D
         )]
         public bool mirrorViews = false;
 
-#if G3D_URP
-        private bool generateViews = false;
-#elif G3D_HDRP
+#if G3D_HDRP
         [Tooltip(
             "Only actually renders three views. The rest are generated. IF turned on anti ali"
         )]
@@ -540,6 +538,7 @@ namespace G3D
 
             colorRenderTextures = new RenderTexture[internalCameraCount];
 
+#if G3D_HDRP
             if (generateViews)
             {
                 addRenderTextureToCamera(colorRenderTextures, 0, 0, "_leftCamTex"); // left camera
@@ -559,11 +558,14 @@ namespace G3D
             else
             {
                 //set only those we need
-                for (int i = 0; i < internalCameraCount; i++)
-                {
-                    addRenderTextureToCamera(colorRenderTextures, i, i);
-                }
+#endif
+            for (int i = 0; i < internalCameraCount; i++)
+            {
+                addRenderTextureToCamera(colorRenderTextures, i, i);
             }
+#if G3D_HDRP
+            }
+#endif
         }
 
         public void logCameraPositionsToFile()
@@ -820,14 +822,18 @@ namespace G3D
         {
             if (mode == G3DCameraMode.MULTIVIEW)
             {
+#if G3D_HDRP
                 if (generateViews)
                 {
                     material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
                 }
                 else
                 {
-                    material = new Material(Shader.Find("G3D/AutostereoMultiview"));
+#endif
+                material = new Material(Shader.Find("G3D/AutostereoMultiview"));
+#if G3D_HDRP
                 }
+#endif
             }
             else
             {
@@ -1077,6 +1083,7 @@ namespace G3D
 
                 camera.transform.localPosition = new Vector3(localCameraOffset, 0, 0);
 
+#if G3D_HDRP
                 // if generate views only enable the leftmost, middle, and rightmost camera
                 if (generateViews)
                 {
@@ -1091,9 +1098,12 @@ namespace G3D
                 }
                 else
                 {
-                    // enable all cameras
-                    camera.gameObject.SetActive(true);
+#endif
+                // enable all cameras
+                camera.gameObject.SetActive(true);
+#if G3D_HDRP
                 }
+#endif
             }
 
             //disable all the other cameras, we are not using
@@ -1116,6 +1126,7 @@ namespace G3D
             }
             else if (mode == G3DCameraMode.MULTIVIEW)
             {
+#if G3D_HDRP
                 if (generateViews)
                 {
                     // TODO DO NOT HARD CODE THIS VALUE!
@@ -1123,8 +1134,11 @@ namespace G3D
                 }
                 else
                 {
-                    internalCameraCount = getCameraCountFromConfigurationFile();
+#endif
+                internalCameraCount = getCameraCountFromConfigurationFile();
+#if G3D_HDRP
                 }
+#endif
                 if (internalCameraCount > MAX_CAMERAS)
                 {
                     internalCameraCount = MAX_CAMERAS;
@@ -1194,19 +1208,12 @@ namespace G3D
                 Helpers.copyToCameraTarget(sourceURPData, destinationURPData);
             }
 
-            if (generateViews == false)
-            {
-                destination.GetUniversalAdditionalCameraData().antialiasing = antialiasingMode;
-            }
-            else
-            {
-                // antialiasing is performed in the render pass.
-                destination.GetUniversalAdditionalCameraData().antialiasing = UnityEngine
-                    .Rendering
-                    .Universal
-                    .AntialiasingMode
-                    .None;
-            }
+            // antialiasing is performed in the render pass.
+            destination.GetUniversalAdditionalCameraData().antialiasing = UnityEngine
+                .Rendering
+                .Universal
+                .AntialiasingMode
+                .None;
 #endif
         }
 
@@ -1241,7 +1248,7 @@ namespace G3D
                 renderTextures[renderTextureIndex],
                 RenderTextureSubElement.Color
             );
-
+#if G3D_HDRP
             if (generateViews)
             {
                 viewGenerationMaterial.SetTexture(
@@ -1250,6 +1257,7 @@ namespace G3D
                     RenderTextureSubElement.Color
                 );
             }
+#endif
         }
 
         private bool windowResized()
