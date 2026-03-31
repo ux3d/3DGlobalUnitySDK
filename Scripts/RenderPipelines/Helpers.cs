@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+#if G3D_URP
 using UnityEngine.Rendering.Universal;
+#endif
 #if G3D_HDRP
 using UnityEngine.Rendering.HighDefinition;
 #endif
