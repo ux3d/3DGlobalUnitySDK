@@ -13,7 +13,7 @@ namespace G3D
         public VisualTreeAsset inspectorXML;
 
         private PropertyField modeField;
-        private PropertyField calibrationFileField;
+        private PropertyField configurationFileField;
         private PropertyField indexMapYoyoStartField;
         private PropertyField invertIndexMapField;
         private PropertyField invertIndexMapIndicesField;
@@ -25,10 +25,10 @@ namespace G3D
         private PropertyField viewOffsetField;
         private PropertyField focusDistanceField;
         private PropertyField dollyZoomField;
-        private Button toggleCameraFOVButton;
+        private Button setCameraFOVButton;
 
         private Label calibFolderLabel;
-        private Label DioramaCalibFileInfo;
+        private Label HeadtrackingCalibFileInfo;
 
         private static bool isAdvancedSettingsVisible = false;
         private Foldout advancedSettingsFoldout;
@@ -36,16 +36,17 @@ namespace G3D
 
         private Label IndexMap;
 
+        /// <summary>
+        /// This is used to hack the Unity Inspector.
+        /// Unity triggers a change event when the Inspector is first displayed, but it doesn't provide the new value in that event, so we have to store the last config file to detect when it actually changes.
+        /// </summary>
+        private TextAsset lastConfigFile;
+
         public override VisualElement CreateInspectorGUI()
         {
             G3DCamera camera = (G3DCamera)target;
-
             // Create a new VisualElement to be the root of our Inspector UI.
             VisualElement mainInspector = new VisualElement();
-
-            // Add a simple label.
-            mainInspector.Add(new Label("This is a custom Inspector"));
-
             // Load the UXML file.
             inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
                 "Packages/com.3dglobal.core/Resources/G3DCameraInspector.uxml"
@@ -56,38 +57,12 @@ namespace G3D
 
             // Find the PropertyField in the Inspector XML.
             modeField = mainInspector.Q<PropertyField>("mode");
-            modeField.RegisterValueChangeCallback(
-                (evt) =>
-                {
-                    G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
-                    if (newMode == G3DCameraMode.HEADTRACKING)
-                    {
-                        calibFolderLabel.style.display = DisplayStyle.Flex;
-                        headtrackingScaleField.style.display = DisplayStyle.Flex;
-                        DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
-                        viewOffsetField.style.display = DisplayStyle.None;
-                    }
-                    else
-                    {
-                        calibFolderLabel.style.display = DisplayStyle.None;
-                        headtrackingScaleField.style.display = DisplayStyle.None;
-                        DioramaCalibFileInfo.style.display = DisplayStyle.None;
-                        viewOffsetField.style.display = DisplayStyle.Flex;
-                    }
-                }
-            );
 
             advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
             advancedSettingsFoldout.value = isAdvancedSettingsVisible;
-            advancedSettingsFoldout.RegisterValueChangedCallback(
-                (evt) =>
-                {
-                    isAdvancedSettingsVisible = evt.newValue;
-                }
-            );
 
             IndexMap = mainInspector.Q<Label>("IndexMap");
-            updateIndexMapDisplay();
+            updateIndexMap();
 
             headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingSensitivity");
 
@@ -100,11 +75,6 @@ namespace G3D
                 Environment.SpecialFolder.CommonDocuments
             );
             calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
-            calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
-            calibFolderLabel.text = "It will search in:\n" + calibrationPath;
-
-            DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
-
             viewGenerationContainer = mainInspector.Q<VisualElement>("viewGenerationContainer");
             generateViewsField = mainInspector.Q<PropertyField>("generateViews");
             generateViewsField.RegisterValueChangeCallback(
@@ -114,6 +84,8 @@ namespace G3D
                     setViewgenerationDisplay(newMode);
                 }
             );
+            calibFolderLabel = mainInspector.Q<Label>("HeadtrackingCalibrationFolder");
+            calibFolderLabel.text = calibrationPath;
 
 #if G3D_URP
             // hide in URP
@@ -122,61 +94,109 @@ namespace G3D
             // setup UI
             setViewgenerationDisplay((target as G3DCamera).generateViews);
 #endif
+            HeadtrackingCalibFileInfo = mainInspector.Q<Label>("HeadtrackingCalibFileInfo");
 
-            calibrationFileField = mainInspector.Q<PropertyField>("configurationFile");
+            configurationFileField = mainInspector.Q<PropertyField>("configurationFile");
+            lastConfigFile = camera.configurationFile != null ? camera.configurationFile : null; // store the initial config file to detect changes later
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
             invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
             invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
             setupValueChangeInteractions();
 
-            toggleCameraFOVButton = mainInspector.Q<Button>("toggleCameraFOV");
-            toggleCameraFOVButton.tooltip =
-                "Toggle between natural FOV and the display FOV from the configuration file.";
-            toggleCameraFOVButton.clicked += () =>
+            setCameraFOVButton = mainInspector.Q<Button>("setCameraFOV");
+            setCameraFOVButton.tooltip =
+                "Set the camera FOV to the natural field of view the display actually covers in your field of vision if you sit at the recommended distance.";
+            setCameraFOVButton.clicked += () =>
             {
-                camera.toggleCameraFOV();
-                setToggleFOVButtonText();
+                camera.setCameraFOVToDisplayFOV();
             };
-            setToggleFOVButtonText();
+
+            Button setFocusDistanceButton = mainInspector.Q<Button>("setFocusDistance");
+            setFocusDistanceButton.tooltip =
+                "Set the focus distance to the native focus distance of the dispaly. Native focus distance is the distance the viewer has to be from the display for the 3d effect to look best.";
+            setFocusDistanceButton.clicked += () =>
+            {
+                camera.setFocusDistanceToDisplay();
+            };
 
             return mainInspector;
         }
 
-        private void setupValueChangeInteractions()
+        void Update()
         {
             G3DCamera camera = (G3DCamera)target;
-            calibrationFileField.RegisterValueChangeCallback(
+            Debug.Log("Updating camera inspector, current mode: " + camera.mode);
+        }
+
+        private void setupValueChangeInteractions()
+        {
+            modeField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.setupCameras();
+                    G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
+                    if (newMode == G3DCameraMode.HEADTRACKING)
+                    {
+                        calibFolderLabel.style.display = DisplayStyle.Flex;
+                        headtrackingScaleField.style.display = DisplayStyle.Flex;
+                        HeadtrackingCalibFileInfo.style.display = DisplayStyle.Flex;
+                        viewOffsetField.style.display = DisplayStyle.None;
+                    }
+                    else
+                    {
+                        calibFolderLabel.style.display = DisplayStyle.None;
+                        headtrackingScaleField.style.display = DisplayStyle.None;
+                        HeadtrackingCalibFileInfo.style.display = DisplayStyle.None;
+                        viewOffsetField.style.display = DisplayStyle.Flex;
+                    }
+                }
+            );
+
+            advancedSettingsFoldout.RegisterValueChangedCallback(
+                (evt) =>
+                {
+                    isAdvancedSettingsVisible = evt.newValue;
+                }
+            );
+
+            G3DCamera camera = (G3DCamera)target;
+            configurationFileField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    if (camera.configurationFile != lastConfigFile)
+                    {
+                        lastConfigFile = camera.configurationFile;
+                        camera.setupCameras();
+                        updateIndexMap();
+
+                        // force update the scene view to dorce gizmo update
+                        SceneView.RepaintAll();
+                    }
                 }
             );
             modeField.RegisterValueChangeCallback(
                 (evt) =>
                 {
                     camera.updateMode();
+                    updateIndexMap();
                 }
             );
 
             indexMapYoyoStartField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.updateIndexMap();
-                    updateIndexMapDisplay();
+                    updateIndexMap();
                 }
             );
             invertIndexMapField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.updateIndexMap();
-                    updateIndexMapDisplay();
+                    updateIndexMap();
                 }
             );
             invertIndexMapIndicesField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    camera.updateIndexMap();
-                    updateIndexMapDisplay();
+                    updateIndexMap();
                 }
             );
 
@@ -206,23 +226,10 @@ namespace G3D
                 viewGenerationContainer.style.display = DisplayStyle.None;
             }
         }
-
-        private void setToggleFOVButtonText()
+        private void updateIndexMap()
         {
             G3DCamera camera = (G3DCamera)target;
-            if (camera.isCameraFOVSetToDisplayFOV())
-            {
-                toggleCameraFOVButton.text = "Set FOV to natural FOV";
-            }
-            else
-            {
-                toggleCameraFOVButton.text = "Set FOV to display FOV";
-            }
-        }
-
-        private void updateIndexMapDisplay()
-        {
-            G3DCamera camera = (G3DCamera)target;
+            camera.updateIndexMap();
             IndexMap.text = camera.indexMapToString();
         }
     }

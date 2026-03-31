@@ -18,9 +18,9 @@ The created autostereo cameras all shift their FOV such that they overlap on the
 
 This plugin creates helper gizmos in the scene view to visualize the focus plane and the camera positions. The size of the gizmos can be adjusted in the script parameters. The spheres next to the main camera represent the base position of the autostereo cameras. The blue plane represents the focus plane. The blue view frustums represents the FOV of the autostereo cameras.
 
-When using diorama mode the autostereo cameras follow the same movement pattern relative to the focus plane, as the head performs infront of the display. In addition the FOV of the cameras is adjusted such that they always overlap on the focus plane.
+When using headtracking mode the autostereo cameras follow the same movement pattern relative to the focus plane, as the head performs infront of the display. In addition the FOV of the cameras is adjusted such that they always overlap on the focus plane.
 
-Example for shifted FOV in diorama mode:
+Example for shifted FOV in headtracking mode:
 | | |
 | -------------------------------------------- | -------------------------------------------- |
 | ![Annotations](./documentation/diorama2.png) | ![Annotations](./documentation/diorama3.png) |
@@ -36,7 +36,7 @@ Example for shifted FOV in diorama mode:
 
 | Name                    | Description                                                                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Mode                    | Switch between Diorama and Multiview modes.                                                                                          |
+| Mode                    | Switch between headtracking and Multiview modes.                                                                                     |
 | Calibration file        | The configuration file used to calibrate multiview mode.                                                                             |
 | Scene scale factor      | Scales display configuration to fit larger scenes.                                                                                   |
 | Dolly zoom              | Mimics a dolly zoom effect.                                                                                                          |
@@ -48,7 +48,7 @@ Example for shifted FOV in diorama mode:
 
 ### Calibration file
 
-This takes an ini file (the same ini files as can be found in the displays configuration folder) that contains the configuration data for the display. This is only needed in multiview mode. In diorama mode the configuration files are read from the default configuration folder of 3D Global. You can still provide a configuration file in diorama mode. It will only be used for drawing the helper gizmos in the scene view. During play it will not be used (in diorama mode).
+This takes an ini file (the same ini files as can be found in the displays configuration folder) that contains the configuration data for the display. This is only needed in multiview mode. In headtracking mode the configuration files are read from the default configuration folder of 3D Global. You can still provide a configuration file in headtracking mode. It will only be used for drawing the helper gizmos in the scene view. During play it will not be used (in headtracking mode).
 
 Unfortunatly for now unity does not support "\*.ini" files as TextAsset. Therefore you have to rename the file extension to "\*.txt" to be able to use it in Unity.
 
@@ -65,7 +65,7 @@ Mimics a dolly zoom effect by scaling the camera position and field of view. Thi
 | Name                | Description                                                                   |
 | ------------------- | ----------------------------------------------------------------------------- |
 | Mirror views        | Mirrors the individual views horizontally (e.g. needed for Holobox displays). |
-| Head tracking scale | Scales the strength of head tracking. (Only shown in diorama mode.)           |
+| Head tracking scale | Scales the strength of head tracking. (Only shown in headtracking mode.)      |
 | Show gizmos         | Render helper gizmos in scene.                                                |
 | Gizmo size          | Size of the gizmos.                                                           |
 
@@ -77,11 +77,11 @@ This value can be used to increase performance by reducing the resolution of the
 
 ## Modes explained
 
-### Diorama mode
+### Headtracking mode
 
 This mode uses a head tracking camera integrated into a 3d Global display to adjust the view based on the viewer's head position. It only works properly if the display has a head tracking camera.
 
-#### Diorama Calibration files
+#### Headtracking Calibration files
 
 It requires the displays configuration files to be copied to "C:\Users\Public\Documents\3D Global\calibrations" (Windows). Each individual physical display has its own configuration files. These can be found on the display. The configuration for one display is contained in a folder named after the used head tracking camera (e.g "HimaxD2XX#DK0HLRO3"). Inside this folder are two files (one ini file and one image file). Copy this entire folder to the configuration folder mentioned earlier.
 
@@ -120,4 +120,4 @@ Reimporting this package also updates the "Scripting define symbols" automatical
 
 If you have more than one render pipeline installed this plugin cant know which one is the active one and might not work correctly. Removing the unused render pipeline package resolves this issue. Currently the plugin only checks the installed render pipeline after installation. So if you switch the render pipeline you have to remove the plugin and reimport it.
 
-Switching mode during playback (multiview to diorama and vice versa) is currently not supported. You have to stop the playback and start it again to switch between modes.
+Switching mode during playback (multiview to headtracking and vice versa) is currently not supported. You have to stop the playback and start it again to switch between modes.

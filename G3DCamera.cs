@@ -28,21 +28,22 @@ namespace G3D
         [Tooltip(
             "This path has to be set to the directory where the folder containing the configuration files for your monitor are located. The folder has to have the same name as your camera model."
         )]
+        /// <summary>
+        /// This path has to be set to the directory where the folder containing the configuration files for your monitor are located. The folder has to have the same name as your camera model.
+        /// </summary>
         public string configurationPathOverwrite = "";
 
         public G3DCameraMode mode = G3DCameraMode.MULTIVIEW;
+
+        /// <summary>
+        /// prefix added to the cameras created by this script.
+        /// </summary>
         public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
         [Tooltip(
             "If set to true, the views will be flipped horizontally. This is necessary for holoboxes."
         )]
         public bool mirrorViews = false;
-
-        [Tooltip(
-            "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4. Adapt Render Resolution To Views takes precedence."
-        )]
-        [Range(1, 100)]
-        public int renderResolutionScale = 100;
 
 #if G3D_URP
         private bool generateViews = false;
@@ -54,6 +55,16 @@ namespace G3D
 #endif
 
         [Tooltip(
+            "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4."
+        )]
+        [Range(1, 100)]
+        /// <summary>
+        /// "Set a percentage value to render only that percentage of the width and height per view.
+        /// E.g. a reduction of 50% will reduce the rendered size by a factor of 4.
+        /// </summary>
+        public int renderResolutionScale = 100;
+
+        [Tooltip(
             "Set the dolly zoom effekt. 1 correponds to no dolly zoom. 0 is all the way zoomed in to the focus plane. 3 is all the way zoomed out."
         )]
         [Range(0.001f, 3)]
@@ -62,17 +73,26 @@ namespace G3D
         [Tooltip(
             "Scale the view offset up or down. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance. This can be used to adjust the view offset down for very large scenes."
         )]
-        [Range(0.0f, 5.0f)]
-        public float viewOffsetScale = 1.0f; // scale the view offset to the focus distance. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
+        [Range(0.0f, 20.0f)]
+        /// <summary>
+        /// Scale the distance between the individual views (cameras). The base value is calculated from the configuration file.
+        /// 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
+        /// </summary>
+        public float viewOffsetScale = 1.0f;
 
         /// <summary>
         /// The distance between the camera and the focus plane in meters. Default is 70 cm.
         /// Is read from configuration file at startup.
         /// </summary>
+        [Tooltip(
+            "The distance between the camera and the focus plane in meters. Default is 70 cm. Is read from configuration file at startup."
+        )]
+        [Min(0.0f)]
         public float focusDistance = 0.7f;
 
         /// <summary>
         /// Shifts the individual views to the left or right by the specified number of views.
+        /// This does not shift the cameras. This shifts the views you see on the display.
         /// </summary>
         [Tooltip(
             "Shifts the individual views to the left or right by the specified number of views."
@@ -83,17 +103,27 @@ namespace G3D
             "Scales the strength of the head tracking effect. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance."
         )]
         [Min(0.0f)]
+        /// <summary>
+        /// Scale the head tracking effect. Dont set this lower than 0.0f.
+        /// </summary>
         public float headTrackingSensitivity = 1.0f; // scale the head tracking effect
         #region Advanced settings
-        [Tooltip(
-            "Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!"
-        )]
+        /// <summary>
+        /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
+        /// </summary>
         public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
+
+        /// <summary>
+        /// How latency correction is handled by the headtracking library.
+        /// </summary>
         public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
         [Tooltip(
             "If set to true, the head tracking library will print debug messages to the console."
         )]
+        /// <summary>
+        /// If set to true, the head tracking library will print debug messages to the console.
+        /// </summary>
         public bool debugMessages = false;
 
         [Tooltip(
@@ -107,21 +137,33 @@ namespace G3D
         public bool showGizmos = true;
 
         [Tooltip("Scales the gizmos. Affectd by scene scale factor.")]
-        [Range(0.005f, 1.0f)]
-        public float gizmoSize = 0.2f;
+        [Range(0.005f, 5.0f)]
+        public float gizmoSize = 1.0f;
 
-        public bool invertViewsInDiorama = false;
+        public bool invertViewsInHeadtracking = false;
 
         [Tooltip(
-            "Where the views start to yoyo in the index map. Index map contains the order of views."
+            "Where the views start to yoyo in the index map in percent. Index map contains the order of views."
         )]
-        [Range(0.0f, 1.0f)]
-        public float indexMapYoyoStart = 0.0f;
+        [Range(0, 100)]
+        /// <summary>
+        /// Where the views start to yoyo in the index map in percent. Index map contains the order of views.
+        /// [0, 1, 2, 3, 4, 5, 6, 7] with yoyo start at 50% would become [6, 5, 4, 3, 4, 5, 6]
+        /// </summary>
+        public int indexMapYoyoStart = 0;
 
         [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+        /// <summary>
+        /// Inverts the entire index map. Index map contains the order of views.
+        /// [0, 1, 2, 3, 4, 5, 6, 7] would become [7, 6, 5, 4, 3, 2, 1, 0]
+        /// </summary>
         public bool invertIndexMap = false;
 
         [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+        /// <summary>
+        /// Inverts the individual indices in the index map. Index map contains the order of views.
+        /// [6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]
+        /// </summary>
         public bool invertIndexMapIndices = false;
 
         public HeadtrackingConnection headtrackingConnection;
@@ -131,7 +173,7 @@ namespace G3D
         #region Private variables
         private IndexMap indexMap = IndexMap.Instance;
 
-        // distance between the two cameras for diorama mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
+        // distance between the two cameras for headtracking mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
         private float viewSeparation = 0.065f;
 
         private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
@@ -214,6 +256,7 @@ namespace G3D
 #if G3D_HDRP
             customPassController =
                 gameObject.AddComponent<G3D.RenderPipeline.HDRP.CustomPassController>();
+            customPassController.debugRendering = debugRendering;
             viewGenerationMaterial = customPassController.init(
                 internalCameraCount,
                 cameras,
@@ -257,7 +300,7 @@ namespace G3D
             updateShaderParameters();
 
             updateCameras();
-            updateShaderRenderTextures();
+            updateRenderTextures();
 
             // This has to be done after the cameras are updated
             cachedWindowPosition = new Vector2Int(
@@ -269,7 +312,7 @@ namespace G3D
             indexMap.UpdateIndexMap(
                 getCameraCountFromConfigurationFile(),
                 internalCameraCount,
-                indexMapYoyoStart,
+                indexMapYoyoStart / 100.0f,
                 invertIndexMap,
                 invertIndexMapIndices
             );
@@ -328,14 +371,6 @@ namespace G3D
 #endif
 
         /// <summary>
-        /// Us this to run setupCameras after configuration or other camera parameters have been changed from a script.
-        /// </summary>
-        public void Validate()
-        {
-            setupCameras();
-        }
-
-        /// <summary>
         /// Call this function after the mode has been changed (e.g. multiview to headtracking)
         /// </summary>
         public void updateMode()
@@ -346,11 +381,6 @@ namespace G3D
                     configurationFile.text
                 );
                 internalCameraCount = getCameraCountFromConfigurationFile(configuration);
-                if (generateViews)
-                {
-                    // TODO DO NOT HARD CODE THIS VALUE!
-                    internalCameraCount = 16;
-                }
                 loadMultiviewViewSeparationFromConfiguration(configuration);
             }
             else
@@ -366,7 +396,7 @@ namespace G3D
             indexMap.UpdateIndexMap(
                 getCameraCountFromConfigurationFile(),
                 internalCameraCount,
-                indexMapYoyoStart,
+                indexMapYoyoStart / 100.0f,
                 invertIndexMap,
                 invertIndexMapIndices
             );
@@ -377,6 +407,9 @@ namespace G3D
             return indexMap.currentMapToString();
         }
 
+        /// <summary>
+        /// Load shader parameters from current configuration file.
+        /// </summary>
         public void loadShaderParametersFromConfigurationFile()
         {
             if (configurationFile == null)
@@ -414,7 +447,7 @@ namespace G3D
         ///
         /// Does not update configuration file.
         /// </summary>
-        public void setupCameras()
+        public void setupCameras(bool updateFocusDist = false)
         {
             if (mainCamera == null)
             {
@@ -430,7 +463,10 @@ namespace G3D
                 Debug.LogError(
                     "No configuration file set. Please set a configuration file. Using default values."
                 );
-                updateFocusDistance(0.7f);
+                if (updateFocusDist)
+                {
+                    updateFocusDistance(0.7f);
+                }
                 viewSeparation = 0.065f;
                 headtrackingConnection?.setBasicWorkingDistance(focusDistance);
 
@@ -463,22 +499,17 @@ namespace G3D
             displayFOV = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
 
             // set focus distance
-            updateFocusDistance(BasicWorkingDistanceMeter);
+            if (updateFocusDist)
+            {
+                updateFocusDistance(BasicWorkingDistanceMeter);
+            }
             headtrackingConnection?.setBasicWorkingDistance(BasicWorkingDistanceMeter);
 
             // calculate eye separation/ view separation
             if (mode == G3DCameraMode.MULTIVIEW)
             {
                 loadMultiviewViewSeparationFromConfiguration(configuration);
-                // TODO DO NOT HARD CODE THIS VALUE!
-                if (generateViews)
-                {
-                    internalCameraCount = 16; // default value for multiview mode
-                }
-                else
-                {
-                    internalCameraCount = NativeViewcount;
-                }
+                internalCameraCount = NativeViewcount;
             }
             else
             {
@@ -490,7 +521,7 @@ namespace G3D
             loadShaderParametersFromConfigurationFile();
         }
 
-        public void updateShaderRenderTextures()
+        public void updateRenderTextures()
         {
             if (material == null)
                 return;
@@ -540,6 +571,10 @@ namespace G3D
             headtrackingConnection.logCameraPositionsToFile();
         }
 
+        /// <summary>
+        /// Shifts views to the left. This does not shift the cameras. This shifts the views you see on the display.
+        /// Only works in headtracking mode, in multiview use viewOffset.
+        /// </summary>
         public void shiftViewToLeft()
         {
             if (mode == G3DCameraMode.MULTIVIEW)
@@ -549,6 +584,10 @@ namespace G3D
             headtrackingConnection.shiftViewToLeft();
         }
 
+        /// <summary>
+        /// Shifts views to the right. This does not shift the cameras. This shifts the views you see on the display.
+        /// Only works in headtracking mode, in multiview use viewOffset.
+        /// </summary>
         public void shiftViewToRight()
         {
             if (mode == G3DCameraMode.MULTIVIEW)
@@ -588,31 +627,40 @@ namespace G3D
             }
         }
 
-        public void toggleCameraFOV()
+        /// <summary>
+        /// Set the cameras FOV to the fov calculated from the configuration file.
+        /// Sets the filed of view to the natural field of view the display actually covers in your field of vision if you sit at the recommended distance.
+        /// </summary>
+        public void setCameraFOVToDisplayFOV()
         {
-            if (isCameraFOVSetToDisplayFOV())
-            {
-                // set to natural FOV
-                mainCamera.fieldOfView = 60;
-            }
-            else
-            {
-                // set to display FOV from configuration file
-                mainCamera.fieldOfView = displayFOV;
-            }
-        }
-
-        public bool isCameraFOVSetToDisplayFOV()
-        {
-            if (mainCamera == null)
-            {
-                return false;
-            }
-            return Mathf.Abs(mainCamera.fieldOfView - displayFOV) < 0.01f;
+            // set to display FOV from configuration file
+            mainCamera.fieldOfView = displayFOV;
         }
 
         /// <summary>
-        /// if no value or NAN is passed he focus distance will not be updated, but the focus plane object position will updated
+        /// Set the focus distance to the native focus distance of the dispaly. Native focus distance is the distance the viewer has to be from the display for the 3d effect to look best.
+        /// </summary>
+        public void setFocusDistanceToDisplay()
+        {
+            if (configurationFile == null)
+            {
+                Debug.LogError(
+                    "No configuration file set. Please set a configuration file. Using default values."
+                );
+                updateFocusDistance(0.7f);
+                return;
+            }
+
+            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
+                configurationFile.text
+            );
+            int BasicWorkingDistanceMM = configuration.getInt("BasicWorkingDistanceMM");
+            float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
+            updateFocusDistance(BasicWorkingDistanceMeter);
+        }
+
+        /// <summary>
+        /// If no value or NAN is passed the focus distance will not be updated, but the focus plane object position will be updated
         /// </summary>
         /// <param name="newFocusDistance"></param>
         public void updateFocusDistance(float newFocusDistance = float.NaN)
@@ -815,7 +863,7 @@ namespace G3D
 
             mainCamInactiveLastFrame = false;
 
-            // update the shader parameters (only in diorama mode)
+            // update the shader parameters (only in headtracking mode)
             if (mode == G3DCameraMode.HEADTRACKING)
             {
                 headtrackingConnection.calculateShaderParameters();
@@ -850,7 +898,7 @@ namespace G3D
 
             if (recreatedRenderTextures)
             {
-                updateShaderRenderTextures();
+                updateRenderTextures();
             }
         }
 
@@ -956,7 +1004,7 @@ namespace G3D
                 {
                     material.SetInt(
                         Shader.PropertyToID("invertViews"),
-                        invertViewsInDiorama ? 1 : 0
+                        invertViewsInHeadtracking ? 1 : 0
                     );
                 }
                 material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
@@ -977,7 +1025,7 @@ namespace G3D
             Vector3 targetPosition = new Vector3(0, 0, -focusDistWithDollyZoom); // position for the camera center (base position from which all other cameras are offset)
             float targetViewSeparation = 0.0f;
 
-            // calculate the camera center position and eye separation if head tracking and the diorama effect are enabled
+            // calculate the camera center position and eye separation if head tracking and the headtracking effect are enabled
             if (mode == G3DCameraMode.HEADTRACKING)
             {
                 headtrackingConnection.handleHeadTrackingState(
@@ -1056,7 +1104,7 @@ namespace G3D
         }
 
         /// <summary>
-        /// Sets the camera count to two if we are in diorama mode. Sets it to the maximum amount of views the display is capable of if we are in multiview mode.
+        /// Sets the camera count to two if we are in headtracking mode. Sets it to the maximum amount of views the display is capable of if we are in multiview mode.
         /// </summary>
         /// <returns>true if camera count was changed.</returns>
         private bool updateCameraCountBasedOnMode()
@@ -1383,6 +1431,7 @@ namespace G3D
         {
             return calcNewFOV(focusDistWithDollyZoom);
         }
+#endif
 
         private float calcNewFOV(float actualFocusDistance)
         {
@@ -1392,8 +1441,6 @@ namespace G3D
             float newHalfFOVRad = Mathf.Atan(a / actualFocusDistance);
             return newHalfFOVRad * Mathf.Rad2Deg * 2;
         }
-
-#endif
         #endregion
 
         private float calculateCameraOffset(
