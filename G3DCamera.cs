@@ -93,7 +93,7 @@ namespace G3D
         /// <summary>
         /// Scale the head tracking effect. Dont set this lower than 0.0f.
         /// </summary>
-        public float headTrackingSensitivity = 1.0f; // scale the head tracking effect
+        public float headtrackingSensitivity = 1.0f; // scale the head tracking effect
         #region Advanced settings
         /// <summary>
         /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
@@ -258,7 +258,7 @@ namespace G3D
 
             headtrackingConnection = new HeadtrackingConnection(
                 focusDistance,
-                headTrackingSensitivity,
+                headtrackingSensitivity,
                 configurationPathOverwrite,
                 this,
                 debugMessages,

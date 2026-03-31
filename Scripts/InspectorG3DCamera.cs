@@ -23,7 +23,6 @@ namespace G3D
         private PropertyField viewOffsetField;
         private PropertyField focusDistanceField;
         private PropertyField dollyZoomField;
-        private Button setCameraFOVButton;
 
         private Label calibFolderLabel;
         private Label HeadtrackingCalibFileInfo;
@@ -61,7 +60,7 @@ namespace G3D
             IndexMap = mainInspector.Q<Label>("IndexMap");
             updateIndexMap();
 
-            headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingSensitivity");
+            headtrackingScaleField = mainInspector.Q<PropertyField>("headtrackingSensitivity");
 
             viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
 
@@ -84,7 +83,15 @@ namespace G3D
             invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
             setupValueChangeInteractions();
 
-            setCameraFOVButton = mainInspector.Q<Button>("setCameraFOV");
+            Button setFocusDistanceButton = mainInspector.Q<Button>("setFocusDistance");
+            setFocusDistanceButton.tooltip =
+                "Set the focus distance to the native focus distance of the dispaly. Native focus distance is the distance the viewer has to be from the display for the 3d effect to look best.";
+            setFocusDistanceButton.clicked += () =>
+            {
+                camera.setFocusDistanceToDisplay();
+            };
+
+            Button setCameraFOVButton = mainInspector.Q<Button>("setCameraFOV");
             setCameraFOVButton.tooltip =
                 "Set the camera FOV to the natural field of view the display actually covers in your field of vision if you sit at the recommended distance.";
             setCameraFOVButton.clicked += () =>
@@ -92,12 +99,10 @@ namespace G3D
                 camera.setCameraFOVToDisplayFOV();
             };
 
-            Button setFocusDistanceButton = mainInspector.Q<Button>("setFocusDistance");
-            setFocusDistanceButton.tooltip =
-                "Set the focus distance to the native focus distance of the dispaly. Native focus distance is the distance the viewer has to be from the display for the 3d effect to look best.";
-            setFocusDistanceButton.clicked += () =>
+            Button visitOnlineDocumentationButton = mainInspector.Q<Button>("visitOnlineDocumentation");
+            visitOnlineDocumentationButton.clicked += () =>
             {
-                camera.setFocusDistanceToDisplay();
+                Application.OpenURL("https://3d-global-docs.vercel.app/docs/category/unity");
             };
 
             return mainInspector;
