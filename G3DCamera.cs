@@ -433,7 +433,7 @@ namespace G3D
         ///
         /// Does not update configuration file.
         /// </summary>
-        public void setupCameras()
+        public void setupCameras(bool updateFocusDist = false)
         {
             if (mainCamera == null)
             {
@@ -449,7 +449,10 @@ namespace G3D
                 Debug.LogError(
                     "No configuration file set. Please set a configuration file. Using default values."
                 );
-                updateFocusDistance(0.7f);
+                if (updateFocusDist)
+                {
+                    updateFocusDistance(0.7f);
+                }
                 headtrackingConnection?.setBasicWorkingDistance(focusDistance);
 
                 if (mode == G3DCameraMode.HEADTRACKING)
@@ -486,7 +489,10 @@ namespace G3D
             displayFOV = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
 
             // set focus distance
-            updateFocusDistance(BasicWorkingDistanceMeter);
+            if (updateFocusDist)
+            {
+                updateFocusDistance(BasicWorkingDistanceMeter);
+            }
             headtrackingConnection?.setBasicWorkingDistance(BasicWorkingDistanceMeter);
 
             // calculate eye separation/ view separation
@@ -1325,6 +1331,7 @@ namespace G3D
         {
             return calcNewFOV(focusDistWithDollyZoom);
         }
+#endif
 
         private float calcNewFOV(float actualFocusDistance)
         {
@@ -1334,8 +1341,6 @@ namespace G3D
             float newHalfFOVRad = Mathf.Atan(a / actualFocusDistance);
             return newHalfFOVRad * Mathf.Rad2Deg * 2;
         }
-
-#endif
         #endregion
 
         private float calculateCameraOffset(

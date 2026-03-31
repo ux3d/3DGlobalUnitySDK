@@ -99,9 +99,6 @@ namespace G3D
             setupValueChangeInteractions();
 
             IndexMap = mainInspector.Q<Label>("IndexMap");
-            IndexMap.style.unityTextAutoSize = new StyleTextAutoSize(
-                new TextAutoSize(TextAutoSizeMode.BestFit, minSize: 10, maxSize: 100)
-            );
             updateIndexMapDisplay();
 
             return mainInspector;
