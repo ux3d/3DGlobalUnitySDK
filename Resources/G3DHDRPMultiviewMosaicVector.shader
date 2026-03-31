@@ -139,7 +139,6 @@ Shader "G3D/MultiviewMosaicVector"
                 {
                     v2f output;
                     UNITY_SETUP_INSTANCE_ID(input);
-                    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                     output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
                     output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
 
@@ -186,7 +185,6 @@ Shader "G3D/MultiviewMosaicVector"
                 {
                     v2f output;
                     UNITY_SETUP_INSTANCE_ID(input);
-                    // UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                     output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
                     output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
 
