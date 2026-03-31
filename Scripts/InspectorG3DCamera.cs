@@ -49,9 +49,6 @@ namespace G3D
                 "Packages/com.3dglobal.core/Resources/G3DCameraInspector.uxml"
             );
 
-            // Add a simple label.
-            mainInspector.Add(new Label("This is a custom Inspector"));
-
             // Instantiate the UXML.
             mainInspector = inspectorXML.Instantiate();
 
@@ -104,12 +101,6 @@ namespace G3D
             };
 
             return mainInspector;
-        }
-
-        void Update()
-        {
-            G3DCamera camera = (G3DCamera)target;
-            Debug.Log("Updating camera inspector, current mode: " + camera.mode);
         }
 
         private void setupValueChangeInteractions()
