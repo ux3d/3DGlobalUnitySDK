@@ -41,11 +41,6 @@ namespace G3D
         public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
         [Tooltip(
-            "If set to true, the views will be flipped horizontally. This is necessary for holoboxes."
-        )]
-        public bool mirrorViews = false;
-
-        [Tooltip(
             "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4."
         )]
         [Range(1, 100)]
@@ -166,6 +161,9 @@ namespace G3D
         private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
         private int internalCameraCount = 2;
         private int oldRenderResolutionScale = 100;
+        
+        // mirrorViews is used to flip the views horizontally, this is required for Holoboxes
+        private bool mirrorViews = false;
 
         private static object shaderLock = new object();
 
@@ -354,7 +352,11 @@ namespace G3D
         /// </summary>
         public void updateMode()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                viewSeparation = 0.065f;
+            }
+            else // Holobox and Multiview mode
             {
                 ConfigurationProvider configuration = ConfigurationProvider.getFromString(
                     configurationFile.text
@@ -362,9 +364,14 @@ namespace G3D
                 internalCameraCount = getCameraCountFromConfigurationFile(configuration);
                 loadMultiviewViewSeparationFromConfiguration(configuration);
             }
+
+            if (mode == G3DCameraMode.HOLOBOX)
+            {
+                mirrorViews = true;
+            }
             else
             {
-                viewSeparation = 0.065f;
+                mirrorViews = false;
             }
 
             updateCameraCountBasedOnMode();
@@ -443,13 +450,17 @@ namespace G3D
                     "No configuration file set. Please set a configuration file. Using default values."
                 );
                 updateFocusDistance(0.7f);
-                viewSeparation = 0.065f;
                 headtrackingConnection?.setBasicWorkingDistance(focusDistance);
 
-                if (mode == G3DCameraMode.MULTIVIEW)
+                if (mode == G3DCameraMode.HEADTRACKING)
+                {
+                    viewSeparation = 0.065f;
+                }
+                else // Holobox and Multiview mode
                 {
                     viewSeparation = 0.031f;
                 }
+
                 return;
             }
 
@@ -479,14 +490,14 @@ namespace G3D
             headtrackingConnection?.setBasicWorkingDistance(BasicWorkingDistanceMeter);
 
             // calculate eye separation/ view separation
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                viewSeparation = 0.065f;
+            }
+            else // Holobox and Multiview mode
             {
                 loadMultiviewViewSeparationFromConfiguration(configuration);
                 internalCameraCount = NativeViewcount;
-            }
-            else
-            {
-                viewSeparation = 0.065f;
             }
 
             updateCameraCountBasedOnMode();
@@ -531,10 +542,11 @@ namespace G3D
         /// </summary>
         public void shiftViewToLeft()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode != G3DCameraMode.HEADTRACKING)
             {
                 return;
             }
+
             headtrackingConnection.shiftViewToLeft();
         }
 
@@ -544,10 +556,11 @@ namespace G3D
         /// </summary>
         public void shiftViewToRight()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode != G3DCameraMode.HEADTRACKING)
             {
                 return;
             }
+
             headtrackingConnection.shiftViewToRight();
         }
 
@@ -558,10 +571,11 @@ namespace G3D
 
         public void toggleHeadTracking()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode != G3DCameraMode.HEADTRACKING)
             {
                 return;
             }
+
             headtrackingConnection.toggleHeadTracking();
         }
 
@@ -657,7 +671,7 @@ namespace G3D
             ConfigurationProvider configuration
         )
         {
-            if (mode != G3DCameraMode.MULTIVIEW)
+            if (mode != G3DCameraMode.MULTIVIEW && mode != G3DCameraMode.HOLOBOX)
             {
                 return;
             }
@@ -680,10 +694,7 @@ namespace G3D
                 Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
 
             // calculate eye separation/ view separation
-            if (mode == G3DCameraMode.MULTIVIEW)
-            {
-                viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
-            }
+            viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
         }
 
         /// <summary>
@@ -772,13 +783,13 @@ namespace G3D
 
         private void reinitializeShader()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
-            {
-                material = new Material(Shader.Find("G3D/AutostereoMultiview"));
-            }
-            else
+            if (mode == G3DCameraMode.HEADTRACKING)
             {
                 material = new Material(Shader.Find("G3D/Autostereo"));
+            }
+            else // Multiview and Holobox mode
+            {
+                material = new Material(Shader.Find("G3D/AutostereoMultiview"));
             }
         }
         #endregion
@@ -853,17 +864,17 @@ namespace G3D
         private void updateScreenViewportProperties()
         {
             Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                headtrackingConnection.updateScreenViewportProperties(displayResolution);
+            }
+            else // Multiview and Holobox mode
             {
                 shaderParameters.screenWidth = displayResolution.x;
                 shaderParameters.screenHeight = displayResolution.y;
                 shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
                 shaderParameters.bottomViewportPosition =
                     Screen.mainWindowPosition.y + Screen.height;
-            }
-            else
-            {
-                headtrackingConnection.updateScreenViewportProperties(displayResolution);
             }
 
             // this parameter is used in the shader to invert the y axis
@@ -927,7 +938,14 @@ namespace G3D
 
                 material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
 
-                if (mode == G3DCameraMode.MULTIVIEW)
+                if (mode == G3DCameraMode.HEADTRACKING)
+                {
+                    material.SetInt(
+                        Shader.PropertyToID("invertViews"),
+                        invertViewsInHeadtracking ? 1 : 0
+                    );
+                }
+                else // Multiview and Holobox mode
                 {
                     material.SetInt(
                         Shader.PropertyToID("indexMapLength"),
@@ -940,13 +958,7 @@ namespace G3D
 
                     material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
                 }
-                else
-                {
-                    material.SetInt(
-                        Shader.PropertyToID("invertViews"),
-                        invertViewsInHeadtracking ? 1 : 0
-                    );
-                }
+
                 material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
                 material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
             }
@@ -967,7 +979,7 @@ namespace G3D
                     focusDistWithDollyZoom
                 );
             }
-            else if (mode == G3DCameraMode.MULTIVIEW)
+            else // Multiview and Holobox mode
             {
                 targetViewSeparation = scaledViewSeparation;
             }
@@ -1031,7 +1043,7 @@ namespace G3D
             {
                 internalCameraCount = 2;
             }
-            else if (mode == G3DCameraMode.MULTIVIEW)
+            else // Multiview and Holobox mode
             {
                 internalCameraCount = getCameraCountFromConfigurationFile();
                 if (internalCameraCount > MAX_CAMERAS)

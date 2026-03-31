@@ -125,7 +125,7 @@ namespace G3D
                         HeadtrackingCalibFileInfo.style.display = DisplayStyle.Flex;
                         viewOffsetField.style.display = DisplayStyle.None;
                     }
-                    else
+                    else // Holobox and Multiview mode
                     {
                         calibFolderLabel.style.display = DisplayStyle.None;
                         headtrackingScaleField.style.display = DisplayStyle.None;
