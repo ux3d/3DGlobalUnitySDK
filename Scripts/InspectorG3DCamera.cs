@@ -85,7 +85,7 @@ namespace G3D
 
             Button setFocusDistanceButton = mainInspector.Q<Button>("setFocusDistance");
             setFocusDistanceButton.tooltip =
-                "Set the focus distance to the native focus distance of the dispaly. Native focus distance is the distance the viewer has to be from the display for the 3d effect to look best.";
+                "Set the focus distance to the native focus distance of the display. At native focus distance the camera to focus plane distance is the same as the ideal real world viewing distance of the display.";
             setFocusDistanceButton.clicked += () =>
             {
                 camera.setFocusDistanceToDisplay();
@@ -93,7 +93,7 @@ namespace G3D
 
             Button setCameraFOVButton = mainInspector.Q<Button>("setCameraFOV");
             setCameraFOVButton.tooltip =
-                "Set the camera FOV to the natural field of view the display actually covers in your field of vision if you sit at the recommended distance.";
+                "Set the main camera's field of view to the real world angle the display actually covers in the user's vision when viewed from the ideal distance.";
             setCameraFOVButton.clicked += () =>
             {
                 camera.setCameraFOVToDisplayFOV();

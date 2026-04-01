@@ -52,27 +52,27 @@ namespace G3D
         public int renderResolutionScale = 100;
 
         [Tooltip(
-            "Set the dolly zoom effekt. 1 correponds to no dolly zoom. 0 is all the way zoomed in to the focus plane. 3 is all the way zoomed out."
+            "Adjust the dolly zoom effect. 1.0 means no dolly zoom. 0.0 means large fov and minimum distance to the focus plane. 3.0 means small fov and maximum distance from the focus plane."
         )]
         [Range(0.001f, 3)]
         public float dollyZoom = 1;
 
         [Tooltip(
-            "Scale the view offset up or down. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance. This can be used to adjust the view offset down for very large scenes."
+            "Scale the distance between the views (cameras). 1.0 is no scaling, 0.5 is half the distance, 2.0 is double the distance. Native distance depends on configuration file."
         )]
         [Range(0.0f, 20.0f)]
         /// <summary>
-        /// Scale the distance between the individual views (cameras). The base value is calculated from the configuration file.
-        /// 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
+        /// Scale the distance between the views (cameras). 
+        /// 1.0 is no scaling, 0.5 is half the distance, 2.0 is double the distance. 
+        /// Native distance depends on configuration file.
         /// </summary>
         public float viewOffsetScale = 1.0f;
 
         /// <summary>
-        /// The distance between the camera and the focus plane in meters. Default is 70 cm.
-        /// Is read from configuration file at startup.
+        /// Distance between the cameras and the focus plane in meters. Native value depends on configuration file.
         /// </summary>
         [Tooltip(
-            "The distance between the camera and the focus plane in meters. Default is 70 cm. Is read from configuration file at startup."
+            "Distance between the cameras and the focus plane in meters. Native value depends on configuration file."
         )]
         [Min(0.0f)]
         public float focusDistance = 0.7f;
@@ -87,13 +87,14 @@ namespace G3D
         public int viewOffset = 0;
 
         [Tooltip(
-            "Scales the strength of the head tracking effect. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance."
+            "Scales the strength of the camera movement through headtracking. Below 1.0 camera movement is reduced compared to real world movement. Above 1.0 camera movement is increased compared to real world movement."
         )]
         [Min(0.0f)]
         /// <summary>
-        /// Scale the head tracking effect. Dont set this lower than 0.0f.
+        /// Scale the headtracking effect. Dont set this lower than 0.0f.
         /// </summary>
-        public float headtrackingSensitivity = 1.0f; // scale the head tracking effect
+        public float headtrackingSensitivity = 1.0f; // scale the headtracking effect
+
         #region Advanced settings
         /// <summary>
         /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
@@ -114,18 +115,19 @@ namespace G3D
         public bool debugMessages = false;
 
         [Tooltip(
-            "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
+            "Show the positions, frustums and focus plane of the generated cameras in the Scene view."
         )]
         public bool showGizmos = true;
 
-        [Tooltip("Scales the gizmos. Affectd by scene scale factor.")]
+        [Tooltip("Scale of the camera related gizmos in the Scene view.")]
         [Range(0.005f, 5.0f)]
         public float gizmoSize = 1.0f;
 
+        [Tooltip("Switch position of the left and right view.")]
         public bool invertViewsInHeadtracking = false;
 
         [Tooltip(
-            "Where the views start to yoyo in the index map in percent. Index map contains the order of views."
+            "Define the position where the views start to be ordered backwards (yoyo pattern) in the index map. Index map contains the order of views."
         )]
         [Range(0, 100)]
         /// <summary>
@@ -141,7 +143,7 @@ namespace G3D
         /// </summary>
         public bool invertIndexMap = false;
 
-        [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+        [Tooltip("Inverts the individual indices in the index map. Index map contains the order of views.")]
         /// <summary>
         /// Inverts the individual indices in the index map. Index map contains the order of views.
         /// [6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]
