@@ -363,6 +363,15 @@ namespace G3D
             }
         }
 
+        /// <summary>
+        /// Sets the dimensions of the mosaic based on the filename. The filename has to be in the format "name.mosaic.{columns}x{rows}.ext". E.g. "video.mosaic.3x3.mp4" would set the mosaic to have 3 columns and 3 rows.
+        /// </summary>
+        /// <param name="filename"></param>
+        public void setDimensionsFromFilename(string filename)
+        {
+            dimensionsFromString(filename, out mosaicRowCount, out mosaicColumnCount);
+        }
+
         private void extractDimensionsFromFile()
         {
             string name = "";
