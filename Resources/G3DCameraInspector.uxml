@@ -1,6 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
     <uie:PropertyField name="configurationFile" binding-path="configurationFile" />
-    <ui:Label text="In headtracking mode each display needs its own specific configuration file. Therefore Unity searches for the specific configuration file in this folder:" name="HeadtrackingCalibFileInfo" style="-unity-font-style: italic; font-size: 12px; margin-left: 15px; white-space: normal;" />
+    <ui:Label text="In Headtracking mode, Unity looks for calibration and configuration data in this folder at runtime:" name="HeadtrackingCalibFileInfo" style="-unity-font-style: italic; font-size: 12px; margin-left: 15px; white-space: normal;" />
     <ui:Label text="" name="HeadtrackingCalibrationFolder" style="-unity-font-style: bold-and-italic; -unity-text-align: upper-center; white-space: normal; margin-bottom: 8px;" />
     <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
     <uie:PropertyField binding-path="mode" name="mode" />
