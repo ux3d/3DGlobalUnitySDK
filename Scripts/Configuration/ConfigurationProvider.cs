@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Threading.Tasks;
 using IniParser;
 using IniParser.Model;
 using IniParser.Parser;
@@ -84,30 +83,92 @@ namespace G3D
         /// <returns></returns>
         public G3DShaderParameters getShaderParameters()
         {
+            int width;
+            int height;
+#if UNITY_IOS
+            width = readOrDefault("HorizontalResolution", Screen.width);
+            height = readOrDefault("VerticalResolution", Screen.height);
+#else
+
+            DisplayInfo mainDisplayInfo = Screen.mainWindowDisplayInfo;
+            width = mainDisplayInfo.width;
+            height = mainDisplayInfo.height;
+#endif
+
+            return fillShaderParameters(
+                getInt("NativeViewcount"),
+                getInt("AngleRatioNumerator"),
+                getInt("AngleRatioDenominator"),
+                getInt("LeftLensOrientation"),
+                getBool("isBGR"),
+                getInt("BlackBorderDefault"),
+                getInt("BlackSpaceDefault"),
+                readOrDefault("HorizontalResolution", width),
+                readOrDefault("VerticalResolution", height)
+            );
+        }
+
+        public ConfigCode.DisplayConfig getDisplayConfig()
+        {
+            string configCode = getString("ConfigCode");
+            return ConfigCode.ParseConfigCode(configCode);
+        }
+
+        public static G3DShaderParameters getParametersFromDisplayConfig(
+            ConfigCode.DisplayConfig displayConfig
+        )
+        {
+            return fillShaderParameters(
+                (int)displayConfig.numberOfViews,
+                (int)displayConfig.lensAngleNumerator,
+                (int)displayConfig.lensAngleDenominator,
+                displayConfig.isLeft ? 1 : 0,
+                displayConfig.isBGR,
+                0,
+                0
+            );
+        }
+
+        public static G3DShaderParameters getParametersFromConfigCode(string configCode)
+        {
+            ConfigCode.DisplayConfig displayConfig = ConfigCode.ParseConfigCode(configCode);
+            return getParametersFromDisplayConfig(displayConfig);
+        }
+
+        private static G3DShaderParameters fillShaderParameters(
+            int nativeViewCount = 2,
+            int angleRatioNumerator = 1,
+            int angleRatioDenominator = 1,
+            int leftLensOrientation = 0,
+            bool isBGR = false,
+            int blackBorder = 0,
+            int blackSpace = 0,
+            int screenWidth = 0,
+            int screenHeight = 0
+        )
+        {
             G3DShaderParameters parameters = new G3DShaderParameters();
 
             // display parameters
+            parameters.screenWidth = screenWidth;
+            parameters.screenHeight = screenHeight;
 #if UNITY_IOS
-            parameters.screenWidth = readOrDefault("HorizontalResolution", Screen.width);
-            parameters.screenHeight = readOrDefault("VerticalResolution", Screen.height);
             parameters.leftViewportPosition = 0; //< The left position of the viewport in screen coordinates
             parameters.bottomViewportPosition = 0; //< The bottom position of the viewport in screen coordinates
 #else
-            DisplayInfo mainDisplayInfo = Screen.mainWindowDisplayInfo;
-            parameters.screenWidth = readOrDefault("HorizontalResolution", mainDisplayInfo.width);
-            parameters.screenHeight = readOrDefault("VerticalResolution", mainDisplayInfo.height);
+
             parameters.leftViewportPosition = Screen.mainWindowPosition.x; //< The left position of the viewport in screen coordinates
             parameters.bottomViewportPosition = Screen.mainWindowPosition.y + Screen.height; //< The bottom position of the viewport in screen coordinates
 #endif
 
             // default values are those i got from the head tracking library when no camera was connected
-            parameters.nativeViewCount = getInt("NativeViewcount");
-            parameters.angleRatioNumerator = getInt("AngleRatioNumerator");
-            parameters.angleRatioDenominator = getInt("AngleRatioDenominator");
-            parameters.leftLensOrientation = getInt("LeftLensOrientation");
-            parameters.BGRPixelLayout = getBool("isBGR") ? 1 : 0;
-            parameters.blackBorder = getInt("BlackBorderDefault");
-            parameters.blackSpace = getInt("BlackSpaceDefault");
+            parameters.nativeViewCount = nativeViewCount;
+            parameters.angleRatioNumerator = angleRatioNumerator;
+            parameters.angleRatioDenominator = angleRatioDenominator;
+            parameters.leftLensOrientation = leftLensOrientation;
+            parameters.BGRPixelLayout = isBGR ? 1 : 0;
+            parameters.blackBorder = blackBorder;
+            parameters.blackSpace = blackSpace;
 
             parameters.showTestFrame = 0;
             parameters.showTestStripe = 0;

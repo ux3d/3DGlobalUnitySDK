@@ -32,8 +32,8 @@ namespace G3D
     [RequireComponent(typeof(Camera))]
     public class G3DCameraMosaicMultiview : MonoBehaviour
     {
-        [Tooltip("Drop the configuration file for the display you want to use here.")]
-        public TextAsset configurationFile;
+        [SerializeField]
+        private string configCode = "17D";
 
         [Min(1)]
         /// <summary>
@@ -171,9 +171,7 @@ namespace G3D
 #endif
 
             // Do this last to ensure custom passes are already set up
-            ConfigurationProvider defaultConfigurationProvider =
-                ConfigurationProvider.getFromString(configurationFile.text);
-            shaderParameters = defaultConfigurationProvider.getShaderParameters();
+            shaderParameters = ConfigurationProvider.getParametersFromConfigCode(configCode);
             setupTextureMode();
             reinitializeShader();
 
@@ -259,108 +257,19 @@ namespace G3D
         /// Updates the shader parameters based on the provided configuration file.
         /// </summary>
         /// <param name="configurationFile"></param>
-        public void updateShaderFromConfigurationFile(TextAsset configurationFile)
+        public void updateConfigCode(string configCode)
         {
-            if (configurationFile == null || configurationFile.text == "")
+            if (configCode == null || configCode == "" || configCode == this.configCode)
             {
                 return;
             }
-            this.configurationFile = configurationFile;
-            updateShaderFromConfigurationFile();
+            this.configCode = configCode;
+            shaderParameters = ConfigurationProvider.getParametersFromConfigCode(configCode);
         }
 
-        /// <summary>
-        /// Updates the shader parameters based on the configuration file already set.
-        /// </summary>
-        public void updateShaderFromConfigurationFile()
+        public string getConfigCode()
         {
-            if (configurationFile == null || configurationFile.text == "")
-            {
-                return;
-            }
-
-            ConfigurationProvider calibrationProvider = ConfigurationProvider.getFromString(
-                configurationFile.text
-            );
-            shaderParameters = calibrationProvider.getShaderParameters();
-        }
-
-        /// <summary>
-        /// The provided file uri has to be a display configuration ini file.
-        /// </summary>
-        /// <param name="uri"></param>
-        public void UpdateShaderParametersFromURI(string uri)
-        {
-            if (uri == null || uri == "")
-            {
-                return;
-            }
-
-            try
-            {
-                ConfigurationProvider defaultConfigurationProvider =
-                    ConfigurationProvider.getFromURI(
-                        uri,
-                        (ConfigurationProvider provider) =>
-                        {
-                            shaderParameters = provider.getShaderParameters();
-                            updateShaderParameters();
-                            return 0;
-                        }
-                    );
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to update shader parameters from uri: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// The provided file path has to be a display configuration ini file.
-        /// </summary>
-        /// <param name="filePath"></param>
-        public void UpdateShaderParametersFromFile(string filePath)
-        {
-            if (filePath == null || filePath == "" || filePath.EndsWith(".ini") == false)
-            {
-                return;
-            }
-
-            try
-            {
-                ConfigurationProvider defaultConfigurationProvider =
-                    ConfigurationProvider.getFromConfigFile(filePath);
-                shaderParameters = defaultConfigurationProvider.getShaderParameters();
-                updateShaderParameters();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to update shader parameters from file: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// The provided string has to be a display configuration ini file.
-        /// </summary>
-        /// <param name="json"></param>
-        public void UpdateShaderParametersFromINIString(string iniFile)
-        {
-            if (iniFile == null || iniFile == "")
-            {
-                return;
-            }
-
-            try
-            {
-                ConfigurationProvider defaultConfigurationProvider =
-                    ConfigurationProvider.getFromString(iniFile);
-                shaderParameters = defaultConfigurationProvider.getShaderParameters();
-                updateShaderParameters();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to update shader parameters from json: " + e.Message);
-            }
+            return configCode;
         }
 
         /// <summary>
