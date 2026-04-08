@@ -7,8 +7,8 @@ Shader "G3D/AutostereoMultiviewMosaic"
     #include "G3D_ShaderBasics.hlsl"
 
     // mosaic video parameters
-    int mosaic_rows = 1; // number of rows in the mosaic
-    int mosaic_columns = 1; // number of columns in the mosaic
+    uint mosaic_rows = 1; // number of rows in the mosaic
+    uint mosaic_columns = 1; // number of columns in the mosaic
     
 
     Texture2D _colorMosaic;
@@ -19,7 +19,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
     }
 
-    float2 calculateUVForMosaic(int viewIndex, float2 startingUV) {
+    float2 calculateUVForMosaic(uint viewIndex, float2 startingUV) {
         if(viewIndex < 0 )
         {
             viewIndex = 0;
@@ -28,8 +28,8 @@ Shader "G3D/AutostereoMultiviewMosaic"
         {
             viewIndex = map(viewIndex, 0, nativeViewCount - 1, 0, mosaic_rows * mosaic_columns - 1);
         }
-        int xAxis = viewIndex % mosaic_columns;
-        int yAxis = viewIndex / mosaic_columns;
+        uint xAxis = viewIndex % mosaic_columns;
+        uint yAxis = viewIndex / mosaic_columns;
         // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
         // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
         yAxis = mosaic_rows - 1 - yAxis;

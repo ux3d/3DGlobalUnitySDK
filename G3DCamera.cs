@@ -175,11 +175,6 @@ namespace G3D
         private GameObject cameraParent = null;
 
         private Material material;
-#if G3D_HDRP
-        private HDAdditionalCameraData.AntialiasingMode antialiasingMode = HDAdditionalCameraData
-            .AntialiasingMode
-            .None;
-#endif
 #if G3D_URP
         private G3D.RenderPipeline.URP.ScriptableRP customPass;
         private UnityEngine.Rendering.Universal.AntialiasingMode antialiasingMode = UnityEngine

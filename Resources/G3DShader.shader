@@ -39,7 +39,7 @@ Shader "G3D/Autostereo"
 
         //Start native Renderberechnung
         int  sr = (xScreenCoords * 3) + yw;
-        int3 xwert = int3(sr + 0, sr + 1, sr + 2) % nativeViewCount;                              // #### nativeViewCount->lt03
+        uint3 xwert = int3(sr + 0, sr + 1, sr + 2) % nativeViewCount;                              // #### nativeViewCount->lt03
         // int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), nativeViewCount);                              // #### nativeViewCount->lt03
 
         // Start HQ-Renderberechnung inklusive Z-Korrektur
@@ -64,7 +64,7 @@ Shader "G3D/Autostereo"
             tr2d = track;
         }
 
-        int3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
+        uint3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
         xwert = hviews1 - (mtmp % hqview);
         // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
@@ -76,8 +76,9 @@ Shader "G3D/Autostereo"
 
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
         
-        float4 colorLeft = sampleFromView((1 + invertViews) % 2, uvCoords);              // Pixeldaten linkes Bild
-        float4 colorRight = sampleFromView((0 + invertViews) % 2, uvCoords);             // Pixeldaten rechtes Bild
+        uint inverViewsUint = uint(invertViews);
+        float4 colorLeft = sampleFromView((1 + inverViewsUint) % 2, uvCoords);              // Pixeldaten linkes Bild
+        float4 colorRight = sampleFromView((0 + inverViewsUint) % 2, uvCoords);             // Pixeldaten rechtes Bild
         float cor=0.0, cog=0.0, cob=0.0;
 
         

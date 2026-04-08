@@ -1,7 +1,7 @@
-float2 calculateUVForMosaic(int viewIndex, float2 fullScreenUV, int mosaic_rows = 4, int mosaic_columns = 4) {
+float2 calculateUVForMosaic(uint viewIndex, float2 fullScreenUV, uint mosaic_rows = 4, uint mosaic_columns = 4) {
     viewIndex = max(0, viewIndex);
-    int xAxis = viewIndex % mosaic_columns;
-    int yAxis = viewIndex / mosaic_columns;
+    uint xAxis = viewIndex % mosaic_columns;
+    uint yAxis = viewIndex / mosaic_columns;
     // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
     // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
     yAxis = mosaic_rows - 1 - yAxis;
