@@ -16,7 +16,13 @@ using UnityEngine.Rendering.Universal;
 #endif
 namespace G3D
 {
-    public enum MosaicMode
+    public enum G3DCameraMosaicMode
+    {
+        HOLOBOX,
+        MULTIVIEW
+    }
+
+    public enum DataType
     {
         Image,
         Video,
@@ -34,6 +40,8 @@ namespace G3D
     {
         [Tooltip("Drop the configuration file for the display you want to use here.")]
         public TextAsset configurationFile;
+
+        public G3DCameraMosaicMode mode = G3DCameraMosaicMode.MULTIVIEW;
 
         [Min(1)]
         /// <summary>
@@ -55,14 +63,6 @@ namespace G3D
         /// ONLY WORKS FOR IMAGE AND VIDEO MODES
         /// </summary>
         public bool dimensionsFromFilename = false;
-
-        [Tooltip(
-            "Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic."
-        )]
-        /// <summary>
-        /// Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic.
-        /// </summary>
-        public bool useHQViews = false;
 
         [Space(10)]
         [Tooltip(
@@ -98,7 +98,7 @@ namespace G3D
         )]
         public int viewOffset = 0;
 
-        public MosaicMode mosaicMode = MosaicMode.RenderTexture;
+        public DataType dataType = DataType.RenderTexture;
 
         /// <summary>
         /// Render Texture used for rendertexture mosaic mode.
@@ -109,10 +109,21 @@ namespace G3D
 
         public VideoClip videoClip;
 
-        [Tooltip("If set to true, the views will be flipped horizontally.")]
-        public bool mirrorViews = false;
 
         #region Private variables
+        
+        [Tooltip(
+            "Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic."
+        )]
+        /// <summary>
+        /// Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic.
+        /// CURRENTLY NOT IN USE, MARKED PRIVATE FOR NOW
+        /// </summary>
+        private bool useHQViews = false;
+
+        // mirrorViews is used to flip the views horizontally, this is required for Holoboxes
+        private bool mirrorViews = false;
+
         private IndexMap indexMap = IndexMap.Instance;
         private Camera mainCamera;
         private Material material;
@@ -214,6 +225,21 @@ namespace G3D
             if (windowResized() || windowMoved())
             {
                 updateScreenViewportProperties();
+            }
+        }
+
+        /// <summary>
+        /// Call this function after the mode has been changed (e.g. multiview to holobox)
+        /// </summary>
+        public void updateMode()
+        {
+            if (mode == G3DCameraMosaicMode.HOLOBOX)
+            {
+                mirrorViews = true;
+            }
+            else
+            {
+                mirrorViews = false;
             }
         }
 
@@ -375,21 +401,21 @@ namespace G3D
         private void extractDimensionsFromFile()
         {
             string name = "";
-            switch (mosaicMode)
+            switch (dataType)
             {
-                case MosaicMode.Image:
+                case DataType.Image:
                     if (image != null)
                     {
                         name = image.name;
                     }
                     break;
-                case MosaicMode.Video:
+                case DataType.Video:
                     if (videoClip != null)
                     {
                         name = videoClip.name;
                     }
                     break;
-                case MosaicMode.RenderTexture:
+                case DataType.RenderTexture:
                     // cannot extract dimensions from render texture
                     return;
             }
@@ -426,15 +452,15 @@ namespace G3D
 
         private void setupTextureMode()
         {
-            switch (mosaicMode)
+            switch (dataType)
             {
-                case MosaicMode.RenderTexture:
+                case DataType.RenderTexture:
                     // nothing to do here, render texture is already assigned
                     break;
-                case MosaicMode.Video:
+                case DataType.Video:
                     setupVideoPlayer();
                     break;
-                case MosaicMode.Image:
+                case DataType.Image:
                     // nothing to do here, image is already assigned
                     break;
             }
@@ -460,9 +486,9 @@ namespace G3D
 
         private void setCorrectMosaicTexture()
         {
-            switch (mosaicMode)
+            switch (dataType)
             {
-                case MosaicMode.RenderTexture:
+                case DataType.RenderTexture:
                     material.SetTexture(
                         "mosaictexture",
                         renderTexture,
@@ -474,7 +500,7 @@ namespace G3D
                         RenderTextureSubElement.Color
                     );
                     break;
-                case MosaicMode.Video:
+                case DataType.Video:
                     material.SetTexture(
                         "mosaictexture",
                         renderTexture,
@@ -486,7 +512,7 @@ namespace G3D
                         RenderTextureSubElement.Color
                     );
                     break;
-                case MosaicMode.Image:
+                case DataType.Image:
                     material.SetTexture("mosaictexture", image);
                     material.SetTexture("_colorMosaic", image);
                     break;

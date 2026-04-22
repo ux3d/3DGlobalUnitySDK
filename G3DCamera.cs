@@ -41,11 +41,6 @@ namespace G3D
         public static string CAMERA_NAME_PREFIX = "g3dcam_";
 
         [Tooltip(
-            "If set to true, the views will be flipped horizontally. This is necessary for holoboxes."
-        )]
-        public bool mirrorViews = false;
-
-        [Tooltip(
             "Set a percentage value to render only that percentage of the width and height per view. E.g. a reduction of 50% will reduce the rendered size by a factor of 4."
         )]
         [Range(1, 100)]
@@ -57,27 +52,27 @@ namespace G3D
         public int renderResolutionScale = 100;
 
         [Tooltip(
-            "Set the dolly zoom effekt. 1 correponds to no dolly zoom. 0 is all the way zoomed in to the focus plane. 3 is all the way zoomed out."
+            "Adjust the dolly zoom effect. 1.0 means no dolly zoom. 0.0 means large fov and minimum distance to the focus plane. 3.0 means small fov and maximum distance from the focus plane."
         )]
         [Range(0.001f, 3)]
         public float dollyZoom = 1;
 
         [Tooltip(
-            "Scale the view offset up or down. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance. This can be used to adjust the view offset down for very large scenes."
+            "Scale the distance between the views (cameras). 1.0 is no scaling, 0.5 is half the distance, 2.0 is double the distance. Native distance depends on configuration file."
         )]
         [Range(0.0f, 20.0f)]
         /// <summary>
-        /// Scale the distance between the individual views (cameras). The base value is calculated from the configuration file.
-        /// 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance.
+        /// Scale the distance between the views (cameras). 
+        /// 1.0 is no scaling, 0.5 is half the distance, 2.0 is double the distance. 
+        /// Native distance depends on configuration file.
         /// </summary>
         public float viewOffsetScale = 1.0f;
 
         /// <summary>
-        /// The distance between the camera and the focus plane in meters. Default is 70 cm.
-        /// Is read from configuration file at startup.
+        /// Distance between the cameras and the focus plane in meters. Native value depends on configuration file.
         /// </summary>
         [Tooltip(
-            "The distance between the camera and the focus plane in meters. Default is 70 cm. Is read from configuration file at startup."
+            "Distance between the cameras and the focus plane in meters. Native value depends on configuration file."
         )]
         [Min(0.0f)]
         public float focusDistance = 0.7f;
@@ -92,13 +87,14 @@ namespace G3D
         public int viewOffset = 0;
 
         [Tooltip(
-            "Scales the strength of the head tracking effect. 1.0f is no scaling, 0.5f is half the distance, 2.0f is double the distance."
+            "Scales the strength of the camera movement through headtracking. Below 1.0 camera movement is reduced compared to real world movement. Above 1.0 camera movement is increased compared to real world movement."
         )]
         [Min(0.0f)]
         /// <summary>
-        /// Scale the head tracking effect. Dont set this lower than 0.0f.
+        /// Scale the headtracking effect. Dont set this lower than 0.0f.
         /// </summary>
-        public float headTrackingSensitivity = 1.0f; // scale the head tracking effect
+        public float headtrackingSensitivity = 1.0f; // scale the headtracking effect
+
         #region Advanced settings
         /// <summary>
         /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
@@ -119,18 +115,19 @@ namespace G3D
         public bool debugMessages = false;
 
         [Tooltip(
-            "If set to true, the gizmos for the focus distance (green) and eye separation (blue) will be shown."
+            "Show the positions, frustums and focus plane of the generated cameras in the Scene view."
         )]
         public bool showGizmos = true;
 
-        [Tooltip("Scales the gizmos. Affectd by scene scale factor.")]
+        [Tooltip("Scale of the camera related gizmos in the Scene view.")]
         [Range(0.005f, 5.0f)]
         public float gizmoSize = 1.0f;
 
+        [Tooltip("Switch position of the left and right view.")]
         public bool invertViewsInHeadtracking = false;
 
         [Tooltip(
-            "Where the views start to yoyo in the index map in percent. Index map contains the order of views."
+            "Define the position where the views start to be ordered backwards (yoyo pattern) in the index map. Index map contains the order of views."
         )]
         [Range(0, 100)]
         /// <summary>
@@ -146,7 +143,7 @@ namespace G3D
         /// </summary>
         public bool invertIndexMap = false;
 
-        [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+        [Tooltip("Inverts the individual indices in the index map. Index map contains the order of views.")]
         /// <summary>
         /// Inverts the individual indices in the index map. Index map contains the order of views.
         /// [6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]
@@ -166,6 +163,9 @@ namespace G3D
         private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
         private int internalCameraCount = 2;
         private int oldRenderResolutionScale = 100;
+        
+        // mirrorViews is used to flip the views horizontally, this is required for Holoboxes
+        private bool mirrorViews = false;
 
         private static object shaderLock = new object();
 
@@ -255,7 +255,7 @@ namespace G3D
 
             headtrackingConnection = new HeadtrackingConnection(
                 focusDistance,
-                headTrackingSensitivity,
+                headtrackingSensitivity,
                 configurationPathOverwrite,
                 this,
                 debugMessages,
@@ -349,7 +349,11 @@ namespace G3D
         /// </summary>
         public void updateMode()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                viewSeparation = 0.065f;
+            }
+            else // Holobox and Multiview mode
             {
                 ConfigurationProvider configuration = ConfigurationProvider.getFromString(
                     configurationFile.text
@@ -357,9 +361,14 @@ namespace G3D
                 internalCameraCount = getCameraCountFromConfigurationFile(configuration);
                 loadMultiviewViewSeparationFromConfiguration(configuration);
             }
+
+            if (mode == G3DCameraMode.HOLOBOX)
+            {
+                mirrorViews = true;
+            }
             else
             {
-                viewSeparation = 0.065f;
+                mirrorViews = false;
             }
 
             updateCameraCountBasedOnMode();
@@ -441,13 +450,17 @@ namespace G3D
                 {
                     updateFocusDistance(0.7f);
                 }
-                viewSeparation = 0.065f;
                 headtrackingConnection?.setBasicWorkingDistance(focusDistance);
 
-                if (mode == G3DCameraMode.MULTIVIEW)
+                if (mode == G3DCameraMode.HEADTRACKING)
+                {
+                    viewSeparation = 0.065f;
+                }
+                else // Holobox and Multiview mode
                 {
                     viewSeparation = 0.031f;
                 }
+
                 return;
             }
 
@@ -480,14 +493,14 @@ namespace G3D
             headtrackingConnection?.setBasicWorkingDistance(BasicWorkingDistanceMeter);
 
             // calculate eye separation/ view separation
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                viewSeparation = 0.065f;
+            }
+            else // Holobox and Multiview mode
             {
                 loadMultiviewViewSeparationFromConfiguration(configuration);
                 internalCameraCount = NativeViewcount;
-            }
-            else
-            {
-                viewSeparation = 0.065f;
             }
 
             updateCameraCountBasedOnMode();
@@ -532,10 +545,11 @@ namespace G3D
         /// </summary>
         public void shiftViewToLeft()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode != G3DCameraMode.HEADTRACKING)
             {
                 return;
             }
+
             headtrackingConnection.shiftViewToLeft();
         }
 
@@ -545,10 +559,11 @@ namespace G3D
         /// </summary>
         public void shiftViewToRight()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode != G3DCameraMode.HEADTRACKING)
             {
                 return;
             }
+
             headtrackingConnection.shiftViewToRight();
         }
 
@@ -559,10 +574,11 @@ namespace G3D
 
         public void toggleHeadTracking()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode != G3DCameraMode.HEADTRACKING)
             {
                 return;
             }
+
             headtrackingConnection.toggleHeadTracking();
         }
 
@@ -658,7 +674,7 @@ namespace G3D
             ConfigurationProvider configuration
         )
         {
-            if (mode != G3DCameraMode.MULTIVIEW)
+            if (mode != G3DCameraMode.MULTIVIEW && mode != G3DCameraMode.HOLOBOX)
             {
                 return;
             }
@@ -681,10 +697,7 @@ namespace G3D
                 Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
 
             // calculate eye separation/ view separation
-            if (mode == G3DCameraMode.MULTIVIEW)
-            {
-                viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
-            }
+            viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
         }
 
         /// <summary>
@@ -773,13 +786,13 @@ namespace G3D
 
         private void reinitializeShader()
         {
-            if (mode == G3DCameraMode.MULTIVIEW)
-            {
-                material = new Material(Shader.Find("G3D/AutostereoMultiview"));
-            }
-            else
+            if (mode == G3DCameraMode.HEADTRACKING)
             {
                 material = new Material(Shader.Find("G3D/Autostereo"));
+            }
+            else // Multiview and Holobox mode
+            {
+                material = new Material(Shader.Find("G3D/AutostereoMultiview"));
             }
         }
         #endregion
@@ -854,17 +867,17 @@ namespace G3D
         private void updateScreenViewportProperties()
         {
             Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
-            if (mode == G3DCameraMode.MULTIVIEW)
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                headtrackingConnection.updateScreenViewportProperties(displayResolution);
+            }
+            else // Multiview and Holobox mode
             {
                 shaderParameters.screenWidth = displayResolution.x;
                 shaderParameters.screenHeight = displayResolution.y;
                 shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
                 shaderParameters.bottomViewportPosition =
                     Screen.mainWindowPosition.y + Screen.height;
-            }
-            else
-            {
-                headtrackingConnection.updateScreenViewportProperties(displayResolution);
             }
 
             // this parameter is used in the shader to invert the y axis
@@ -928,7 +941,14 @@ namespace G3D
 
                 material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
 
-                if (mode == G3DCameraMode.MULTIVIEW)
+                if (mode == G3DCameraMode.HEADTRACKING)
+                {
+                    material.SetInt(
+                        Shader.PropertyToID("invertViews"),
+                        invertViewsInHeadtracking ? 1 : 0
+                    );
+                }
+                else // Multiview and Holobox mode
                 {
                     material.SetInt(
                         Shader.PropertyToID("indexMapLength"),
@@ -941,13 +961,7 @@ namespace G3D
 
                     material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
                 }
-                else
-                {
-                    material.SetInt(
-                        Shader.PropertyToID("invertViews"),
-                        invertViewsInHeadtracking ? 1 : 0
-                    );
-                }
+
                 material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
                 material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
             }
@@ -968,7 +982,7 @@ namespace G3D
                     focusDistWithDollyZoom
                 );
             }
-            else if (mode == G3DCameraMode.MULTIVIEW)
+            else // Multiview and Holobox mode
             {
                 targetViewSeparation = scaledViewSeparation;
             }
@@ -1032,7 +1046,7 @@ namespace G3D
             {
                 internalCameraCount = 2;
             }
-            else if (mode == G3DCameraMode.MULTIVIEW)
+            else // Multiview and Holobox mode
             {
                 internalCameraCount = getCameraCountFromConfigurationFile();
                 if (internalCameraCount > MAX_CAMERAS)
