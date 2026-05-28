@@ -33,13 +33,13 @@ Shader "G3D/Autostereo"
         // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
         int  yScreenCoords = int(i.screenPos.y) + v_pos_y;     // transform y position from viewport to screen coordinates
         if (isleft == 0) {
-            yScreenCoords = s_height - yScreenCoords ;        // invertieren für rechts geneigte Linse
+            yScreenCoords = s_height - yScreenCoords;        // invertieren für rechts geneigte Linse
         }
         int  yw = int(yScreenCoords * zwinkel) / nwinkel;        // Winkelberechnung für die Renderberechnung
 
         //Start native Renderberechnung
         int  sr = (xScreenCoords * 3) + yw;
-        int3 xwert = int3(sr + 0, sr + 1, sr + 2) % nativeViewCount;                              // #### nativeViewCount->lt03
+        uint3 xwert = int3(sr + 0, sr + 1, sr + 2) % nativeViewCount;                              // #### nativeViewCount->lt03
         // int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), nativeViewCount);                              // #### nativeViewCount->lt03
 
         // Start HQ-Renderberechnung inklusive Z-Korrektur
@@ -64,7 +64,7 @@ Shader "G3D/Autostereo"
             tr2d = track;
         }
 
-        int3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
+        uint3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
         xwert = hviews1 - (mtmp % hqview);
         // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
@@ -76,8 +76,9 @@ Shader "G3D/Autostereo"
 
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
         
-        float4 colorLeft = sampleFromView((1 + invertViews) % 2, uvCoords);              // Pixeldaten linkes Bild
-        float4 colorRight = sampleFromView((0 + invertViews) % 2, uvCoords);             // Pixeldaten rechtes Bild
+        uint inverViewsUint = uint(invertViews);
+        float4 colorLeft = sampleFromView((1 + inverViewsUint) % 2, uvCoords);              // Pixeldaten linkes Bild
+        float4 colorRight = sampleFromView((0 + inverViewsUint) % 2, uvCoords);             // Pixeldaten rechtes Bild
         float cor=0.0, cog=0.0, cob=0.0;
 
         
@@ -157,7 +158,6 @@ Shader "G3D/Autostereo"
                 {
                     v2f output;
                     UNITY_SETUP_INSTANCE_ID(input);
-                    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                     output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
                     output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
 
@@ -204,7 +204,6 @@ Shader "G3D/Autostereo"
                 {
                     v2f output;
                     UNITY_SETUP_INSTANCE_ID(input);
-                    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                     output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
                     output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
 

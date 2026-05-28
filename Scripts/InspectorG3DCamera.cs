@@ -5,92 +5,202 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-[CustomEditor(typeof(G3DCamera))]
-public class InspectorG3DCamera : Editor
+namespace G3D
 {
-    public VisualTreeAsset inspectorXML;
-
-    private PropertyField modeField;
-
-    private PropertyField calibrationFileField;
-    private PropertyField headtrackingScaleField;
-
-    private PropertyField viewOffsetField;
-
-    private Label calibFolderLabel;
-    private Label DioramaCalibFileInfo;
-
-    private static bool isAdvancedSettingsVisible = false;
-    private Foldout advancedSettingsFoldout;
-
-    public override VisualElement CreateInspectorGUI()
+    [CustomEditor(typeof(G3DCamera))]
+    public class InspectorG3DCamera : Editor
     {
-        G3DCamera camera = (G3DCamera)target;
+        public VisualTreeAsset inspectorXML;
 
-        // Create a new VisualElement to be the root of our Inspector UI.
-        VisualElement mainInspector = new VisualElement();
+        private PropertyField modeField;
+        private PropertyField configurationFileField;
+        private PropertyField indexMapYoyoStartField;
+        private PropertyField invertIndexMapField;
+        private PropertyField invertIndexMapIndicesField;
 
-        // Add a simple label.
-        mainInspector.Add(new Label("This is a custom Inspector"));
+        private PropertyField headtrackingScaleField;
 
-        // Load the UXML file.
-        inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-            "Packages/com.3dglobal.core/Resources/G3DCameraInspector.uxml"
-        );
+        private PropertyField viewOffsetField;
+        private PropertyField focusDistanceField;
+        private PropertyField dollyZoomField;
 
-        // Instantiate the UXML.
-        mainInspector = inspectorXML.Instantiate();
+        private Label calibFolderLabel;
+        private Label HeadtrackingCalibFileInfo;
 
-        // Find the PropertyField in the Inspector XML.
-        modeField = mainInspector.Q<PropertyField>("mode");
-        modeField.RegisterValueChangeCallback(
-            (evt) =>
+        private static bool isAdvancedSettingsVisible = false;
+        private Foldout advancedSettingsFoldout;
+
+        private Label IndexMap;
+
+        /// <summary>
+        /// This is used to hack the Unity Inspector.
+        /// Unity triggers a change event when the Inspector is first displayed, but it doesn't provide the new value in that event, so we have to store the last config file to detect when it actually changes.
+        /// </summary>
+        private TextAsset lastConfigFile;
+
+        public override VisualElement CreateInspectorGUI()
+        {
+            G3DCamera camera = (G3DCamera)target;
+            // Create a new VisualElement to be the root of our Inspector UI.
+            VisualElement mainInspector = new VisualElement();
+            // Load the UXML file.
+            inspectorXML = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+                "Packages/com.3dglobal.core/Resources/G3DCameraInspector.uxml"
+            );
+
+            // Instantiate the UXML.
+            mainInspector = inspectorXML.Instantiate();
+
+            // Find the PropertyField in the Inspector XML.
+            modeField = mainInspector.Q<PropertyField>("mode");
+
+            advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
+            advancedSettingsFoldout.value = isAdvancedSettingsVisible;
+
+            IndexMap = mainInspector.Q<Label>("IndexMap");
+            updateIndexMap();
+
+            headtrackingScaleField = mainInspector.Q<PropertyField>("headtrackingSensitivity");
+
+            viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
+
+            focusDistanceField = mainInspector.Q<PropertyField>("focusDistance");
+            dollyZoomField = mainInspector.Q<PropertyField>("dollyZoom");
+
+            string calibrationPath = System.Environment.GetFolderPath(
+                Environment.SpecialFolder.CommonDocuments
+            );
+            calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
+            calibFolderLabel = mainInspector.Q<Label>("HeadtrackingCalibrationFolder");
+            calibFolderLabel.text = calibrationPath;
+
+            HeadtrackingCalibFileInfo = mainInspector.Q<Label>("HeadtrackingCalibFileInfo");
+
+            configurationFileField = mainInspector.Q<PropertyField>("configurationFile");
+            lastConfigFile = camera.configurationFile != null ? camera.configurationFile : null; // store the initial config file to detect changes later
+            indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
+            invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
+            invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
+            setupValueChangeInteractions();
+
+            Button setFocusDistanceButton = mainInspector.Q<Button>("setFocusDistance");
+            setFocusDistanceButton.tooltip =
+                "Set the focus distance to the native focus distance of the display. At native focus distance the camera to focus plane distance is the same as the ideal real world viewing distance of the display.";
+            setFocusDistanceButton.clicked += () =>
             {
-                G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
-                if (newMode == G3DCameraMode.DIORAMA)
-                {
-                    calibFolderLabel.style.display = DisplayStyle.Flex;
-                    headtrackingScaleField.style.display = DisplayStyle.Flex;
-                    DioramaCalibFileInfo.style.display = DisplayStyle.Flex;
-                    viewOffsetField.style.display = DisplayStyle.None;
-                }
-                else
-                {
-                    calibFolderLabel.style.display = DisplayStyle.None;
-                    headtrackingScaleField.style.display = DisplayStyle.None;
-                    DioramaCalibFileInfo.style.display = DisplayStyle.None;
-                    viewOffsetField.style.display = DisplayStyle.Flex;
-                }
-            }
-        );
+                camera.setFocusDistanceToDisplay();
+            };
 
-        advancedSettingsFoldout = mainInspector.Q<Foldout>("AdvancedSettings");
-        advancedSettingsFoldout.value = isAdvancedSettingsVisible;
-        advancedSettingsFoldout.RegisterValueChangedCallback(
-            (evt) =>
+            Button setCameraFOVButton = mainInspector.Q<Button>("setCameraFOV");
+            setCameraFOVButton.tooltip =
+                "Set the main camera's field of view to the real world angle the display actually covers in the user's vision when viewed from the ideal distance.";
+            setCameraFOVButton.clicked += () =>
             {
-                isAdvancedSettingsVisible = evt.newValue;
-            }
-        );
+                camera.setCameraFOVToDisplayFOV();
+            };
 
-        headtrackingScaleField = mainInspector.Q<PropertyField>("headTrackingScale");
+            Button visitOnlineDocumentationButton = mainInspector.Q<Button>("visitOnlineDocumentation");
+            visitOnlineDocumentationButton.clicked += () =>
+            {
+                Application.OpenURL("https://3d-global-docs.vercel.app/docs/category/unity");
+            };
 
-        viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
+            return mainInspector;
+        }
 
-        string calibrationPath = System.Environment.GetFolderPath(
-            Environment.SpecialFolder.CommonDocuments
-        );
-        calibrationPath = System.IO.Path.Combine(calibrationPath, "3D Global", "calibrations");
-        calibFolderLabel = mainInspector.Q<Label>("DioramaCalibrationFolder");
-        calibFolderLabel.text =
-            "The headtracking library will search for display calibrations in this folder:\n"
-            + calibrationPath;
+        private void setupValueChangeInteractions()
+        {
+            modeField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
+                    if (newMode == G3DCameraMode.HEADTRACKING)
+                    {
+                        calibFolderLabel.style.display = DisplayStyle.Flex;
+                        headtrackingScaleField.style.display = DisplayStyle.Flex;
+                        HeadtrackingCalibFileInfo.style.display = DisplayStyle.Flex;
+                        viewOffsetField.style.display = DisplayStyle.None;
+                    }
+                    else // Holobox and Multiview mode
+                    {
+                        calibFolderLabel.style.display = DisplayStyle.None;
+                        headtrackingScaleField.style.display = DisplayStyle.None;
+                        HeadtrackingCalibFileInfo.style.display = DisplayStyle.None;
+                        viewOffsetField.style.display = DisplayStyle.Flex;
+                    }
+                }
+            );
 
-        DioramaCalibFileInfo = mainInspector.Q<Label>("DioramaCalibFileInfo");
+            advancedSettingsFoldout.RegisterValueChangedCallback(
+                (evt) =>
+                {
+                    isAdvancedSettingsVisible = evt.newValue;
+                }
+            );
 
-        // setup UI
+            G3DCamera camera = (G3DCamera)target;
+            configurationFileField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    if (camera.configurationFile != lastConfigFile)
+                    {
+                        lastConfigFile = camera.configurationFile;
+                        camera.setupCameras();
+                        updateIndexMap();
 
-        return mainInspector;
+                        // force update the scene view to dorce gizmo update
+                        SceneView.RepaintAll();
+                    }
+                }
+            );
+            modeField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateMode();
+                    updateIndexMap();
+                }
+            );
+
+            indexMapYoyoStartField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    updateIndexMap();
+                }
+            );
+            invertIndexMapField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    updateIndexMap();
+                }
+            );
+            invertIndexMapIndicesField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    updateIndexMap();
+                }
+            );
+
+            focusDistanceField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateFocusDistance();
+                }
+            );
+
+            dollyZoomField.RegisterValueChangeCallback(
+                (evt) =>
+                {
+                    camera.updateFocusDistance();
+                }
+            );
+        }
+
+        private void updateIndexMap()
+        {
+            G3DCamera camera = (G3DCamera)target;
+            camera.updateIndexMap();
+            IndexMap.text = camera.indexMapToString();
+        }
     }
 }
 #endif

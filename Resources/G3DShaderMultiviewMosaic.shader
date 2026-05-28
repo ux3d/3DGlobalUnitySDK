@@ -7,18 +7,19 @@ Shader "G3D/AutostereoMultiviewMosaic"
     #include "G3D_ShaderBasics.hlsl"
 
     // mosaic video parameters
-    int mosaic_rows = 1; // number of rows in the mosaic
-    int mosaic_columns = 1; // number of columns in the mosaic
+    uint mosaic_rows = 1; // number of rows in the mosaic
+    uint mosaic_columns = 1; // number of columns in the mosaic
     
-    Texture2D mosaictexture;
-    SamplerState samplermosaictexture;
+
+    Texture2D _colorMosaic;
+    SamplerState sampler_colorMosaic;
 
     int map(int x, int in_min, int in_max, int out_min, int out_max)
     {
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
     }
 
-    float2 calculateUVForMosaic(int viewIndex, float2 startingUV) {
+    float2 calculateUVForMosaic(uint viewIndex, float2 startingUV) {
         if(viewIndex < 0 )
         {
             viewIndex = 0;
@@ -27,8 +28,8 @@ Shader "G3D/AutostereoMultiviewMosaic"
         {
             viewIndex = map(viewIndex, 0, nativeViewCount - 1, 0, mosaic_rows * mosaic_columns - 1);
         }
-        int xAxis = viewIndex % mosaic_columns;
-        int yAxis = viewIndex / mosaic_columns;
+        uint xAxis = viewIndex % mosaic_columns;
+        uint yAxis = viewIndex / mosaic_columns;
         // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
         // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
         yAxis = mosaic_rows - 1 - yAxis;
@@ -65,17 +66,17 @@ Shader "G3D/AutostereoMultiviewMosaic"
             // 250 corresponds to a black view
             if(viewIndices.x != 250) {
                 float2 mappedUVCoords = calculateUVForMosaic(viewIndices.x, uvCoords);
-                float4 tmpColorX = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                float4 tmpColorX = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
                 color.x = tmpColorX.x;
             }
             if(viewIndices.y != 250) {
                 float2 mappedUVCoords = calculateUVForMosaic(viewIndices.y, uvCoords);
-                float4 tmpColorY = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                float4 tmpColorY = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
                 color.y = tmpColorY.y;
             }
             if(viewIndices.z != 250) {
                 float2 mappedUVCoords = calculateUVForMosaic(viewIndices.z, uvCoords);
-                float4 tmpColorZ = mosaictexture.Sample(samplermosaictexture, mappedUVCoords);
+                float4 tmpColorZ = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
                 color.z = tmpColorZ.z;
             }
         }
@@ -119,7 +120,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
                 {
                     v2f output;
                     UNITY_SETUP_INSTANCE_ID(input);
-                    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                     output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
                     output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
 
@@ -166,7 +166,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
                 {
                     v2f output;
                     UNITY_SETUP_INSTANCE_ID(input);
-                    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                     output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
                     output.screenPos = GetFullScreenTriangleVertexPosition(input.vertexID);
 

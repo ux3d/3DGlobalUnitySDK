@@ -14,568 +14,627 @@ using UnityEngine.Rendering.HighDefinition;
 #if G3D_URP
 using UnityEngine.Rendering.Universal;
 #endif
-
-public enum MosaicMode
+namespace G3D
 {
-    Image,
-    Video,
-    RenderTexture
-}
+    public enum G3DCameraMosaicMode
+    {
+        HOLOBOX,
+        MULTIVIEW
+    }
 
-/// <summary>
-/// Replaces the image the camera this script is attached to sees with the rendertexture.
-/// The texture should contain a mosaic image with several views.
-///
-/// IMPORTANT: This script must not be attached to a camera already using a G3D camera script.
-/// </summary>
-[RequireComponent(typeof(Camera))]
-public class G3DCameraMosaicMultiview : MonoBehaviour
-{
-    #region Calibration
-    [Tooltip("Drop the calibration file for the display you want to use here.")]
-    public TextAsset calibrationFile;
-
-    [Min(1)]
-    public int mosaicRowCount = 3;
-
-    [Min(1)]
-    public int mosaicColumnCount = 3;
-
-    [Tooltip(
-        "If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3\nONLY WORKS FOR IMAGE AND VIDEO MODES"
-    )]
-    public bool dimensionsFromFilename = false;
-
-    [Tooltip(
-        "Does not check if the amount of HQ views specified in the calibration file fits the provided mosaic."
-    )]
-    public bool useHQViews = false;
-
-    [Space(10)]
-    [Tooltip(
-        "Where the views start to yoyo in the index map. Index map contains the order of views."
-    )]
-    [Range(0.0f, 1.0f)]
-    public float indexMapYoyoStart = 0.0f;
-
-    [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
-    public bool invertIndexMap = false;
-
-    [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
-    public bool invertIndexMapIndices = false;
-
-    [Space(10)]
-    #endregion
+    public enum DataType
+    {
+        Image,
+        Video,
+        RenderTexture
+    }
 
     /// <summary>
-    /// Shifts the individual views to the left or right by the specified number of views.
+    /// Replaces the image the camera this script is attached to sees with the rendertexture.
+    /// The texture should contain a mosaic image with several views.
+    ///
+    /// IMPORTANT: This script must not be attached to a camera already using a G3D camera script.
     /// </summary>
-    [Tooltip("Shifts the individual views to the left or right by the specified number of views.")]
-    public int viewOffset = 0;
+    [RequireComponent(typeof(Camera))]
+    public class G3DCameraMosaicMultiview : MonoBehaviour
+    {
+        [Tooltip("Drop the configuration file for the display you want to use here.")]
+        public TextAsset configurationFile;
 
-    public MosaicMode mosaicMode = MosaicMode.RenderTexture;
-    public RenderTexture renderTexture;
-    public Texture2D image;
+        public G3DCameraMosaicMode mode = G3DCameraMosaicMode.MULTIVIEW;
 
-    public VideoClip videoClip;
+        [Min(1)]
+        /// <summary>
+        /// The number of rows in the mosaic.
+        /// </summary>
+        public int mosaicRowCount = 3;
 
-    #region 3D Effect settings
-    [Header("3D Effect settings")]
-    [Tooltip("If set to true, the views will be flipped horizontally.")]
-    public bool mirrorViews = false;
-    #endregion
+        [Min(1)]
+        /// <summary>
+        /// The number of columns in the mosaic.
+        /// </summary>
+        public int mosaicColumnCount = 3;
+
+        [Tooltip(
+            "If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3\nONLY WORKS FOR IMAGE AND VIDEO MODES"
+        )]
+        /// <summary>
+        /// If enabled, the mosaic dimensions will be extracted from the filename. E.g. video.mosaic.3x3
+        /// ONLY WORKS FOR IMAGE AND VIDEO MODES
+        /// </summary>
+        public bool dimensionsFromFilename = false;
+
+        [Space(10)]
+        [Tooltip(
+            "Where the views start to yoyo in the index map. Index map contains the order of views."
+        )]
+        [Range(0.0f, 1.0f)]
+        /// <summary>
+        /// Where the views start to yoyo in the index map in percent. Index map contains the order of views.
+        /// [0, 1, 2, 3, 4, 5, 6, 7] with yoyo start at 50% would become [6, 5, 4, 3, 4, 5, 6]
+        /// </summary>
+        public float indexMapYoyoStart = 0.0f;
+
+        [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+        /// <summary>
+        /// Inverts the entire index map. Index map contains the order of views.
+        /// [0, 1, 2, 3, 4, 5, 6, 7] would become [7, 6, 5, 4, 3, 2, 1, 0]
+        /// </summary>
+        public bool invertIndexMap = false;
+
+        [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+        /// <summary>
+        /// Inverts the individual indices in the index map. Index map contains the order of views.
+        /// [6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]
+        /// </summary>
+        public bool invertIndexMapIndices = false;
+
+        /// <summary>
+        /// Shifts the individual views to the left or right by the specified number of views.
+        /// This does not shift the cameras. This shifts the views you see on the display.
+        /// </summary>
+        [Tooltip(
+            "Shifts the individual views to the left or right by the specified number of views."
+        )]
+        public int viewOffset = 0;
+
+        public DataType dataType = DataType.RenderTexture;
+
+        /// <summary>
+        /// Render Texture used for rendertexture mosaic mode.
+        /// In video mode this gets overwritten by this script with the provided image/ video texture.
+        /// </summary>
+        public RenderTexture renderTexture;
+        public Texture2D image;
+
+        public VideoClip videoClip;
 
 
-    #region Private variables
-    private PreviousValues previousValues = new PreviousValues();
-    private IndexMap indexMap = IndexMap.Instance;
-    private Camera mainCamera;
-    private Material material;
+        #region Private variables
+        
+        [Tooltip(
+            "Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic."
+        )]
+        /// <summary>
+        /// Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic.
+        /// CURRENTLY NOT IN USE, MARKED PRIVATE FOR NOW
+        /// </summary>
+        private bool useHQViews = false;
+
+        // mirrorViews is used to flip the views horizontally, this is required for Holoboxes
+        private bool mirrorViews = false;
+
+        private IndexMap indexMap = IndexMap.Instance;
+        private Camera mainCamera;
+        private Material material;
 #if G3D_HDRP
-    private G3DHDRPCustomPass customPass;
+        private G3D.RenderPipeline.HDRP.CustomPass customPass;
 #endif
 #if G3D_URP
-    private G3DUrpScriptableRenderPass customPass;
+        private G3D.RenderPipeline.URP.ScriptableRP customPass;
 #endif
 
-    private ShaderHandles shaderHandles;
-    private G3DShaderParameters shaderParameters;
+        private ShaderHandles shaderHandles;
+        private G3DShaderParameters shaderParameters;
 
-    private Vector2Int cachedWindowPosition;
-    private Vector2Int cachedWindowSize;
+        private Vector2Int cachedWindowPosition;
+        private Vector2Int cachedWindowSize;
 
-    public VideoPlayer internalVideoPlayer { get; private set; }
+        public VideoPlayer internalVideoPlayer { get; private set; }
 
-    #endregion
+        #endregion
 
-    #region Initialization
-    void Start()
-    {
-        mainCamera = GetComponent<Camera>();
-        mainCamera.cullingMask = 0; //disable rendering of the main camera
-        mainCamera.clearFlags = CameraClearFlags.Color;
-
-        //initialize cameras
-
-        shaderHandles = new ShaderHandles()
+        #region Initialization
+        void Start()
         {
-            leftViewportPosition = Shader.PropertyToID("v_pos_x"),
-            bottomViewportPosition = Shader.PropertyToID("v_pos_y"),
-            screenHeight = Shader.PropertyToID("s_height"),
-            nativeViewCount = Shader.PropertyToID("nativeViewCount"),
-            angleRatioNumerator = Shader.PropertyToID("zwinkel"),
-            angleRatioDenominator = Shader.PropertyToID("nwinkel"),
-            leftLensOrientation = Shader.PropertyToID("isleft"),
-            BGRPixelLayout = Shader.PropertyToID("isBGR"),
-            hqViewCount = Shader.PropertyToID("hqview"),
-            mstart = Shader.PropertyToID("mstart"),
-        };
+            mainCamera = GetComponent<Camera>();
+            mainCamera.cullingMask = 0; //disable rendering of the main camera
+            mainCamera.clearFlags = CameraClearFlags.Color;
 
-        // This has to be done after the cameras are updated
-        cachedWindowPosition = new Vector2Int(
-            Screen.mainWindowPosition.x,
-            Screen.mainWindowPosition.y
-        );
-        cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
+            //initialize cameras
 
-#if G3D_HDRP
-        // init fullscreen postprocessing for hd render pipeline
-        var customPassVolume = gameObject.AddComponent<CustomPassVolume>();
-        customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
-        customPassVolume.isGlobal = true;
-        // Make the volume invisible in the inspector
-        customPassVolume.hideFlags = HideFlags.HideInInspector | HideFlags.DontSave;
-        customPass = customPassVolume.AddPassOfType(typeof(G3DHDRPCustomPass)) as G3DHDRPCustomPass;
-        customPass.fullscreenPassMaterial = material;
-        customPass.materialPassName = "G3DFullScreen3D";
-#endif
+            shaderHandles = new ShaderHandles();
+            shaderHandles.init();
 
-#if G3D_URP
-        customPass = new G3DUrpScriptableRenderPass(material);
-#endif
-
-        // Do this last to ensure custom passes are already set up
-        CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
-            calibrationFile.text
-        );
-        shaderParameters = defaultCalibrationProvider.getShaderParameters();
-        setupTextureMode();
-        reinitializeShader();
-
-        previousValues.init();
-
-        if (dimensionsFromFilename)
-        {
-            extractDimensionsFromFile();
-        }
-
-        updateIndexMap();
-    }
-
-    private void updateIndexMap()
-    {
-        int availableViews = shaderParameters.nativeViewCount;
-        if (useHQViews)
-        {
-            availableViews = shaderParameters.hqViewCount;
-        }
-
-        indexMap.UpdateIndexMap(
-            availableViews,
-            mosaicColumnCount * mosaicRowCount,
-            indexMapYoyoStart,
-            invertIndexMap,
-            invertIndexMapIndices
-        );
-    }
-
-    private void extractDimensionsFromFile()
-    {
-        string name = "";
-        switch (mosaicMode)
-        {
-            case MosaicMode.Image:
-                if (image != null)
-                {
-                    name = image.name;
-                }
-                break;
-            case MosaicMode.Video:
-                if (videoClip != null)
-                {
-                    name = videoClip.name;
-                }
-                break;
-            case MosaicMode.RenderTexture:
-                // cannot extract dimensions from render texture
-                return;
-        }
-        dimensionsFromString(name, out mosaicRowCount, out mosaicColumnCount);
-    }
-
-    private void dimensionsFromString(string name, out int rows, out int columns)
-    {
-        rows = 1;
-        columns = 1;
-
-        string[] parts = name.Split('.');
-        if (parts.Length < 3 || parts[1] != "mosaic")
-        {
-            Debug.LogError("Invalid mosaic video file name format: " + name);
-            return;
-        }
-
-        string rowsStr = parts[2];
-        string[] tmp = rowsStr.Split('x');
-        if (tmp.Length != 2)
-        {
-            Debug.LogError("Invalid mosaic video rows format: " + rowsStr);
-            return;
-        }
-        string columnsStr = tmp[0]; // e.g. 3x3 -> 3
-        string rowsStrOnly = tmp[1]; // e.g. 3x3 -> 3
-        if (!int.TryParse(columnsStr, out columns) || !int.TryParse(rowsStrOnly, out rows))
-        {
-            Debug.LogError("Could not parse mosaic video rows and columns from: " + rowsStr);
-            return;
-        }
-    }
-
-    private void setupTextureMode()
-    {
-        switch (mosaicMode)
-        {
-            case MosaicMode.RenderTexture:
-                // nothing to do here, render texture is already assigned
-                break;
-            case MosaicMode.Video:
-                setupVideoPlayer();
-                break;
-            case MosaicMode.Image:
-                // nothing to do here, image is already assigned
-                break;
-        }
-    }
-
-    private void setupVideoPlayer()
-    {
-        if (internalVideoPlayer == null)
-        {
-            internalVideoPlayer = gameObject.AddComponent<VideoPlayer>();
-            internalVideoPlayer.playOnAwake = true;
-            internalVideoPlayer.isLooping = true;
-        }
-        internalVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
-        if (renderTexture == null)
-        {
-            renderTexture = new RenderTexture(1920, 1080, 0);
-        }
-        internalVideoPlayer.targetTexture = renderTexture;
-        internalVideoPlayer.clip = videoClip;
-        internalVideoPlayer.Play();
-    }
-
-    private void setCorrectMosaicTexture()
-    {
-        switch (mosaicMode)
-        {
-            case MosaicMode.RenderTexture:
-                material.SetTexture("mosaictexture", renderTexture, RenderTextureSubElement.Color);
-                break;
-            case MosaicMode.Video:
-                material.SetTexture("mosaictexture", renderTexture, RenderTextureSubElement.Color);
-                break;
-            case MosaicMode.Image:
-                material.SetTexture("mosaictexture", image);
-                break;
-        }
-    }
-
-    public void reinitializeShader()
-    {
-        material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
-        setCorrectMosaicTexture();
-
-        updateScreenViewportProperties();
-        updateShaderParameters();
+            // This has to be done after the cameras are updated
+            cachedWindowPosition = new Vector2Int(
+                Screen.mainWindowPosition.x,
+                Screen.mainWindowPosition.y
+            );
+            cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
 #if G3D_HDRP
-        customPass.fullscreenPassMaterial = material;
+            // init fullscreen postprocessing for hd render pipeline
+            var customPassVolume = gameObject.AddComponent<CustomPassVolume>();
+            customPassVolume.injectionPoint = CustomPassInjectionPoint.AfterPostProcess;
+            customPassVolume.isGlobal = true;
+            // Make the volume invisible in the inspector
+            customPassVolume.hideFlags = HideFlags.HideInInspector | HideFlags.DontSave;
+            customPass =
+                customPassVolume.AddPassOfType(typeof(G3D.RenderPipeline.HDRP.CustomPass))
+                as G3D.RenderPipeline.HDRP.CustomPass;
+            customPass.fullscreenPassMaterial = material;
+            customPass.materialPassName = "G3DFullScreen3D";
 #endif
+
 #if G3D_URP
-        customPass.updateMaterial(material);
-#endif
-    }
-
-#if G3D_URP
-    private void OnEnable()
-    {
-        RenderPipelineManager.beginCameraRendering += OnBeginCamera;
-    }
-
-    private void OnDisable()
-    {
-        RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
-    }
-
-    private void OnBeginCamera(ScriptableRenderContext context, Camera cam)
-    {
-        // Use the EnqueuePass method to inject a custom render pass
-        cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
-    }
+            customPass = new G3D.RenderPipeline.URP.ScriptableRP(material);
 #endif
 
-    #endregion
+            // Do this last to ensure custom passes are already set up
+            ConfigurationProvider defaultConfigurationProvider =
+                ConfigurationProvider.getFromString(configurationFile.text);
+            shaderParameters = defaultConfigurationProvider.getShaderParameters();
+            setupTextureMode();
+            reinitializeShader();
 
-    #region Updates
+            if (dimensionsFromFilename)
+            {
+                extractDimensionsFromFile();
+            }
 
-    /// <summary>
-    /// OnValidate gets called every time the script is changed in the editor.
-    /// This is used to react to changes made to the parameters.
-    /// </summary>
-    void OnValidate()
-    {
-        if (isActiveAndEnabled == false)
-        {
-            // do not run this code if the script is not enabled
-            return;
+            updateIndexMap();
         }
 
-        if (calibrationFile != previousValues.calibrationFile)
+#if G3D_URP
+        private void OnEnable()
         {
-            previousValues.calibrationFile = calibrationFile;
-            updateShaderFromCalibrationFile();
+            RenderPipelineManager.beginCameraRendering += OnBeginCamera;
         }
 
-        if (
-            previousValues.indexMapYoyoStart != indexMapYoyoStart
-            || previousValues.invertIndexMap != invertIndexMap
-            || previousValues.invertIndexMapIndices != invertIndexMapIndices
-        )
+        private void OnDisable()
         {
-            previousValues.indexMapYoyoStart = indexMapYoyoStart;
-            previousValues.invertIndexMap = invertIndexMap;
-            previousValues.invertIndexMapIndices = invertIndexMapIndices;
+            RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
+        }
+
+        private void OnBeginCamera(ScriptableRenderContext context, Camera cam)
+        {
+            // Use the EnqueuePass method to inject a custom render pass
+            cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(customPass);
+        }
+#endif
+
+        #endregion
+
+        #region Updates
+
+        void Update()
+        {
+            updateShaderParameters();
+
+            if (windowResized() || windowMoved())
+            {
+                updateScreenViewportProperties();
+            }
+        }
+
+        /// <summary>
+        /// Call this function after the mode has been changed (e.g. multiview to holobox)
+        /// </summary>
+        public void updateMode()
+        {
+            if (mode == G3DCameraMosaicMode.HOLOBOX)
+            {
+                mirrorViews = true;
+            }
+            else
+            {
+                mirrorViews = false;
+            }
+        }
+
+        public void updateIndexMap()
+        {
+            int availableViews = shaderParameters.nativeViewCount;
+            if (useHQViews)
+            {
+                availableViews = shaderParameters.hqViewCount;
+            }
 
             indexMap.UpdateIndexMap(
-                shaderParameters.nativeViewCount,
+                availableViews,
                 mosaicColumnCount * mosaicRowCount,
                 indexMapYoyoStart,
                 invertIndexMap,
                 invertIndexMapIndices
             );
         }
-    }
 
-    public void updateShaderFromCalibrationFile(TextAsset calibrationFile)
-    {
-        if (calibrationFile == null || calibrationFile.text == "")
+        public string indexMapToString()
         {
-            return;
-        }
-        this.calibrationFile = calibrationFile;
-        updateShaderFromCalibrationFile();
-    }
-
-    public void updateShaderFromCalibrationFile()
-    {
-        if (calibrationFile == null || calibrationFile.text == "")
-        {
-            return;
+            return indexMap.currentMapToString();
         }
 
-        CalibrationProvider calibrationProvider = CalibrationProvider.getFromString(
-            calibrationFile.text
-        );
-        shaderParameters = calibrationProvider.getShaderParameters();
-    }
-
-    void Update()
-    {
-        updateShaderParameters();
-
-        if (windowResized() || windowMoved())
+        public void reinitializeShader()
         {
+            material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
+            setCorrectMosaicTexture();
+
             updateScreenViewportProperties();
-        }
-    }
+            updateShaderParameters();
 
-    private void updateScreenViewportProperties()
-    {
-        try
+#if G3D_HDRP
+            customPass.fullscreenPassMaterial = material;
+#endif
+#if G3D_URP
+            customPass.updateMaterial(material);
+#endif
+        }
+
+        /// <summary>
+        /// Updates the shader parameters based on the provided configuration file.
+        /// </summary>
+        /// <param name="configurationFile"></param>
+        public void updateShaderFromConfigurationFile(TextAsset configurationFile)
         {
-            shaderParameters.screenHeight = Screen.height;
-            shaderParameters.screenWidth = Screen.width;
-            shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
-            shaderParameters.bottomViewportPosition = Screen.mainWindowPosition.y + Screen.height;
+            if (configurationFile == null || configurationFile.text == "")
+            {
+                return;
+            }
+            this.configurationFile = configurationFile;
+            updateShaderFromConfigurationFile();
         }
-        catch (Exception e)
+
+        /// <summary>
+        /// Updates the shader parameters based on the configuration file already set.
+        /// </summary>
+        public void updateShaderFromConfigurationFile()
         {
-            Debug.LogError("Failed to update screen viewport properties: " + e.Message);
+            if (configurationFile == null || configurationFile.text == "")
+            {
+                return;
+            }
+
+            ConfigurationProvider calibrationProvider = ConfigurationProvider.getFromString(
+                configurationFile.text
+            );
+            shaderParameters = calibrationProvider.getShaderParameters();
         }
 
-        // this parameter is used in the shader to invert the y axis
-        material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
-    }
-
-    private void updateShaderParameters()
-    {
-        material?.SetInt(shaderHandles.leftViewportPosition, shaderParameters.leftViewportPosition);
-        material?.SetInt(
-            shaderHandles.bottomViewportPosition,
-            shaderParameters.bottomViewportPosition
-        );
-        material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
-        material?.SetInt(shaderHandles.angleRatioNumerator, shaderParameters.angleRatioNumerator);
-        material?.SetInt(
-            shaderHandles.angleRatioDenominator,
-            shaderParameters.angleRatioDenominator
-        );
-        material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
-        material?.SetInt(shaderHandles.leftLensOrientation, shaderParameters.leftLensOrientation);
-        material?.SetInt(shaderHandles.showTestFrame, 0);
-        material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
-        material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
-        material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
-
-        int cameraCount = mosaicColumnCount * mosaicRowCount;
-        int shaderMaxCount = shaderParameters.nativeViewCount;
-        if (cameraCount > shaderMaxCount)
+        /// <summary>
+        /// The provided file uri has to be a display configuration ini file.
+        /// </summary>
+        /// <param name="uri"></param>
+        public void UpdateShaderParametersFromURI(string uri)
         {
-            cameraCount = shaderMaxCount;
+            if (uri == null || uri == "")
+            {
+                return;
+            }
+
+            try
+            {
+                ConfigurationProvider defaultConfigurationProvider =
+                    ConfigurationProvider.getFromURI(
+                        uri,
+                        (ConfigurationProvider provider) =>
+                        {
+                            shaderParameters = provider.getShaderParameters();
+                            updateShaderParameters();
+                            return 0;
+                        }
+                    );
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to update shader parameters from uri: " + e.Message);
+            }
         }
 
-        material?.SetInt(Shader.PropertyToID("cameraCount"), cameraCount);
-
-        material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
-
-        material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRowCount);
-        material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumnCount);
-
-        material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
-
-        material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
-        material.SetFloatArray(Shader.PropertyToID("index_map"), indexMap.getPaddedIndexMapArray());
-
-        material?.SetInt(Shader.PropertyToID("use_hq_views"), useHQViews ? 1 : 0);
-    }
-
-    private bool windowResized()
-    {
-        var window_dim = new Vector2Int(Screen.width, Screen.height);
-        if (cachedWindowSize != window_dim)
+        /// <summary>
+        /// The provided file path has to be a display configuration ini file.
+        /// </summary>
+        /// <param name="filePath"></param>
+        public void UpdateShaderParametersFromFile(string filePath)
         {
-            cachedWindowSize = window_dim;
-            return true;
-        }
-        return false;
-    }
+            if (filePath == null || filePath == "" || filePath.EndsWith(".ini") == false)
+            {
+                return;
+            }
 
-    private bool windowMoved()
-    {
-        var window_pos = new Vector2Int(Screen.mainWindowPosition.x, Screen.mainWindowPosition.y);
-        if (cachedWindowPosition != window_pos)
+            try
+            {
+                ConfigurationProvider defaultConfigurationProvider =
+                    ConfigurationProvider.getFromConfigFile(filePath);
+                shaderParameters = defaultConfigurationProvider.getShaderParameters();
+                updateShaderParameters();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to update shader parameters from file: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// The provided string has to be a display configuration ini file.
+        /// </summary>
+        /// <param name="json"></param>
+        public void UpdateShaderParametersFromINIString(string iniFile)
         {
-            cachedWindowPosition = window_pos;
-            return true;
-        }
-        return false;
-    }
+            if (iniFile == null || iniFile == "")
+            {
+                return;
+            }
 
-    // This function only does something when you use the SRP render pipeline.
-    // when using either URP or HRDP image combination is handled in the respective renderpasses.
-    // URP -> G3DUrpScriptableRenderPass.cs
-    // HDRP -> G3DHDRPCustomPass.cs
-    void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        // This is where the material and shader are applied to the camera image.
-        //legacy support (no URP or HDRP)
+            try
+            {
+                ConfigurationProvider defaultConfigurationProvider =
+                    ConfigurationProvider.getFromString(iniFile);
+                shaderParameters = defaultConfigurationProvider.getShaderParameters();
+                updateShaderParameters();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to update shader parameters from json: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Sets the dimensions of the mosaic based on the filename. The filename has to be in the format "name.mosaic.{columns}x{rows}.ext". E.g. "video.mosaic.3x3.mp4" would set the mosaic to have 3 columns and 3 rows.
+        /// </summary>
+        /// <param name="filename"></param>
+        public void setDimensionsFromFilename(string filename)
+        {
+            dimensionsFromString(filename, out mosaicRowCount, out mosaicColumnCount);
+        }
+
+        private void extractDimensionsFromFile()
+        {
+            string name = "";
+            switch (dataType)
+            {
+                case DataType.Image:
+                    if (image != null)
+                    {
+                        name = image.name;
+                    }
+                    break;
+                case DataType.Video:
+                    if (videoClip != null)
+                    {
+                        name = videoClip.name;
+                    }
+                    break;
+                case DataType.RenderTexture:
+                    // cannot extract dimensions from render texture
+                    return;
+            }
+            dimensionsFromString(name, out mosaicRowCount, out mosaicColumnCount);
+        }
+
+        private void dimensionsFromString(string name, out int rows, out int columns)
+        {
+            rows = 1;
+            columns = 1;
+
+            string[] parts = name.Split('.');
+            if (parts.Length < 3 || parts[1] != "mosaic")
+            {
+                Debug.LogError("Invalid mosaic video file name format: " + name);
+                return;
+            }
+
+            string rowsStr = parts[2];
+            string[] tmp = rowsStr.Split('x');
+            if (tmp.Length != 2)
+            {
+                Debug.LogError("Invalid mosaic video rows format: " + rowsStr);
+                return;
+            }
+            string columnsStr = tmp[0]; // e.g. 3x3 -> 3
+            string rowsStrOnly = tmp[1]; // e.g. 3x3 -> 3
+            if (!int.TryParse(columnsStr, out columns) || !int.TryParse(rowsStrOnly, out rows))
+            {
+                Debug.LogError("Could not parse mosaic video rows and columns from: " + rowsStr);
+                return;
+            }
+        }
+
+        private void setupTextureMode()
+        {
+            switch (dataType)
+            {
+                case DataType.RenderTexture:
+                    // nothing to do here, render texture is already assigned
+                    break;
+                case DataType.Video:
+                    setupVideoPlayer();
+                    break;
+                case DataType.Image:
+                    // nothing to do here, image is already assigned
+                    break;
+            }
+        }
+
+        private void setupVideoPlayer()
+        {
+            if (internalVideoPlayer == null)
+            {
+                internalVideoPlayer = gameObject.AddComponent<VideoPlayer>();
+                internalVideoPlayer.playOnAwake = true;
+                internalVideoPlayer.isLooping = true;
+            }
+            internalVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
+            if (renderTexture == null)
+            {
+                renderTexture = new RenderTexture(1920, 1080, 0);
+            }
+            internalVideoPlayer.targetTexture = renderTexture;
+            internalVideoPlayer.clip = videoClip;
+            internalVideoPlayer.Play();
+        }
+
+        private void setCorrectMosaicTexture()
+        {
+            switch (dataType)
+            {
+                case DataType.RenderTexture:
+                    material.SetTexture(
+                        "mosaictexture",
+                        renderTexture,
+                        RenderTextureSubElement.Color
+                    );
+                    material.SetTexture(
+                        "_colorMosaic",
+                        renderTexture,
+                        RenderTextureSubElement.Color
+                    );
+                    break;
+                case DataType.Video:
+                    material.SetTexture(
+                        "mosaictexture",
+                        renderTexture,
+                        RenderTextureSubElement.Color
+                    );
+                    material.SetTexture(
+                        "_colorMosaic",
+                        renderTexture,
+                        RenderTextureSubElement.Color
+                    );
+                    break;
+                case DataType.Image:
+                    material.SetTexture("mosaictexture", image);
+                    material.SetTexture("_colorMosaic", image);
+                    break;
+            }
+        }
+
+        private void updateScreenViewportProperties()
+        {
+            try
+            {
+                shaderParameters.screenHeight = Screen.height;
+                shaderParameters.screenWidth = Screen.width;
+                shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
+                shaderParameters.bottomViewportPosition =
+                    Screen.mainWindowPosition.y + Screen.height;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to update screen viewport properties: " + e.Message);
+            }
+
+            // this parameter is used in the shader to invert the y axis
+            material?.SetInt(Shader.PropertyToID("viewportHeight"), Screen.height);
+            material?.SetInt(Shader.PropertyToID("viewportWidth"), Screen.width);
+        }
+
+        private void updateShaderParameters()
+        {
+            material?.SetInt(
+                shaderHandles.leftViewportPosition,
+                shaderParameters.leftViewportPosition
+            );
+            material?.SetInt(
+                shaderHandles.bottomViewportPosition,
+                shaderParameters.bottomViewportPosition
+            );
+            material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
+            material?.SetInt(shaderHandles.screenWidth, shaderParameters.screenWidth);
+            material?.SetInt(
+                shaderHandles.angleRatioNumerator,
+                shaderParameters.angleRatioNumerator
+            );
+            material?.SetInt(
+                shaderHandles.angleRatioDenominator,
+                shaderParameters.angleRatioDenominator
+            );
+            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
+            material?.SetInt(
+                shaderHandles.leftLensOrientation,
+                shaderParameters.leftLensOrientation
+            );
+            material?.SetInt(shaderHandles.showTestFrame, 0);
+            material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
+            material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
+            material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
+
+            int cameraCount = mosaicColumnCount * mosaicRowCount;
+            int shaderMaxCount = shaderParameters.nativeViewCount;
+            if (cameraCount > shaderMaxCount)
+            {
+                cameraCount = shaderMaxCount;
+            }
+
+            material?.SetInt(Shader.PropertyToID("cameraCount"), cameraCount);
+
+            material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
+
+            material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRowCount);
+            material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumnCount);
+
+            material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+
+            material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+            material.SetFloatArray(
+                Shader.PropertyToID("index_map"),
+                indexMap.getPaddedIndexMapArray()
+            );
+
+            material?.SetInt(Shader.PropertyToID("use_hq_views"), useHQViews ? 1 : 0);
+        }
+
+        private bool windowResized()
+        {
+            var window_dim = new Vector2Int(Screen.width, Screen.height);
+            if (cachedWindowSize != window_dim)
+            {
+                cachedWindowSize = window_dim;
+                return true;
+            }
+            return false;
+        }
+
+        private bool windowMoved()
+        {
+            var window_pos = new Vector2Int(
+                Screen.mainWindowPosition.x,
+                Screen.mainWindowPosition.y
+            );
+            if (cachedWindowPosition != window_pos)
+            {
+                cachedWindowPosition = window_pos;
+                return true;
+            }
+            return false;
+        }
+
+        // This function only does something when you use the SRP render pipeline.
+        // when using either URP or HRDP image combination is handled in the respective renderpasses.
+        // URP -> G3D.RenderPipeline.URP.ScriptableRP.cs
+        // HDRP -> G3D.RenderPipeline.HDRP.CustomPass.cs
+        void OnRenderImage(RenderTexture source, RenderTexture destination)
+        {
+            // This is where the material and shader are applied to the camera image.
+            //legacy support (no URP or HDRP)
 #if G3D_HDRP || URP
 #else
-        if (material == null)
-            Graphics.Blit(source, destination);
-        else
-            Graphics.Blit(source, destination, material);
+            if (material == null)
+                Graphics.Blit(source, destination);
+            else
+                Graphics.Blit(source, destination, material);
 #endif
-    }
-    #endregion
-
-    /// <summary>
-    /// The provided file uri has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="uri"></param>
-    public void UpdateShaderParametersFromURI(string uri)
-    {
-        if (uri == null || uri == "")
-        {
-            return;
         }
-
-        try
-        {
-            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromURI(
-                uri,
-                (CalibrationProvider provider) =>
-                {
-                    shaderParameters = provider.getShaderParameters();
-                    updateShaderParameters();
-                    return 0;
-                }
-            );
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from uri: " + e.Message);
-        }
-    }
-
-    /// <summary>
-    /// The provided file path has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="filePath"></param>
-    public void UpdateShaderParametersFromFile(string filePath)
-    {
-        if (filePath == null || filePath == "" || filePath.EndsWith(".ini") == false)
-        {
-            return;
-        }
-
-        try
-        {
-            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromConfigFile(
-                filePath
-            );
-            shaderParameters = defaultCalibrationProvider.getShaderParameters();
-            updateShaderParameters();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from file: " + e.Message);
-        }
-    }
-
-    /// <summary>
-    /// The provided string has to be a display calibration ini file.
-    /// </summary>
-    /// <param name="json"></param>
-    public void UpdateShaderParametersFromINIString(string iniFile)
-    {
-        if (iniFile == null || iniFile == "")
-        {
-            return;
-        }
-
-        try
-        {
-            CalibrationProvider defaultCalibrationProvider = CalibrationProvider.getFromString(
-                iniFile
-            );
-            shaderParameters = defaultCalibrationProvider.getShaderParameters();
-            updateShaderParameters();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("Failed to update shader parameters from json: " + e.Message);
-        }
+        #endregion
     }
 }
