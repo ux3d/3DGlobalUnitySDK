@@ -75,16 +75,20 @@ namespace G3D
         /// </summary>
         public float indexMapYoyoStart = 0.0f;
 
-        [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+        [Tooltip(
+            "Inverts the entire index map. i.e. reverses the maps order. \n[0, 1, 2, 3, 4, 5, 6, 7] would become [7, 6, 5, 4, 3, 2, 1, 0]"
+        )]
         /// <summary>
-        /// Inverts the entire index map. Index map contains the order of views.
+        /// Inverts the entire index map. i.e. reverses the maps order.
         /// [0, 1, 2, 3, 4, 5, 6, 7] would become [7, 6, 5, 4, 3, 2, 1, 0]
         /// </summary>
         public bool invertIndexMap = false;
 
-        [Tooltip("Inverts the indices in the index map. Index map contains the order of views.")]
+        [Tooltip(
+            "Inverts the individual indices in the index map. i.e. If the max index is 7 it becomes 0 and 0 becomes 7. \n[6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]"
+        )]
         /// <summary>
-        /// Inverts the individual indices in the index map. Index map contains the order of views.
+        /// Inverts the individual indices in the index map. i.e. If the max index is 7 it becomes 0 and 0 becomes 7.
         /// [6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]
         /// </summary>
         public bool invertIndexMapIndices = false;
@@ -109,9 +113,8 @@ namespace G3D
 
         public VideoClip videoClip;
 
-
         #region Private variables
-        
+
         [Tooltip(
             "Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic."
         )]
