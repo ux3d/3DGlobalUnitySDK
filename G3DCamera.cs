@@ -62,8 +62,8 @@ namespace G3D
         )]
         [Range(0.0f, 20.0f)]
         /// <summary>
-        /// Scale the distance between the views (cameras). 
-        /// 1.0 is no scaling, 0.5 is half the distance, 2.0 is double the distance. 
+        /// Scale the distance between the views (cameras).
+        /// 1.0 is no scaling, 0.5 is half the distance, 2.0 is double the distance.
         /// Native distance depends on configuration file.
         /// </summary>
         public float viewOffsetScale = 1.0f;
@@ -94,7 +94,6 @@ namespace G3D
         /// Scale the headtracking effect. Dont set this lower than 0.0f.
         /// </summary>
         public float headtrackingSensitivity = 1.0f; // scale the headtracking effect
-
         #region Advanced settings
         /// <summary>
         /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
@@ -136,16 +135,20 @@ namespace G3D
         /// </summary>
         public int indexMapYoyoStart = 0;
 
-        [Tooltip("Inverts the entire index map. Index map contains the order of views.")]
+        [Tooltip(
+            "Inverts the entire index map. i.e. reverses the maps order. \n[0, 1, 2, 3, 4, 5, 6, 7] would become [7, 6, 5, 4, 3, 2, 1, 0]"
+        )]
         /// <summary>
-        /// Inverts the entire index map. Index map contains the order of views.
+        /// Inverts the entire index map. i.e. reverses the maps order.
         /// [0, 1, 2, 3, 4, 5, 6, 7] would become [7, 6, 5, 4, 3, 2, 1, 0]
         /// </summary>
         public bool invertIndexMap = false;
 
-        [Tooltip("Inverts the individual indices in the index map. Index map contains the order of views.")]
+        [Tooltip(
+            "Inverts the individual indices in the index map. i.e. If the max index is 7 it becomes 0 and 0 becomes 7. \n[6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]"
+        )]
         /// <summary>
-        /// Inverts the individual indices in the index map. Index map contains the order of views.
+        /// Inverts the individual indices in the index map. i.e. If the max index is 7 it becomes 0 and 0 becomes 7.
         /// [6, 5, 4, 3, 4, 5, 6] would become [0, 1, 2, 3, 2, 1, 0]
         /// </summary>
         public bool invertIndexMapIndices = false;
@@ -163,7 +166,7 @@ namespace G3D
         private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
         private int internalCameraCount = 2;
         private int oldRenderResolutionScale = 100;
-        
+
         // mirrorViews is used to flip the views horizontally, this is required for Holoboxes
         private bool mirrorViews = false;
 
