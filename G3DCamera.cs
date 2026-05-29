@@ -358,11 +358,20 @@ namespace G3D
             }
             else // Holobox and Multiview mode
             {
-                ConfigurationProvider configuration = ConfigurationProvider.getFromString(
-                    configurationFile.text
-                );
-                internalCameraCount = getCameraCountFromConfigurationFile(configuration);
-                loadMultiviewViewSeparationFromConfiguration(configuration);
+                if (configurationFile == null)
+                {
+                    Debug.LogWarning(
+                        "No configuration file set. Please set a configuration file. Using default values."
+                    );
+                }
+                else
+                {
+                    ConfigurationProvider configuration = ConfigurationProvider.getFromString(
+                        configurationFile.text
+                    );
+                    internalCameraCount = getCameraCountFromConfigurationFile(configuration);
+                    loadMultiviewViewSeparationFromConfiguration(configuration);
+                }
             }
 
             if (mode == G3DCameraMode.HOLOBOX)
@@ -749,9 +758,6 @@ namespace G3D
         {
             if (configurationFile == null)
             {
-                Debug.LogError(
-                    "No configuration file set. Please set a configuration file. Using default values."
-                );
                 return 2;
             }
 
