@@ -153,6 +153,14 @@ namespace G3D
         /// </summary>
         public bool invertIndexMapIndices = false;
 
+        [Tooltip(
+            "Tells the renderer to render a mosaic instead of the autostereo image. Useful for debugging."
+        )]
+        /// <summary>
+        /// Tells the renderer to render a mosaic instead of the autostereo image. Useful for debugging.
+        /// </summary>
+        public bool shouldRenderMosaic = false;
+
         public HeadtrackingConnection headtrackingConnection;
 
         #endregion
@@ -297,7 +305,10 @@ namespace G3D
 
         void OnApplicationQuit()
         {
-            headtrackingConnection.deinitLibrary();
+            if (headtrackingConnection != null)
+            {
+                headtrackingConnection.deinitLibrary();
+            }
         }
 
         private void OnEnable()
@@ -967,6 +978,14 @@ namespace G3D
 
                 material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
                 material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
+
+                material?.SetInt(
+                    Shader.PropertyToID("shouldRenderMosaic"),
+                    shouldRenderMosaic ? 1 : 0
+                );
+                int closest_large_root = (int)
+                    Math.Ceiling(Math.Sqrt(shaderParameters.nativeViewCount));
+                material?.SetInt(Shader.PropertyToID("mosaicDimensions"), closest_large_root);
             }
         }
 

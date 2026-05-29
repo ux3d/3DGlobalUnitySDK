@@ -78,8 +78,7 @@ Shader "G3D/AutostereoMultiview"
         return float4(0, 0, 0, 0);
     }
 
-    float4 frag (v2f i) : SV_Target
-    {
+    float4 renderAutostereoEffect(v2f i) {
         float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
         
         float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
@@ -110,9 +109,40 @@ Shader "G3D/AutostereoMultiview"
                 color.z = tmpColorZ.z;
             }
         }
-
         
         return color;
+    }
+
+    float4 renderMosaicEffect(v2f i) {
+        float2 uvCoords = i.uv;
+        // mirror the image if necessary
+        if (mirror != 0) {
+            uvCoords.x = 1.0 - uvCoords.x;
+        }
+        
+        uint mosaic_columns = mosaicDimensions; // number of columns in the mosaic
+        uint mosaic_rows = mosaicDimensions; // number of rows in the mosaic
+
+        // get cell index based on UV coordinates
+        int cellIndex = getCellIndex(uvCoords, int2(mosaic_columns, mosaic_rows));
+        cellIndex = nativeViewCount - 1 - cellIndex; // invert cell index to match the order of the views in the mosaic with the order of the view indices
+        // get UV coordinates for the corresponding cell in the mosaic based on the view index
+        float2 cellUV = getCellRelativeUVCoords(uvCoords, int2(mosaic_columns, mosaic_rows));
+
+        //use indices to sample correct subpixels
+        float4 color = sampleFromView(cellIndex, cellUV);
+
+        return color;
+        //return float4(cellIndex / 9.0, 0.0, 0, 1.0);
+    }
+
+    float4 frag (v2f i) : SV_Target
+    {
+        if(shouldRenderMosaic == 0) {
+            return renderAutostereoEffect(i);
+        } else {
+            return renderMosaicEffect(i);
+        }        
     }
     ENDHLSL
 

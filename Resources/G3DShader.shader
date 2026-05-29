@@ -6,7 +6,6 @@ Shader "G3D/Autostereo"
 
     #include "G3D_ShaderBasics.hlsl"
 
-
     Texture2D texture0;
     SamplerState samplertexture0;
     Texture2D texture1;
