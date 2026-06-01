@@ -30,6 +30,7 @@
         <ui:Label text="Debug Settings" name="DebuggingSettings" style="-unity-font-style: bold;" />
         <uie:PropertyField name="showGizmos" binding-path="showGizmos" />
         <uie:PropertyField name="gizmoSize" binding-path="gizmoSize" />
+        <uie:PropertyField name="shouldRenderMosaic" binding-path="shouldRenderMosaic" />
     </ui:Foldout>
     <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
     <ui:Button text="Visit online documentation" name="visitOnlineDocumentation"/>
