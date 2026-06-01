@@ -102,6 +102,14 @@ namespace G3D
         )]
         public int viewOffset = 0;
 
+        [Tooltip(
+            "Tells the renderer to render a mosaic instead of the autostereo image. Useful for debugging."
+        )]
+        /// <summary>
+        /// Tells the renderer to render a mosaic instead of the autostereo image. Useful for debugging.
+        /// </summary>
+        public bool shouldRenderMosaic = false;
+
         public DataType dataType = DataType.RenderTexture;
 
         /// <summary>
@@ -585,6 +593,7 @@ namespace G3D
 
             material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRowCount);
             material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumnCount);
+            material?.SetInt(Shader.PropertyToID("shouldRenderMosaic"), shouldRenderMosaic ? 1 : 0);
 
             material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
 
