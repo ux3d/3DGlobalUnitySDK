@@ -24,8 +24,7 @@ Shader "G3D/Autostereo"
         return float4(0, 0, 0, 0);
     }
 
-    float4 frag (v2f i) : SV_Target
-    {
+    float4 renderAutostereoEffect(v2f i) {
         // Start der Berechnung von dynamische Daten
         int  xScreenCoords = int(i.screenPos.x) + v_pos_x;     // transform x position from viewport to screen coordinates
         // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
@@ -119,6 +118,34 @@ Shader "G3D/Autostereo"
         }  // linkes Auge sieht einen gruenen Streifen
         
         return color;
+    }
+
+    float4 renderMosaicEffect(v2f i) {
+        float2 uvCoords = i.uv;
+        // mirror the image if necessary
+        if (mirror != 0) {
+            uvCoords.x = 1.0 - uvCoords.x;
+        }
+        
+        // get cell index based on UV coordinates
+        int cellIndex = getCellIndex(uvCoords, int2(mosaic_columns, mosaic_rows));
+        cellIndex = 1 - cellIndex; // invert cell index to match the order of the views in the mosaic with the order of the view indices
+        // get UV coordinates for the corresponding cell in the mosaic based on the view index
+        float2 cellUV = getCellRelativeUVCoords(uvCoords, int2(mosaic_columns, mosaic_rows));
+
+        //use indices to sample correct subpixels
+        float4 color = sampleFromView(cellIndex, cellUV);
+
+        return color;
+    }
+
+    float4 frag (v2f i) : SV_Target
+    {
+        if(shouldRenderMosaic == 0) {
+            return renderAutostereoEffect(i);
+        } else {
+            return renderMosaicEffect(i);
+        }   
     }
     ENDHLSL
 

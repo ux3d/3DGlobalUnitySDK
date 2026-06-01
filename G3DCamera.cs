@@ -976,16 +976,30 @@ namespace G3D
                     material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
                 }
 
-                material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
-                material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
-
                 material?.SetInt(
                     Shader.PropertyToID("shouldRenderMosaic"),
                     shouldRenderMosaic ? 1 : 0
                 );
-                int closest_large_root = (int)
-                    Math.Ceiling(Math.Sqrt(shaderParameters.nativeViewCount));
-                material?.SetInt(Shader.PropertyToID("mosaicDimensions"), closest_large_root);
+
+                int mosaicRows = 3;
+                int mosaicColumns = 3;
+                if (shouldRenderMosaic)
+                {
+                    if (internalCameraCount == 2)
+                    {
+                        mosaicRows = 1;
+                        mosaicColumns = 2;
+                    }
+                    else
+                    {
+                        int closest_large_root = (int)
+                            Math.Ceiling(Math.Sqrt(shaderParameters.nativeViewCount));
+                        mosaicRows = closest_large_root;
+                        mosaicColumns = closest_large_root;
+                    }
+                }
+                material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRows);
+                material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumns);
             }
         }
 

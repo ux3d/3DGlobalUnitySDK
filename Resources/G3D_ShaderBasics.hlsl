@@ -47,7 +47,9 @@ uint indexMapLength;
 
 // used for debug grid rendering
 int shouldRenderMosaic;
-int mosaicDimensions; // the dimensions of the mosaic (e.g. 4 for a 4x4 mosaic)
+// these two variaboles (mosaic_columns and mosaic_rows) can be used for rendering a mosaic grid for debugging purposes, and rendering mosaic videos.
+uint mosaic_rows = 1; // number of rows in the mosaic
+uint mosaic_columns = 1; // number of columns in the mosaic
 
 struct v2f
 {

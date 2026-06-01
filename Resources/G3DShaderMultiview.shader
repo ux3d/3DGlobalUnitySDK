@@ -120,9 +120,6 @@ Shader "G3D/AutostereoMultiview"
             uvCoords.x = 1.0 - uvCoords.x;
         }
         
-        uint mosaic_columns = mosaicDimensions; // number of columns in the mosaic
-        uint mosaic_rows = mosaicDimensions; // number of rows in the mosaic
-
         // get cell index based on UV coordinates
         int cellIndex = getCellIndex(uvCoords, int2(mosaic_columns, mosaic_rows));
         cellIndex = nativeViewCount - 1 - cellIndex; // invert cell index to match the order of the views in the mosaic with the order of the view indices

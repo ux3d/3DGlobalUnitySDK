@@ -6,11 +6,6 @@ Shader "G3D/AutostereoMultiviewMosaic"
 
     #include "G3D_ShaderBasics.hlsl"
 
-    // mosaic video parameters
-    uint mosaic_rows = 1; // number of rows in the mosaic
-    uint mosaic_columns = 1; // number of columns in the mosaic
-    
-
     Texture2D _colorMosaic;
     SamplerState sampler_colorMosaic;
 
