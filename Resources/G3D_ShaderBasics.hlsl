@@ -45,6 +45,12 @@ uint use_hq_views; // 1: use hq views, 0: use native views
 float index_map[256];
 uint indexMapLength;
 
+// used for debug grid rendering
+int shouldRenderMosaic;
+// these two variaboles (mosaic_columns and mosaic_rows) can be used for rendering a mosaic grid for debugging purposes, and rendering mosaic videos.
+uint mosaic_rows = 1; // number of rows in the mosaic
+uint mosaic_columns = 1; // number of columns in the mosaic
+
 struct v2f
 {
     float2 uv : TEXCOORD0;
@@ -117,4 +123,49 @@ int3 getHQViewIndices(float2 screenPos)
     viewIndices.z = finalizeViewIndex(viewIndices.z);
 
     return viewIndices;
+}
+
+int map(int x, int in_min, int in_max, int out_min, int out_max)
+{
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+// the text coords of the original left and right view are from 0 - 1
+// the tex coords of the texel we are currently rendering are also from 0 - 1
+// but we want to create a grid of views, so we need to transform the tex coords
+// to the grid size.
+// basically we want to figure out in which grid cell the current texel is, then convert the texel coords to the grid cell coords.
+// example assuming a grid size of 3x3:
+// original tex coords: 0.8, 0.5
+// step 1: transform the tex coords to the grid size by multiplying with grid size
+//    -> e.g. original x coord 0.8 turns to 0.8 * 3 = 2.4
+// step 2: figure out the grid cell by taking the integer part of the transformed tex coords
+//    -> e.g. 2.4 turns to 2
+// step 3: subtract the integer part from the transformed tex coords to get the texel coords in the grid cell
+//   -> e.g. 2.4 - 2 = 0.4 -> final texel coords in the grid cell are 0.4, 0.5
+float2 getCellRelativeUVCoords(float2 uv, int2 gridSize) {
+    float x = uv.x * float(gridSize.x);
+    float y = uv.y * float(gridSize.y);
+
+    int cellX = int(x);
+    int cellY = int(y);
+
+    x = x - cellX;
+    y = y - cellY;
+
+    return float2(x, y);
+}
+
+float getCellIndex(float2 uv, int2 gridSize) {
+    uv.y = 1.0 - uv.y; // invert y axis to have coordinate cell coords start from top left corner
+    float x = uv.x * float(gridSize.x);
+    float y = uv.y * float(gridSize.y);
+
+    uint cellX = int(x);
+    uint cellY = int(y);
+
+    uint cellIndex = cellX + cellY * gridSize.x;
+    uint totalCells = gridSize.x * gridSize.y;
+
+    return float(cellIndex);
 }

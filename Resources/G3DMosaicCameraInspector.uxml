@@ -20,6 +20,7 @@
         <ui:Foldout text="Index Map" enabled="true" value="false" name="IndexMapDisplay">
             <ui:Label text="" name="IndexMap" />
         </ui:Foldout>
+        <uie:PropertyField name="shouldRenderMosaic" binding-path="shouldRenderMosaic" />
     </ui:Foldout>
     <ui:VisualElement name="Divider" style="flex-grow: 1; margin-bottom: 20px;" />
     <ui:Button text="Visit online documentation" name="visitOnlineDocumentation"/>

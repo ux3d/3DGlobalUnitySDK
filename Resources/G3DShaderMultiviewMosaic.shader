@@ -6,18 +6,8 @@ Shader "G3D/AutostereoMultiviewMosaic"
 
     #include "G3D_ShaderBasics.hlsl"
 
-    // mosaic video parameters
-    uint mosaic_rows = 1; // number of rows in the mosaic
-    uint mosaic_columns = 1; // number of columns in the mosaic
-    
-
     Texture2D _colorMosaic;
     SamplerState sampler_colorMosaic;
-
-    int map(int x, int in_min, int in_max, int out_min, int out_max)
-    {
-        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-    }
 
     float2 calculateUVForMosaic(uint viewIndex, float2 startingUV) {
         if(viewIndex < 0 )
@@ -39,8 +29,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
         return scaledUV + cellSize * moasicIndex;
     }
 
-    float4 frag (v2f i) : SV_Target
-    {
+    float4 renderAutostereoEffect(v2f i) {
         float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
         
         float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
@@ -82,6 +71,25 @@ Shader "G3D/AutostereoMultiviewMosaic"
         }
 
         return color;
+    }
+
+    float4 renderMosaicEffect(v2f i) {
+        float2 uvCoords = i.uv;
+        // mirror the image if necessary
+        if (mirror != 0) {
+            uvCoords.x = 1.0 - uvCoords.x;
+        }
+        
+        return _colorMosaic.Sample(sampler_colorMosaic, uvCoords);
+    }
+
+    float4 frag (v2f i) : SV_Target
+    {
+        if(shouldRenderMosaic == 0) {
+            return renderAutostereoEffect(i);
+        } else {
+            return renderMosaicEffect(i);
+        } 
     }
     ENDHLSL
 

@@ -153,6 +153,14 @@ namespace G3D
         /// </summary>
         public bool invertIndexMapIndices = false;
 
+        [Tooltip(
+            "Tells the renderer to render a mosaic instead of the autostereo image. Useful for debugging."
+        )]
+        /// <summary>
+        /// Tells the renderer to render a mosaic instead of the autostereo image. Useful for debugging.
+        /// </summary>
+        public bool shouldRenderMosaic = false;
+
         public HeadtrackingConnection headtrackingConnection;
 
         #endregion
@@ -297,7 +305,10 @@ namespace G3D
 
         void OnApplicationQuit()
         {
-            headtrackingConnection.deinitLibrary();
+            if (headtrackingConnection != null)
+            {
+                headtrackingConnection.deinitLibrary();
+            }
         }
 
         private void OnEnable()
@@ -971,8 +982,30 @@ namespace G3D
                     material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
                 }
 
-                material?.SetInt(Shader.PropertyToID("mosaic_rows"), 4);
-                material?.SetInt(Shader.PropertyToID("mosaic_columns"), 4);
+                material?.SetInt(
+                    Shader.PropertyToID("shouldRenderMosaic"),
+                    shouldRenderMosaic ? 1 : 0
+                );
+
+                int mosaicRows = 3;
+                int mosaicColumns = 3;
+                if (shouldRenderMosaic)
+                {
+                    if (internalCameraCount == 2)
+                    {
+                        mosaicRows = 1;
+                        mosaicColumns = 2;
+                    }
+                    else
+                    {
+                        int closest_large_root = (int)
+                            Math.Ceiling(Math.Sqrt(shaderParameters.nativeViewCount));
+                        mosaicRows = closest_large_root;
+                        mosaicColumns = closest_large_root;
+                    }
+                }
+                material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRows);
+                material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumns);
             }
         }
 
