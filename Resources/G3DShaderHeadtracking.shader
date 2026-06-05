@@ -1,4 +1,4 @@
-Shader "G3D/Autostereo"
+Shader "G3D/AutostereoHeadtracking"
 {
     HLSLINCLUDE
     #pragma target 4.5
@@ -10,8 +10,12 @@ Shader "G3D/Autostereo"
     SamplerState samplertexture0;
     Texture2D texture1;
     SamplerState samplertexture1;
+    
+    Texture2D _colorSBS;
+    SamplerState sampler_colorSBS;
 
     int invertViews;
+    int useSBS;
 
     float4 sampleFromView(int viewIndex, float2 uv) {
         switch (viewIndex) {
@@ -73,10 +77,20 @@ Shader "G3D/Autostereo"
         }
 
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
+        uint invertViewsUint = uint(invertViews);
         
-        uint inverViewsUint = uint(invertViews);
-        float4 colorLeft = sampleFromView((1 + inverViewsUint) % 2, uvCoords);              // Pixeldaten linkes Bild
-        float4 colorRight = sampleFromView((0 + inverViewsUint) % 2, uvCoords);             // Pixeldaten rechtes Bild
+        float4 colorLeft; // Pixeldaten linkes Bild
+        float4 colorRight; // Pixeldaten rechtes Bild
+        if(useSBS) {
+            // sample from side by side texture
+            uvCoords.x = uvCoords.x * 0.5;
+            colorLeft = _colorSBS.Sample(sampler_colorSBS, uvCoords);;              // Pixeldaten linkes Bild
+            uvCoords.x = uvCoords.x + 0.5;
+            colorLeft = _colorSBS.Sample(sampler_colorSBS, uvCoords);;              // Pixeldaten linkes Bild
+        } else {
+            colorLeft = sampleFromView((1 + invertViewsUint) % 2, uvCoords);              // Pixeldaten linkes Bild
+            colorRight = sampleFromView((0 + invertViewsUint) % 2, uvCoords);             // Pixeldaten rechtes Bild
+        }
         float cor=0.0, cog=0.0, cob=0.0;
 
         
@@ -206,8 +220,6 @@ Shader "G3D/Autostereo"
 
         Pass
         {
-            Name "G3DFullScreen3D"
-            
             ZWrite Off
             ZTest Always
             Blend Off

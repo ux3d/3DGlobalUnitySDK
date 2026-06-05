@@ -161,11 +161,10 @@ namespace G3D
         /// </summary>
         public bool shouldRenderMosaic = false;
 
-        public HeadtrackingConnection headtrackingConnection;
-
         #endregion
 
         #region Private variables
+        internal HeadtrackingConnection headtrackingConnection;
         private IndexMap indexMap = IndexMap.Instance;
 
         // distance between the two cameras for headtracking mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
@@ -796,7 +795,7 @@ namespace G3D
         {
             if (mode == G3DCameraMode.HEADTRACKING)
             {
-                material = new Material(Shader.Find("G3D/Autostereo"));
+                material = new Material(Shader.Find("G3D/AutostereoHeadtracking"));
             }
             else // Multiview and Holobox mode
             {
@@ -871,7 +870,9 @@ namespace G3D
             Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
             if (mode == G3DCameraMode.HEADTRACKING)
             {
-                headtrackingConnection.updateScreenViewportProperties(displayResolution);
+                headtrackingConnection.updateScreenViewportProperties(
+                    new Resolution { width = displayResolution.x, height = displayResolution.y }
+                );
             }
             else // Multiview and Holobox mode
             {
@@ -893,6 +894,7 @@ namespace G3D
             {
                 shaderParameters = headtrackingConnection.getShaderParameters();
             }
+
             material?.SetInt(
                 shaderHandles.leftViewportPosition,
                 shaderParameters.leftViewportPosition
@@ -981,6 +983,7 @@ namespace G3D
             }
             material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRows);
             material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumns);
+            material?.SetInt(Shader.PropertyToID("useSBS"), 0);
         }
 
         private void updateCameras()

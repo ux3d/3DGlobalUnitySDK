@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 
 namespace G3D
 {
-    [CustomEditor(typeof(G3DCameraMosaicMultiview))]
+    [CustomEditor(typeof(G3DVideoCamera))]
     public class InspectorG3DMosaicCamera : Editor
     {
         public VisualTreeAsset inspectorXML;
@@ -30,7 +30,7 @@ namespace G3D
 
         public override VisualElement CreateInspectorGUI()
         {
-            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+            G3DVideoCamera camera = (G3DVideoCamera)target;
 
             // Create a new VisualElement to be the root of our Inspector UI.
             VisualElement mainInspector = new VisualElement();
@@ -97,8 +97,10 @@ namespace G3D
 
             IndexMap = mainInspector.Q<Label>("IndexMap");
             updateIndexMapDisplay();
-            
-            Button visitOnlineDocumentationButton = mainInspector.Q<Button>("visitOnlineDocumentation");
+
+            Button visitOnlineDocumentationButton = mainInspector.Q<Button>(
+                "visitOnlineDocumentation"
+            );
             visitOnlineDocumentationButton.clicked += () =>
             {
                 Application.OpenURL("https://3d-global-docs.vercel.app/docs/category/unity");
@@ -109,7 +111,7 @@ namespace G3D
 
         private void setupValueChangeInteractions()
         {
-            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+            G3DVideoCamera camera = (G3DVideoCamera)target;
             configurationFileField.RegisterValueChangeCallback(
                 (evt) =>
                 {
@@ -147,7 +149,7 @@ namespace G3D
 
         private void updateIndexMapDisplay()
         {
-            G3DCameraMosaicMultiview camera = (G3DCameraMosaicMultiview)target;
+            G3DVideoCamera camera = (G3DVideoCamera)target;
             IndexMap.text = camera.indexMapToString();
         }
     }

@@ -126,10 +126,10 @@ namespace G3D
 
             try
             {
-                HeadTrackingStatus headtrackingConnection = libInterface.getHeadTrackingStatus();
-                if (headtrackingConnection.hasTrackingDevice)
+                HeadTrackingStatus headtrackingState = libInterface.getHeadTrackingStatus();
+                if (headtrackingState.hasTrackingDevice)
                 {
-                    if (!headtrackingConnection.isTrackingActive)
+                    if (!headtrackingState.isTrackingActive)
                     {
                         libInterface.startHeadTracking();
                     }
@@ -413,12 +413,16 @@ namespace G3D
             writer.Close();
         }
 
-        public void updateScreenViewportProperties(Vector2Int displayResolution)
+        public void updateScreenViewportProperties()
+        {
+            updateScreenViewportProperties(Screen.currentResolution);
+        }
+
+        public void updateScreenViewportProperties(Resolution displayResolution)
         {
             try
             {
-                // This is the size of the entire monitor screen
-                libInterface.setScreenSize(displayResolution.x, displayResolution.y);
+                libInterface.setScreenSize(displayResolution.width, displayResolution.height);
 
                 // this refers to the window in which the 3D effect is rendered (including eg windows top window menu)
                 libInterface.setWindowSize(Screen.width, Screen.height);

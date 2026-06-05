@@ -16,12 +16,6 @@ using UnityEngine.Rendering.Universal;
 #endif
 namespace G3D
 {
-    public enum G3DCameraMosaicMode
-    {
-        HOLOBOX,
-        MULTIVIEW
-    }
-
     public enum DataType
     {
         Image,
@@ -36,12 +30,12 @@ namespace G3D
     /// IMPORTANT: This script must not be attached to a camera already using a G3D camera script.
     /// </summary>
     [RequireComponent(typeof(Camera))]
-    public class G3DCameraMosaicMultiview : MonoBehaviour
+    public class G3DVideoCamera : MonoBehaviour
     {
         [Tooltip("Drop the configuration file for the display you want to use here.")]
         public TextAsset configurationFile;
 
-        public G3DCameraMosaicMode mode = G3DCameraMosaicMode.MULTIVIEW;
+        public G3DCameraMode mode = G3DCameraMode.MULTIVIEW;
 
         [Min(1)]
         /// <summary>
@@ -121,14 +115,41 @@ namespace G3D
 
         public VideoClip videoClip;
 
-        #region Private variables
+        /// <summary>
+        /// How latency correction is handled by the headtracking library.
+        /// </summary>
+        public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
 
+        [Tooltip(
+            "If set to true, the head tracking library will print debug messages to the console."
+        )]
+        /// <summary>
+        /// If set to true, the head tracking library will print debug messages to the console.
+        /// </summary>
+        public bool debugMessages = false;
+
+        [Tooltip(
+            "This path has to be set to the directory where the folder containing the configuration files for your monitor are located. The folder has to have the same name as your camera model."
+        )]
+        /// <summary>
+        /// This path has to be set to the directory where the folder containing the configuration files for your monitor are located. The folder has to have the same name as your camera model.
+        /// </summary>
+        public string configurationPathOverwrite = "";
+
+        /// <summary>
+        /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
+        /// </summary>
+        public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
+
+        #region Private variables
+        private HeadtrackingConnection headtrackingConnection;
+
+        // CURRENTLY NOT IN USE, MARKED PRIVATE FOR NOW
         [Tooltip(
             "Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic."
         )]
         /// <summary>
         /// Use HQ Views. Does not check if the amount of HQ views specified in the configuration file fits the provided mosaic.
-        /// CURRENTLY NOT IN USE, MARKED PRIVATE FOR NOW
         /// </summary>
         private bool useHQViews = false;
 
@@ -166,6 +187,20 @@ namespace G3D
 
             shaderHandles = new ShaderHandles();
             shaderHandles.init();
+
+            headtrackingConnection = new HeadtrackingConnection(
+                1.0f,
+                1.0f,
+                configurationPathOverwrite,
+                debugMessages,
+                headPositionFilter,
+                latencyCorrectionMode
+            );
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                headtrackingConnection.initLibrary();
+                headtrackingConnection.startHeadTracking();
+            }
 
             // This has to be done after the cameras are updated
             cachedWindowPosition = new Vector2Int(
@@ -227,6 +262,52 @@ namespace G3D
 
         #endregion
 
+        void OnApplicationQuit()
+        {
+            if (headtrackingConnection != null)
+            {
+                headtrackingConnection.deinitLibrary();
+            }
+        }
+
+        /// <summary>
+        /// Shifts views to the left. This does not shift the cameras. This shifts the views you see on the display.
+        /// Only works in headtracking mode, in multiview use viewOffset.
+        /// </summary>
+        public void shiftViewToLeft()
+        {
+            if (mode != G3DCameraMode.HEADTRACKING)
+            {
+                return;
+            }
+
+            headtrackingConnection.shiftViewToLeft();
+        }
+
+        /// <summary>
+        /// Shifts views to the right. This does not shift the cameras. This shifts the views you see on the display.
+        /// Only works in headtracking mode, in multiview use viewOffset.
+        /// </summary>
+        public void shiftViewToRight()
+        {
+            if (mode != G3DCameraMode.HEADTRACKING)
+            {
+                return;
+            }
+
+            headtrackingConnection.shiftViewToRight();
+        }
+
+        public void toggleHeadTracking()
+        {
+            if (mode != G3DCameraMode.HEADTRACKING)
+            {
+                return;
+            }
+
+            headtrackingConnection.toggleHeadTracking();
+        }
+
         #region Updates
 
         void Update()
@@ -244,7 +325,7 @@ namespace G3D
         /// </summary>
         public void updateMode()
         {
-            if (mode == G3DCameraMosaicMode.HOLOBOX)
+            if (mode == G3DCameraMode.HOLOBOX)
             {
                 mirrorViews = true;
             }
@@ -278,7 +359,14 @@ namespace G3D
 
         public void reinitializeShader()
         {
-            material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                material = new Material(Shader.Find("G3D/AutostereoHeadtracking"));
+            }
+            else
+            {
+                material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
+            }
             setCorrectMosaicTexture();
 
             updateScreenViewportProperties();
@@ -439,6 +527,16 @@ namespace G3D
             columns = 1;
 
             string[] parts = name.Split('.');
+
+            bool isSBS = parts.Length >= 2 && parts[1] == "SBS";
+            if (isSBS)
+            {
+                columns = 2;
+                rows = 1;
+                return;
+            }
+
+            // not SBS, check for mosaic format
             if (parts.Length < 3 || parts[1] != "mosaic")
             {
                 Debug.LogError("Invalid mosaic video file name format: " + name);
@@ -497,52 +595,46 @@ namespace G3D
 
         private void setCorrectMosaicTexture()
         {
+            string textureName = "_colorMosaic";
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                textureName = "_colorSBS";
+            }
+
             switch (dataType)
             {
                 case DataType.RenderTexture:
-                    material.SetTexture(
-                        "mosaictexture",
-                        renderTexture,
-                        RenderTextureSubElement.Color
-                    );
-                    material.SetTexture(
-                        "_colorMosaic",
-                        renderTexture,
-                        RenderTextureSubElement.Color
-                    );
+                    material.SetTexture(textureName, renderTexture, RenderTextureSubElement.Color);
                     break;
                 case DataType.Video:
-                    material.SetTexture(
-                        "mosaictexture",
-                        renderTexture,
-                        RenderTextureSubElement.Color
-                    );
-                    material.SetTexture(
-                        "_colorMosaic",
-                        renderTexture,
-                        RenderTextureSubElement.Color
-                    );
+                    material.SetTexture(textureName, renderTexture, RenderTextureSubElement.Color);
                     break;
                 case DataType.Image:
-                    material.SetTexture("mosaictexture", image);
-                    material.SetTexture("_colorMosaic", image);
+                    material.SetTexture(textureName, image);
                     break;
             }
         }
 
         private void updateScreenViewportProperties()
         {
-            try
+            if (mode == G3DCameraMode.HEADTRACKING)
             {
-                shaderParameters.screenHeight = Screen.height;
-                shaderParameters.screenWidth = Screen.width;
-                shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
-                shaderParameters.bottomViewportPosition =
-                    Screen.mainWindowPosition.y + Screen.height;
+                headtrackingConnection.updateScreenViewportProperties();
             }
-            catch (Exception e)
+            else // Multiview and Holobox mode
             {
-                Debug.LogError("Failed to update screen viewport properties: " + e.Message);
+                try
+                {
+                    shaderParameters.screenHeight = Screen.currentResolution.height;
+                    shaderParameters.screenWidth = Screen.currentResolution.width;
+                    shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
+                    shaderParameters.bottomViewportPosition =
+                        Screen.mainWindowPosition.y + Screen.height;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("Failed to update screen viewport properties: " + e.Message);
+                }
             }
 
             // this parameter is used in the shader to invert the y axis
@@ -552,6 +644,11 @@ namespace G3D
 
         private void updateShaderParameters()
         {
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                shaderParameters = headtrackingConnection.getShaderParameters();
+            }
+
             material?.SetInt(
                 shaderHandles.leftViewportPosition,
                 shaderParameters.leftViewportPosition
@@ -604,6 +701,11 @@ namespace G3D
             );
 
             material?.SetInt(Shader.PropertyToID("use_hq_views"), useHQViews ? 1 : 0);
+
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                material?.SetInt(Shader.PropertyToID("useSBS"), 1);
+            }
         }
 
         private bool windowResized()

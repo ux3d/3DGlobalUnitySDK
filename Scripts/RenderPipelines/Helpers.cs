@@ -46,8 +46,9 @@ namespace G3D.RenderPipeline
             bool isG3DCamera = camera.gameObject.TryGetComponent<G3DCamera>(out var g3dCamera);
             bool isG3DCameraEnabled = isG3DCamera && g3dCamera.enabled; // only do something if our component is enabled
 
-            bool isMosaicMultiviewCamera =
-                camera.gameObject.TryGetComponent<G3DCameraMosaicMultiview>(out var mosaicCamera);
+            bool isMosaicMultiviewCamera = camera.gameObject.TryGetComponent<G3DVideoCamera>(
+                out var mosaicCamera
+            );
             bool isMosaicMultiviewCameraEnabled = isMosaicMultiviewCamera && mosaicCamera.enabled; // same check if it is a mosaic camera
 
             if (!isG3DCameraEnabled && !isMosaicMultiviewCameraEnabled)
