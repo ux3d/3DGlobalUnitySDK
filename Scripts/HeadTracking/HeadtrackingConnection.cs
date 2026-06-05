@@ -52,13 +52,10 @@ namespace G3D
 
         private Queue<string> headPositionLog;
 
-        private G3DCamera g3dCamera;
-
         public HeadtrackingConnection(
             float basicWorkingDistance,
             float headTrackingSensitivity,
             string configurationPathOverwrite,
-            G3DCamera g3dCamera,
             bool debugMessages = false,
             Vector3Int headPositionFilter = new Vector3Int(),
             LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE
@@ -80,8 +77,6 @@ namespace G3D
             this.debugMessages = debugMessages;
             this.headPositionFilter = headPositionFilter;
             this.latencyCorrectionMode = latencyCorrectionMode;
-
-            this.g3dCamera = g3dCamera;
 
             headPositionLog = new Queue<string>(10000);
         }
@@ -418,12 +413,6 @@ namespace G3D
             writer.Close();
         }
 
-        public void calculateShaderParameters()
-        {
-            libInterface.calculateShaderParameters(latencyCorrectionMode);
-            g3dCamera.setShaderParameters(libInterface.getCurrentShaderParameters());
-        }
-
         public void updateScreenViewportProperties(Vector2Int displayResolution)
         {
             try
@@ -451,6 +440,12 @@ namespace G3D
         public void setBasicWorkingDistance(float distance)
         {
             basicWorkingDistance = distance;
+        }
+
+        public G3DShaderParameters getShaderParameters()
+        {
+            libInterface.calculateShaderParameters(latencyCorrectionMode);
+            return libInterface.getCurrentShaderParameters();
         }
 
         /// <summary>
@@ -726,7 +721,8 @@ namespace G3D
             G3DShaderParameters shaderParameters
         )
         {
-            g3dCamera.setShaderParameters(shaderParameters);
+            // this function is not actually used. it exists only for legacy purposes.
+            // the shader parameters are now calculated in getShaderParameters() to ensure they are always up to date when the shader requests them.
         }
 
         private string formatErrorMessage(string caption, string cause, string remedy)

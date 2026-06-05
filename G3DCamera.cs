@@ -178,8 +178,6 @@ namespace G3D
         // mirrorViews is used to flip the views horizontally, this is required for Holoboxes
         private bool mirrorViews = false;
 
-        private static object shaderLock = new object();
-
         private Camera mainCamera;
         private List<Camera> cameras = null;
         private GameObject focusPlaneObject = null;
@@ -268,7 +266,6 @@ namespace G3D
                 focusDistance,
                 headtrackingSensitivity,
                 configurationPathOverwrite,
-                this,
                 debugMessages,
                 headPositionFilter,
                 latencyCorrectionMode
@@ -426,13 +423,10 @@ namespace G3D
                 return;
             }
 
-            lock (shaderLock)
-            {
-                ConfigurationProvider configurationProvider = ConfigurationProvider.getFromString(
-                    configurationFile.text
-                );
-                shaderParameters = configurationProvider.getShaderParameters();
-            }
+            ConfigurationProvider configurationProvider = ConfigurationProvider.getFromString(
+                configurationFile.text
+            );
+            shaderParameters = configurationProvider.getShaderParameters();
         }
 
         /// <summary>
@@ -607,18 +601,12 @@ namespace G3D
 
         public G3DShaderParameters GetShaderParameters()
         {
-            lock (shaderLock)
-            {
-                return shaderParameters;
-            }
+            return shaderParameters;
         }
 
         public void setShaderParameters(G3DShaderParameters parameters)
         {
-            lock (shaderLock)
-            {
-                shaderParameters = parameters;
-            }
+            shaderParameters = parameters;
         }
 
         /// <summary>
@@ -844,12 +832,6 @@ namespace G3D
 
             mainCamInactiveLastFrame = false;
 
-            // update the shader parameters (only in headtracking mode)
-            if (mode == G3DCameraMode.HEADTRACKING)
-            {
-                headtrackingConnection.calculateShaderParameters();
-            }
-
             bool cameraCountChanged = updateCameraCountBasedOnMode();
             updateCameras();
             updateShaderParameters();
@@ -907,106 +889,98 @@ namespace G3D
 
         private void updateShaderParameters()
         {
-            lock (shaderLock)
+            if (mode == G3DCameraMode.HEADTRACKING)
             {
-                material?.SetInt(
-                    shaderHandles.leftViewportPosition,
-                    shaderParameters.leftViewportPosition
-                );
-                material?.SetInt(
-                    shaderHandles.bottomViewportPosition,
-                    shaderParameters.bottomViewportPosition
-                );
-                material?.SetInt(shaderHandles.screenWidth, shaderParameters.screenWidth);
-                material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
-                material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
-                material?.SetInt(
-                    shaderHandles.angleRatioNumerator,
-                    shaderParameters.angleRatioNumerator
-                );
-                material?.SetInt(
-                    shaderHandles.angleRatioDenominator,
-                    shaderParameters.angleRatioDenominator
-                );
-                material?.SetInt(
-                    shaderHandles.leftLensOrientation,
-                    shaderParameters.leftLensOrientation
-                );
-                material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
-
-                // test frame and stripe
-                material?.SetInt(shaderHandles.showTestFrame, showTestFrame ? 1 : 0);
-                material?.SetInt(shaderHandles.showTestStripe, shaderParameters.showTestStripe);
-
-                material?.SetInt(shaderHandles.testGapWidth, shaderParameters.testGapWidth);
-                material?.SetInt(shaderHandles.track, shaderParameters.track);
-                material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
-                material?.SetInt(shaderHandles.hviews1, shaderParameters.hviews1);
-                material?.SetInt(shaderHandles.hviews2, shaderParameters.hviews2);
-                material?.SetInt(shaderHandles.blur, shaderParameters.blur);
-                material?.SetInt(shaderHandles.blackBorder, shaderParameters.blackBorder);
-                material?.SetInt(shaderHandles.blackSpace, shaderParameters.blackSpace);
-                material?.SetInt(shaderHandles.bls, shaderParameters.bls);
-                material?.SetInt(shaderHandles.ble, shaderParameters.ble);
-                material?.SetInt(shaderHandles.brs, shaderParameters.brs);
-                material?.SetInt(shaderHandles.bre, shaderParameters.bre);
-                material?.SetInt(shaderHandles.zCorrectionValue, shaderParameters.zCorrectionValue);
-                material?.SetInt(
-                    shaderHandles.zCompensationValue,
-                    shaderParameters.zCompensationValue
-                );
-                material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
-
-                material?.SetInt(Shader.PropertyToID("cameraCount"), internalCameraCount);
-
-                material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
-
-                if (mode == G3DCameraMode.HEADTRACKING)
-                {
-                    material.SetInt(
-                        Shader.PropertyToID("invertViews"),
-                        invertViewsInHeadtracking ? 1 : 0
-                    );
-                }
-                else // Multiview and Holobox mode
-                {
-                    material.SetInt(
-                        Shader.PropertyToID("indexMapLength"),
-                        indexMap.currentMap.Length
-                    );
-                    material.SetFloatArray(
-                        Shader.PropertyToID("index_map"),
-                        indexMap.getPaddedIndexMapArray()
-                    );
-
-                    material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
-                }
-
-                material?.SetInt(
-                    Shader.PropertyToID("shouldRenderMosaic"),
-                    shouldRenderMosaic ? 1 : 0
-                );
-
-                int mosaicRows = 3;
-                int mosaicColumns = 3;
-                if (shouldRenderMosaic)
-                {
-                    if (internalCameraCount == 2)
-                    {
-                        mosaicRows = 1;
-                        mosaicColumns = 2;
-                    }
-                    else
-                    {
-                        int closest_large_root = (int)
-                            Math.Ceiling(Math.Sqrt(shaderParameters.nativeViewCount));
-                        mosaicRows = closest_large_root;
-                        mosaicColumns = closest_large_root;
-                    }
-                }
-                material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRows);
-                material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumns);
+                shaderParameters = headtrackingConnection.getShaderParameters();
             }
+            material?.SetInt(
+                shaderHandles.leftViewportPosition,
+                shaderParameters.leftViewportPosition
+            );
+            material?.SetInt(
+                shaderHandles.bottomViewportPosition,
+                shaderParameters.bottomViewportPosition
+            );
+            material?.SetInt(shaderHandles.screenWidth, shaderParameters.screenWidth);
+            material?.SetInt(shaderHandles.screenHeight, shaderParameters.screenHeight);
+            material?.SetInt(shaderHandles.nativeViewCount, shaderParameters.nativeViewCount);
+            material?.SetInt(
+                shaderHandles.angleRatioNumerator,
+                shaderParameters.angleRatioNumerator
+            );
+            material?.SetInt(
+                shaderHandles.angleRatioDenominator,
+                shaderParameters.angleRatioDenominator
+            );
+            material?.SetInt(
+                shaderHandles.leftLensOrientation,
+                shaderParameters.leftLensOrientation
+            );
+            material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
+
+            // test frame and stripe
+            material?.SetInt(shaderHandles.showTestFrame, showTestFrame ? 1 : 0);
+            material?.SetInt(shaderHandles.showTestStripe, shaderParameters.showTestStripe);
+
+            material?.SetInt(shaderHandles.testGapWidth, shaderParameters.testGapWidth);
+            material?.SetInt(shaderHandles.track, shaderParameters.track);
+            material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
+            material?.SetInt(shaderHandles.hviews1, shaderParameters.hviews1);
+            material?.SetInt(shaderHandles.hviews2, shaderParameters.hviews2);
+            material?.SetInt(shaderHandles.blur, shaderParameters.blur);
+            material?.SetInt(shaderHandles.blackBorder, shaderParameters.blackBorder);
+            material?.SetInt(shaderHandles.blackSpace, shaderParameters.blackSpace);
+            material?.SetInt(shaderHandles.bls, shaderParameters.bls);
+            material?.SetInt(shaderHandles.ble, shaderParameters.ble);
+            material?.SetInt(shaderHandles.brs, shaderParameters.brs);
+            material?.SetInt(shaderHandles.bre, shaderParameters.bre);
+            material?.SetInt(shaderHandles.zCorrectionValue, shaderParameters.zCorrectionValue);
+            material?.SetInt(shaderHandles.zCompensationValue, shaderParameters.zCompensationValue);
+            material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
+
+            material?.SetInt(Shader.PropertyToID("cameraCount"), internalCameraCount);
+
+            material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
+
+            if (mode == G3DCameraMode.HEADTRACKING)
+            {
+                material.SetInt(
+                    Shader.PropertyToID("invertViews"),
+                    invertViewsInHeadtracking ? 1 : 0
+                );
+            }
+            else // Multiview and Holobox mode
+            {
+                material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+                material.SetFloatArray(
+                    Shader.PropertyToID("index_map"),
+                    indexMap.getPaddedIndexMapArray()
+                );
+
+                material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+            }
+
+            material?.SetInt(Shader.PropertyToID("shouldRenderMosaic"), shouldRenderMosaic ? 1 : 0);
+
+            int mosaicRows = 3;
+            int mosaicColumns = 3;
+            if (shouldRenderMosaic)
+            {
+                if (internalCameraCount == 2)
+                {
+                    mosaicRows = 1;
+                    mosaicColumns = 2;
+                }
+                else
+                {
+                    int closest_large_root = (int)
+                        Math.Ceiling(Math.Sqrt(shaderParameters.nativeViewCount));
+                    mosaicRows = closest_large_root;
+                    mosaicColumns = closest_large_root;
+                }
+            }
+            material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRows);
+            material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumns);
         }
 
         private void updateCameras()
