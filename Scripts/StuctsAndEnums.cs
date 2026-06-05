@@ -16,6 +16,7 @@ namespace G3D
     public enum G3DCameraMode
     {
         HEADTRACKING,
+        HOLOBOX,
         MULTIVIEW
     }
 

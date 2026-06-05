@@ -6,7 +6,6 @@ Shader "G3D/Autostereo"
 
     #include "G3D_ShaderBasics.hlsl"
 
-
     Texture2D texture0;
     SamplerState samplertexture0;
     Texture2D texture1;
@@ -25,8 +24,7 @@ Shader "G3D/Autostereo"
         return float4(0, 0, 0, 0);
     }
 
-    float4 frag (v2f i) : SV_Target
-    {
+    float4 renderAutostereoEffect(v2f i) {
         // Start der Berechnung von dynamische Daten
         int  xScreenCoords = int(i.screenPos.x) + v_pos_x;     // transform x position from viewport to screen coordinates
         // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
@@ -39,7 +37,7 @@ Shader "G3D/Autostereo"
 
         //Start native Renderberechnung
         int  sr = (xScreenCoords * 3) + yw;
-        int3 xwert = int3(sr + 0, sr + 1, sr + 2) % nativeViewCount;                              // #### nativeViewCount->lt03
+        uint3 xwert = int3(sr + 0, sr + 1, sr + 2) % nativeViewCount;                              // #### nativeViewCount->lt03
         // int3 xwert = modiv3g3d( int3(sr + 0, sr + 1, sr + 2), nativeViewCount);                              // #### nativeViewCount->lt03
 
         // Start HQ-Renderberechnung inklusive Z-Korrektur
@@ -64,7 +62,7 @@ Shader "G3D/Autostereo"
             tr2d = track;
         }
 
-        int3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
+        uint3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
         xwert = hviews1 - (mtmp % hqview);
         // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
@@ -76,8 +74,9 @@ Shader "G3D/Autostereo"
 
         // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
         
-        float4 colorLeft = sampleFromView((1 + invertViews) % 2, uvCoords);              // Pixeldaten linkes Bild
-        float4 colorRight = sampleFromView((0 + invertViews) % 2, uvCoords);             // Pixeldaten rechtes Bild
+        uint inverViewsUint = uint(invertViews);
+        float4 colorLeft = sampleFromView((1 + inverViewsUint) % 2, uvCoords);              // Pixeldaten linkes Bild
+        float4 colorRight = sampleFromView((0 + inverViewsUint) % 2, uvCoords);             // Pixeldaten rechtes Bild
         float cor=0.0, cog=0.0, cob=0.0;
 
         
@@ -119,6 +118,34 @@ Shader "G3D/Autostereo"
         }  // linkes Auge sieht einen gruenen Streifen
         
         return color;
+    }
+
+    float4 renderMosaicEffect(v2f i) {
+        float2 uvCoords = i.uv;
+        // mirror the image if necessary
+        if (mirror != 0) {
+            uvCoords.x = 1.0 - uvCoords.x;
+        }
+        
+        // get cell index based on UV coordinates
+        int cellIndex = getCellIndex(uvCoords, int2(mosaic_columns, mosaic_rows));
+        cellIndex = 1 - cellIndex; // invert cell index to match the order of the views in the mosaic with the order of the view indices
+        // get UV coordinates for the corresponding cell in the mosaic based on the view index
+        float2 cellUV = getCellRelativeUVCoords(uvCoords, int2(mosaic_columns, mosaic_rows));
+
+        //use indices to sample correct subpixels
+        float4 color = sampleFromView(cellIndex, cellUV);
+
+        return color;
+    }
+
+    float4 frag (v2f i) : SV_Target
+    {
+        if(shouldRenderMosaic == 0) {
+            return renderAutostereoEffect(i);
+        } else {
+            return renderMosaicEffect(i);
+        }   
     }
     ENDHLSL
 

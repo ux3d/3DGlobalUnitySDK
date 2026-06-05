@@ -24,17 +24,22 @@ namespace G3D.RenderPipeline.URP
             renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
         }
 
+#if UNITY_6000_3_OR_NEWER
+#else
         [System.Obsolete]
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             ConfigureTarget(renderingData.cameraData.renderer.cameraColorTargetHandle);
         }
+#endif
 
         public void updateMaterial(Material material)
         {
             m_Material = material;
         }
 
+#if UNITY_6000_3_OR_NEWER
+#else
         [System.Obsolete]
         public override void Execute(
             ScriptableRenderContext context,
@@ -59,6 +64,7 @@ namespace G3D.RenderPipeline.URP
                 CommandBufferPool.Release(cmd);
             }
         }
+#endif
 
         private void InitPassData(
             RenderGraph renderGraph,
