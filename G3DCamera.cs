@@ -231,6 +231,9 @@ namespace G3D
 
         private bool mainCamInactiveLastFrame = false;
 
+        // TODO this is a hack. Fix this.
+        private string configCodeHack = "";
+
         #region Initialization
 
         void Awake()
@@ -445,6 +448,19 @@ namespace G3D
         {
             this.configurationFile = configurationFile;
             setupCameras();
+        }
+
+        public void loadConfigFromConfigCode(string configCode)
+        {
+            internalCameraCount = ConfigurationProvider.getNumberOfViewsFromConfigCode(configCode);
+            shaderParameters = ConfigurationProvider.getParametersFromConfigCode(configCode);
+            configCodeHack = configCode;
+        }
+
+        [ContextMenu("test")]
+        public void test()
+        {
+            loadConfigFromConfigCode("07D");
         }
 
         /// <summary>
@@ -1090,7 +1106,16 @@ namespace G3D
             }
             else // Multiview and Holobox mode
             {
-                internalCameraCount = getCameraCountFromConfigurationFile();
+                if (String.IsNullOrEmpty(configCodeHack))
+                {
+                    internalCameraCount = getCameraCountFromConfigurationFile();
+                }
+                else
+                {
+                    internalCameraCount = ConfigurationProvider.getNumberOfViewsFromConfigCode(
+                        configCodeHack
+                    );
+                }
                 if (internalCameraCount > MAX_CAMERAS)
                 {
                     internalCameraCount = MAX_CAMERAS;

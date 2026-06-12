@@ -135,6 +135,12 @@ namespace G3D
             return getParametersFromDisplayConfig(displayConfig);
         }
 
+        public static int getNumberOfViewsFromConfigCode(string configCode)
+        {
+            ConfigCode.DisplayConfig displayConfig = ConfigCode.ParseConfigCode(configCode);
+            return (int)displayConfig.numberOfViews;
+        }
+
         private static G3DShaderParameters fillShaderParameters(
             int nativeViewCount = 2,
             int angleRatioNumerator = 1,
