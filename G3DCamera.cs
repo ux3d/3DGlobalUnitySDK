@@ -100,11 +100,6 @@ namespace G3D
         /// </summary>
         public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
 
-        /// <summary>
-        /// How latency correction is handled by the headtracking library.
-        /// </summary>
-        public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
-
         [Tooltip(
             "If set to true, the head tracking library will print debug messages to the console."
         )]
@@ -270,8 +265,7 @@ namespace G3D
                 configurationPathOverwrite,
                 this,
                 debugMessages,
-                headPositionFilter,
-                latencyCorrectionMode
+                headPositionFilter
             );
             if (mode == G3DCameraMode.HEADTRACKING)
             {
@@ -562,47 +556,9 @@ namespace G3D
             headtrackingConnection.logCameraPositionsToFile();
         }
 
-        /// <summary>
-        /// Shifts views to the left. This does not shift the cameras. This shifts the views you see on the display.
-        /// Only works in headtracking mode, in multiview use viewOffset.
-        /// </summary>
-        public void shiftViewToLeft()
-        {
-            if (mode != G3DCameraMode.HEADTRACKING)
-            {
-                return;
-            }
-
-            headtrackingConnection.shiftViewToLeft();
-        }
-
-        /// <summary>
-        /// Shifts views to the right. This does not shift the cameras. This shifts the views you see on the display.
-        /// Only works in headtracking mode, in multiview use viewOffset.
-        /// </summary>
-        public void shiftViewToRight()
-        {
-            if (mode != G3DCameraMode.HEADTRACKING)
-            {
-                return;
-            }
-
-            headtrackingConnection.shiftViewToRight();
-        }
-
         public void toggleTestFrame()
         {
             showTestFrame = !showTestFrame;
-        }
-
-        public void toggleHeadTracking()
-        {
-            if (mode != G3DCameraMode.HEADTRACKING)
-            {
-                return;
-            }
-
-            headtrackingConnection.toggleHeadTracking();
         }
 
         public G3DShaderParameters GetShaderParameters()
@@ -876,23 +832,11 @@ namespace G3D
             }
         }
 
-        private void updateFocusPlane()
-        {
-            if (focusPlaneObject != null)
-            {
-                focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
-            }
-        }
-
         private void updateScreenViewportProperties()
         {
-            Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
-            if (mode == G3DCameraMode.HEADTRACKING)
+            if (mode == G3DCameraMode.HOLOBOX || mode == G3DCameraMode.MULTIVIEW)
             {
-                headtrackingConnection.updateScreenViewportProperties(displayResolution);
-            }
-            else // Multiview and Holobox mode
-            {
+                Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
                 shaderParameters.screenWidth = displayResolution.x;
                 shaderParameters.screenHeight = displayResolution.y;
                 shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;

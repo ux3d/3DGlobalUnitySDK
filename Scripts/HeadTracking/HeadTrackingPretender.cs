@@ -25,14 +25,14 @@ namespace G3D
             headPosition = -headPosition;
             headPosition = headPosition * 1000;
             headPosition.z += initialOffsetZ * 1000;
-            ((ITNewHeadPositionCallback)g3dCamera.headtrackingConnection).NewHeadPositionCallback(
-                headDetected,
-                true,
-                (int)headPosition.x,
-                (int)headPosition.y,
-                headPosition.x,
-                headPosition.y,
-                headPosition.z
+            g3dCamera.headtrackingConnection.updateHeadPosition(
+                new HeadTrackingSDK.HeadPosition
+                {
+                    world_x = (int)headPosition.x,
+                    world_y = (int)headPosition.y,
+                    world_z = (int)headPosition.z
+                },
+                headDetected
             );
         }
     }
