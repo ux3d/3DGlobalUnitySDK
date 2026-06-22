@@ -11,11 +11,7 @@ namespace G3D
 
         public float transitionDuration = 0.5f;
 
-        public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
         public float basicWorkingDistance = 1.0f;
-        public float headTrackingSensitivity = 1.0f;
-        private bool debugMessages;
-
         private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
 
         private float headLostTimer = 0.0f;
@@ -32,8 +28,6 @@ namespace G3D
 
         private HeadTrackingState prevHeadTrackingState = HeadTrackingState.LOST;
 
-        private string calibrationPath;
-
         /// <summary>
         /// This struct is used to store the current head position.
         /// It is updated in a different thread, so always use getHeadPosition() to get the current head position.
@@ -45,36 +39,28 @@ namespace G3D
 
         private Queue<string> headPositionLog;
 
-        private G3DCamera g3dCamera;
-
-        public HeadtrackingConnection(
-            float basicWorkingDistance,
-            float headTrackingSensitivity,
-            string configurationPathOverwrite,
-            G3DCamera g3dCamera,
-            bool debugMessages = false,
-            Vector3Int headPositionFilter = new Vector3Int()
-        )
+        /// <summary>
+        /// basicWorkingDistance is the default (optimal) distance of a user from the display the display was built for.
+        /// e.g. for a 17 inch this might be 80 cm.
+        /// This distance is used as the default position if headtracking is lost.
+        /// </summary>
+        /// <param name="basicWorkingDistance"></param>
+        public HeadtrackingConnection(float basicWorkingDistance, bool shouldInitLibrary = true)
         {
             lastHeadPosition = new Vector3(0, 0, -basicWorkingDistance);
             this.basicWorkingDistance = basicWorkingDistance;
-            this.headTrackingSensitivity = headTrackingSensitivity;
-
-            calibrationPath = System.Environment.GetFolderPath(
-                Environment.SpecialFolder.CommonDocuments
-            );
-            calibrationPath = Path.Combine(calibrationPath, "3D Global", "calibrations");
-            if (!string.IsNullOrEmpty(configurationPathOverwrite))
-            {
-                calibrationPath = configurationPathOverwrite;
-            }
-
-            this.debugMessages = debugMessages;
-            this.headPositionFilter = headPositionFilter;
-
-            this.g3dCamera = g3dCamera;
 
             headPositionLog = new Queue<string>(10000);
+
+            if (shouldInitLibrary)
+            {
+                initLibrary();
+            }
+        }
+
+        ~HeadtrackingConnection()
+        {
+            deinitLibrary();
         }
 
         public void startHeadTracking()
@@ -91,17 +77,6 @@ namespace G3D
 
         public void initLibrary()
         {
-            string applicationName = Application.productName;
-            if (string.IsNullOrEmpty(applicationName))
-            {
-                applicationName = "Unity";
-            }
-            var invalids = System.IO.Path.GetInvalidFileNameChars();
-            applicationName = String
-                .Join("_", applicationName.Split(invalids, StringSplitOptions.RemoveEmptyEntries))
-                .TrimEnd('.');
-            applicationName = applicationName + "_G3D_Config.ini";
-
             if (HeadTrackingSDK.load())
             {
                 if (HeadTrackingSDK.ht_init()) { }
@@ -148,22 +123,12 @@ namespace G3D
         }
 
         /// <summary>
-        /// Calls the sdk to update the head position. This should be called in the Update() method of the camera.
+        /// Use this method to update the head position. This should only be used for debugging purposes,
+        /// as the head position is automatically updated in a different thread by the head tracking library.
         /// </summary>
-        public void updateHeadPosition()
-        {
-            if (!HeadTrackingSDK.ht_is_initialized())
-            {
-                return;
-            }
-
-            HeadTrackingSDK.HeadPosition trackedHeadPos = HeadTrackingSDK.ht_get_head_world_pos();
-            bool headDetected = isHeadDetected();
-
-            updateHeadPosition(trackedHeadPos, headDetected);
-        }
-
-        public void updateHeadPosition(
+        /// <param name="trackedHeadPos"></param>
+        /// <param name="headDetected"></param>
+        public void debugUpdateHeadPosition(
             HeadTrackingSDK.HeadPosition trackedHeadPos,
             bool headDetected
         )
@@ -192,11 +157,9 @@ namespace G3D
                     -trackedHeadPos.world_z / millimeterToMeter
                 );
 
-                int scaleFactorInt = (int)headTrackingSensitivity;
-
-                headPosition.worldPosX = headPos.x * headTrackingSensitivity;
-                headPosition.worldPosY = headPos.y * headTrackingSensitivity;
-                headPosition.worldPosZ = headPos.z * headTrackingSensitivity;
+                headPosition.worldPosX = headPos.x;
+                headPosition.worldPosY = headPos.y;
+                headPosition.worldPosZ = headPos.z;
 
                 headPositionLog.Enqueue(logEntry);
             }
@@ -363,7 +326,7 @@ namespace G3D
             writer.Close();
         }
 
-        public void calculateShaderParameters()
+        public G3DShaderParameters calculateShaderParameters()
         {
             HeadTrackingSDK.RenderParameters renderParameters =
                 HeadTrackingSDK.ht_get_render_parameters();
@@ -373,24 +336,12 @@ namespace G3D
                 renderParameters,
                 monitorParameters
             );
-            g3dCamera.setShaderParameters(shaderParameters);
+            return shaderParameters;
         }
 
         public void setBasicWorkingDistance(float distance)
         {
             basicWorkingDistance = distance;
-        }
-
-        private bool isHeadDetected()
-        {
-            if (!HeadTrackingSDK.ht_is_initialized() && !HeadTrackingSDK.ht_is_connected())
-            {
-                return true;
-            }
-
-            HeadTrackingSDK.HeadTrackingUserPosCodes headTrackingUserPosCodes =
-                HeadTrackingSDK.ht_get_user_guidance();
-            return headTrackingUserPosCodes != HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_NO;
         }
 
         /// <summary>
@@ -511,25 +462,6 @@ namespace G3D
                 }
             }
             return newState;
-        }
-
-        private string headTrackingStateToString()
-        {
-            switch (prevHeadTrackingState)
-            {
-                case HeadTrackingState.TRACKING:
-                    return "TRACKING";
-                case HeadTrackingState.LOST:
-                    return "LOST";
-                case HeadTrackingState.LOSTGRACEPERIOD:
-                    return "LOSTGRACEPERIOD";
-                case HeadTrackingState.TRANSITIONTOLOST:
-                    return "TRANSITIONTOLOST";
-                case HeadTrackingState.TRANSITIONTOTRACKING:
-                    return "TRANSITIONTOTRACKING";
-                default:
-                    return "UNKNOWN";
-            }
         }
 
         private G3DShaderParameters convertToShaderParameters(

@@ -25,7 +25,7 @@ namespace G3D
             headPosition = -headPosition;
             headPosition = headPosition * 1000;
             headPosition.z += initialOffsetZ * 1000;
-            g3dCamera.headtrackingConnection.updateHeadPosition(
+            g3dCamera.headtrackingConnection.debugUpdateHeadPosition(
                 new HeadTrackingSDK.HeadPosition
                 {
                     world_x = (int)headPosition.x,

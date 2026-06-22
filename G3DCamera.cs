@@ -95,19 +95,6 @@ namespace G3D
         /// </summary>
         public float headtrackingSensitivity = 1.0f; // scale the headtracking effect
         #region Advanced settings
-        /// <summary>
-        /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
-        /// </summary>
-        public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
-
-        [Tooltip(
-            "If set to true, the head tracking library will print debug messages to the console."
-        )]
-        /// <summary>
-        /// If set to true, the head tracking library will print debug messages to the console.
-        /// </summary>
-        public bool debugMessages = false;
-
         [Tooltip(
             "Show the positions, frustums and focus plane of the generated cameras in the Scene view."
         )]
@@ -261,15 +248,10 @@ namespace G3D
 
             headtrackingConnection = new HeadtrackingConnection(
                 focusDistance,
-                headtrackingSensitivity,
-                configurationPathOverwrite,
-                this,
-                debugMessages,
-                headPositionFilter
+                mode == G3DCameraMode.HEADTRACKING
             );
             if (mode == G3DCameraMode.HEADTRACKING)
             {
-                headtrackingConnection.initLibrary();
                 headtrackingConnection.startHeadTracking();
             }
 
@@ -803,7 +785,7 @@ namespace G3D
             // update the shader parameters (only in headtracking mode)
             if (mode == G3DCameraMode.HEADTRACKING)
             {
-                headtrackingConnection.calculateShaderParameters();
+                setShaderParameters(headtrackingConnection.calculateShaderParameters());
             }
 
             bool cameraCountChanged = updateCameraCountBasedOnMode();

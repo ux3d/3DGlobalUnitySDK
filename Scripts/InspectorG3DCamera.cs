@@ -24,6 +24,8 @@ namespace G3D
         private PropertyField focusDistanceField;
         private PropertyField dollyZoomField;
 
+        private DropdownField predictionModelDropdown;
+
         private Label calibFolderLabel;
         private Label HeadtrackingCalibFileInfo;
 
@@ -37,6 +39,10 @@ namespace G3D
         /// Unity triggers a change event when the Inspector is first displayed, but it doesn't provide the new value in that event, so we have to store the last config file to detect when it actually changes.
         /// </summary>
         private TextAsset lastConfigFile;
+
+        // We use this to check if the headtracking connection is active
+        // in order to display certain UI elements in the inspector
+        private HeadtrackingConnection headtrackingConnection;
 
         public override VisualElement CreateInspectorGUI()
         {
@@ -99,11 +105,28 @@ namespace G3D
                 camera.setCameraFOVToDisplayFOV();
             };
 
-            Button visitOnlineDocumentationButton = mainInspector.Q<Button>("visitOnlineDocumentation");
+            Button visitOnlineDocumentationButton = mainInspector.Q<Button>(
+                "visitOnlineDocumentation"
+            );
             visitOnlineDocumentationButton.clicked += () =>
             {
                 Application.OpenURL("https://3d-global-docs.vercel.app/docs/category/unity");
             };
+
+            headtrackingConnection = new HeadtrackingConnection(1.0f, true);
+
+            predictionModelDropdown = mainInspector.Q<DropdownField>("predictionModel");
+            predictionModelDropdown.choices = HeadTrackingSDK.ht_get_available_predictions();
+            Debug.Log(
+                $"Available prediction models: {string.Join(", ", predictionModelDropdown.choices)}"
+            );
+            predictionModelDropdown.RegisterValueChangedCallback(
+                (evt) =>
+                {
+                    Debug.Log($"Selected prediction model: {evt.newValue}");
+                    HeadTrackingSDK.ht_set_prediction(evt.newValue);
+                }
+            );
 
             return mainInspector;
         }
