@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using UnityEngine;
 
 namespace G3D
 {
@@ -387,7 +389,7 @@ namespace G3D
         /// @return success
         public static bool ht_init()
         {
-            return ht_init_from_dir("G3DHTService");
+            return ht_init_from_dir(Application.streamingAssetsPath + "/G3DHTService");
         }
 
         /// @brief finalizes the headtracking and disconnects from G3DHTService

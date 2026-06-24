@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 namespace G3D
 {
     [CustomEditor(typeof(G3DCamera))]
-    public class InspectorG3DCamera : Editor
+    public class InspectorG3DCamera : UnityEditor.Editor
     {
         public VisualTreeAsset inspectorXML;
 
@@ -113,13 +113,18 @@ namespace G3D
                 Application.OpenURL("https://3d-global-docs.vercel.app/docs/category/unity");
             };
 
-            headtrackingConnection = new HeadtrackingConnection(1.0f, true);
-
             predictionModelDropdown = mainInspector.Q<DropdownField>("predictionModel");
             predictionModelDropdown.choices = HeadTrackingSDK.ht_get_available_predictions();
-            Debug.Log(
-                $"Available prediction models: {string.Join(", ", predictionModelDropdown.choices)}"
-            );
+            if (predictionModelDropdown.choices.Count == 0)
+            {
+                predictionModelDropdown.value = "No prediction models available";
+                predictionModelDropdown.SetEnabled(false);
+            }
+            else
+            {
+                predictionModelDropdown.value = "kalman_9dv2";
+            }
+            HeadTrackingSDK.ht_set_prediction(predictionModelDropdown.value);
             predictionModelDropdown.RegisterValueChangedCallback(
                 (evt) =>
                 {

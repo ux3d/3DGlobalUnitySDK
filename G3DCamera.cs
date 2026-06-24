@@ -342,6 +342,8 @@ namespace G3D
             if (mode == G3DCameraMode.HEADTRACKING)
             {
                 viewSeparation = 0.065f;
+                // library might not be initialized
+                headtrackingConnection?.initLibrary();
             }
             else // Holobox and Multiview mode
             {
