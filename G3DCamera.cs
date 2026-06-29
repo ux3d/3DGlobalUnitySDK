@@ -358,6 +358,12 @@ namespace G3D
         }
 #endif
 
+        public void setMode(G3DCameraMode newMode)
+        {
+            mode = newMode;
+            updateMode();
+        }
+
         /// <summary>
         /// Call this function after the mode has been changed (e.g. multiview to headtracking)
         /// </summary>
@@ -395,6 +401,9 @@ namespace G3D
             }
 
             updateCameraCountBasedOnMode();
+            reinitializeShader();
+            updateRenderTextures();
+            updateIndexMap();
         }
 
         public void updateIndexMap()
@@ -970,17 +979,13 @@ namespace G3D
                 }
                 else // Multiview and Holobox mode
                 {
-                    material.SetInt(
-                        Shader.PropertyToID("indexMapLength"),
-                        indexMap.currentMap.Length
-                    );
-                    material.SetFloatArray(
-                        Shader.PropertyToID("index_map"),
-                        indexMap.getPaddedIndexMapArray()
-                    );
-
                     material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
                 }
+                material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+                material.SetFloatArray(
+                    Shader.PropertyToID("index_map"),
+                    indexMap.getPaddedIndexMapArray()
+                );
 
                 material?.SetInt(
                     Shader.PropertyToID("shouldRenderMosaic"),

@@ -420,6 +420,10 @@ namespace G3D
 
         public void calculateShaderParameters()
         {
+            if (libInterface == null || !libInterface.isInitialized())
+            {
+                return;
+            }
             libInterface.calculateShaderParameters(latencyCorrectionMode);
             g3dCamera.setShaderParameters(libInterface.getCurrentShaderParameters());
         }
