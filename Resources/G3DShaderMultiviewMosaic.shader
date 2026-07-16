@@ -46,6 +46,10 @@ Shader "G3D/AutostereoMultiviewMosaic"
         if (mirror != 0) {
             uvCoords.x = 1.0 - uvCoords.x;
         }
+
+        if(isBGR) {
+            viewIndices.xyz = viewIndices.zyx;
+        }
         
          //use indices to sample correct subpixels
         float4 color = float4(0.0, 0.0, 0.0, 1.0);
