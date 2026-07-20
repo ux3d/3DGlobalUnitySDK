@@ -7,6 +7,7 @@ uint  stest;          // Streifen Rot/Schwarz (1)ein, (0)aus
 uint  testgap;        // Breite der Lücke im Testbild
 uint  track;          // Trackingshift
 uint  mstart;         // Viewshift permanent Offset
+int   viewShift;      // Additional user-controllable view shift added to mstart (used in headtracking mode)
 uint  hqview;         // hqViewCount
 uint  hviews1;          // hqview - 1
 uint  hviews2;       // hqview / 2
@@ -87,7 +88,7 @@ int3 getSubPixelViewIndices(float2 screenPos)
     float angle = float(zwinkel) / float(nwinkel);
     int direction = isleft == 1 ? 1 : -1;
 
-    uint view = uint(screenPos.x * 3.f + ((screenPos.y * angle) % float(nativeViewCount) * direction) + float(nativeViewCount)) + mstart;
+    uint view = uint(screenPos.x * 3.f + ((screenPos.y * angle) % float(nativeViewCount) * direction) + float(nativeViewCount)) + mstart + viewShift;
     int3 viewIndices = int3(view, view, view);
 
     viewIndices += uint3(0 + (isBGR * 2), 1, 2 - (isBGR * 2));

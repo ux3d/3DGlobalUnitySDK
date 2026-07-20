@@ -579,6 +579,7 @@ namespace G3D
             material?.SetInt(shaderHandles.hqViewCount, shaderParameters.hqViewCount);
             material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
             material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
+            material?.SetInt(shaderHandles.viewShift, 0);
 
             int cameraCount = mosaicColumnCount * mosaicRowCount;
             int shaderMaxCount = shaderParameters.nativeViewCount;

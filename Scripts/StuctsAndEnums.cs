@@ -41,6 +41,7 @@ namespace G3D
         public int BGRPixelLayout;
 
         public int mstart;
+        public int viewShift;
         public int showTestFrame;
         public int showTestStripe;
         public int testGapWidth;
@@ -71,6 +72,7 @@ namespace G3D
             leftLensOrientation = Shader.PropertyToID("isleft");
             BGRPixelLayout = Shader.PropertyToID("isBGR");
             mstart = Shader.PropertyToID("mstart");
+            viewShift = Shader.PropertyToID("viewShift");
             showTestFrame = Shader.PropertyToID("test");
             showTestStripe = Shader.PropertyToID("stest");
             testGapWidth = Shader.PropertyToID("testgap");

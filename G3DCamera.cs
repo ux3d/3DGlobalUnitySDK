@@ -86,6 +86,16 @@ namespace G3D
         )]
         public int viewOffset = 0;
 
+        /// <summary>
+        /// Additional user-controllable view shift that is added to <c>mstart</c> in the shader.
+        /// Intended primarily for use in headtracking mode, where the base <c>mstart</c> value is
+        /// supplied by the head tracking library and this value provides an extra permanent offset.
+        /// </summary>
+        [Tooltip(
+            "Additional view shift added to mstart in the shader. Primarily used in headtracking mode as an extra permanent offset on top of the value supplied by the head tracking library."
+        )]
+        public int viewShift = 0;
+
         [Tooltip(
             "Scales the strength of the camera movement through headtracking. Below 1.0 camera movement is reduced compared to real world movement. Above 1.0 camera movement is increased compared to real world movement."
         )]
@@ -942,6 +952,7 @@ namespace G3D
                     shaderParameters.leftLensOrientation
                 );
                 material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
+                material?.SetInt(shaderHandles.viewShift, viewShift);
 
                 // test frame and stripe
                 material?.SetInt(shaderHandles.showTestFrame, showTestFrame ? 1 : 0);
