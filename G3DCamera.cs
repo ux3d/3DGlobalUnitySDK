@@ -51,6 +51,22 @@ namespace G3D
         /// </summary>
         public int renderResolutionScale = 100;
 
+#if !G3D_HDRP && !G3D_URP
+        [Tooltip(
+            "MSAA sample count for the per-view render textures. Valid values are 1 (off), 2, 4, or 8."
+                + " Other values are rounded down to the nearest valid setting. Only affects the Built-in"
+                + " Render Pipeline; SRP-based projects control MSAA via the pipeline asset."
+        )]
+        [Range(1, 8)]
+        /// <summary>
+        /// MSAA sample count applied to the per-view <see cref="RenderTexture"/> instances the view
+        /// cameras render into. Valid values are 1 (off), 2, 4 or 8; other values are rounded down.
+        /// Because the view cameras render to <c>targetTexture</c>, the QualitySettings anti-aliasing
+        /// value is ignored — this field is what actually enables MSAA in the Built-in RP path.
+        /// </summary>
+        public int msaaSampleCount = 1;
+#endif
+
         [Tooltip(
             "Adjust the dolly zoom effect. 1.0 means no dolly zoom. 0.0 means large fov and minimum distance to the focus plane. 3.0 means small fov and maximum distance from the focus plane."
         )]
@@ -156,6 +172,9 @@ namespace G3D
         private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
         private int internalCameraCount = 2;
         private int oldRenderResolutionScale = 100;
+#if !G3D_HDRP && !G3D_URP
+        private int oldMsaaSampleCount = 1;
+#endif
 
         // mirrorViews is used to flip the views horizontally, this is required for Holoboxes
         private bool mirrorViews = false;
@@ -223,6 +242,9 @@ namespace G3D
         void Start()
         {
             oldRenderResolutionScale = renderResolutionScale;
+#if !G3D_HDRP && !G3D_URP
+            oldMsaaSampleCount = sanitizedMsaaSampleCount();
+#endif
             setupCameras();
 
             reinitializeShader();
@@ -825,6 +847,15 @@ namespace G3D
                 recreatedRenderTextures = true;
             }
 
+#if !G3D_HDRP && !G3D_URP
+            int currentMsaa = sanitizedMsaaSampleCount();
+            if (oldMsaaSampleCount != currentMsaa)
+            {
+                oldMsaaSampleCount = currentMsaa;
+                recreatedRenderTextures = true;
+            }
+#endif
+
             if (recreatedRenderTextures)
             {
                 updateRenderTextures();
@@ -1122,6 +1153,9 @@ namespace G3D
             {
                 format = RenderTextureFormat.ARGB32,
                 depthStencilFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.D16_UNorm,
+#if !G3D_HDRP && !G3D_URP
+                antiAliasing = sanitizedMsaaSampleCount(),
+#endif
             };
             cameras[cameraIndex].targetTexture = renderTextures[renderTextureIndex];
             material.SetTexture(
@@ -1130,6 +1164,24 @@ namespace G3D
                 RenderTextureSubElement.Color
             );
         }
+
+        /// <summary>
+        /// Rounds <see cref="msaaSampleCount"/> down to the nearest value accepted by
+        /// <see cref="RenderTexture.antiAliasing"/> (1, 2, 4 or 8). Values below 1 are treated as 1
+        /// (MSAA off); values above 8 are clamped to 8.
+        /// </summary>
+#if !G3D_HDRP && !G3D_URP
+        private int sanitizedMsaaSampleCount()
+        {
+            if (msaaSampleCount >= 8)
+                return 8;
+            if (msaaSampleCount >= 4)
+                return 4;
+            if (msaaSampleCount >= 2)
+                return 2;
+            return 1;
+        }
+#endif
 
         private bool windowResized()
         {

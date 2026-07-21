@@ -73,6 +73,15 @@ namespace G3D
             focusDistanceField = mainInspector.Q<PropertyField>("focusDistance");
             dollyZoomField = mainInspector.Q<PropertyField>("dollyZoom");
 
+            // MSAA only affects the Built-in Render Pipeline; SRP-based projects control MSAA via
+            // the pipeline asset. Hide the field (and its backing logic in G3DCamera is compiled out)
+            // when URP or HDRP is present so it can't be set to a value that has no effect.
+#if G3D_URP || G3D_HDRP
+            PropertyField msaaSampleCountField = mainInspector.Q<PropertyField>("msaaSampleCount");
+            if (msaaSampleCountField != null)
+                msaaSampleCountField.style.display = DisplayStyle.None;
+#endif
+
             string calibrationPath = System.Environment.GetFolderPath(
                 Environment.SpecialFolder.CommonDocuments
             );
