@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 namespace G3D
 {
     [CustomEditor(typeof(G3DCamera))]
-    public class InspectorG3DCamera : Editor
+    public class InspectorG3DCamera : UnityEditor.Editor
     {
         public VisualTreeAsset inspectorXML;
 
@@ -24,6 +24,8 @@ namespace G3D
         private PropertyField focusDistanceField;
         private PropertyField dollyZoomField;
 
+        private DropdownField predictionModelDropdown;
+
         private Label calibFolderLabel;
         private Label HeadtrackingCalibFileInfo;
 
@@ -37,6 +39,10 @@ namespace G3D
         /// Unity triggers a change event when the Inspector is first displayed, but it doesn't provide the new value in that event, so we have to store the last config file to detect when it actually changes.
         /// </summary>
         private TextAsset lastConfigFile;
+
+        // We use this to check if the headtracking connection is active
+        // in order to display certain UI elements in the inspector
+        private HeadtrackingConnection headtrackingConnection;
 
         public override VisualElement CreateInspectorGUI()
         {
@@ -99,11 +105,33 @@ namespace G3D
                 camera.setCameraFOVToDisplayFOV();
             };
 
-            Button visitOnlineDocumentationButton = mainInspector.Q<Button>("visitOnlineDocumentation");
+            Button visitOnlineDocumentationButton = mainInspector.Q<Button>(
+                "visitOnlineDocumentation"
+            );
             visitOnlineDocumentationButton.clicked += () =>
             {
                 Application.OpenURL("https://3d-global-docs.vercel.app/docs/category/unity");
             };
+
+            predictionModelDropdown = mainInspector.Q<DropdownField>("predictionModel");
+            predictionModelDropdown.choices = HeadTrackingSDK.ht_get_available_predictions();
+            if (predictionModelDropdown.choices.Count == 0)
+            {
+                predictionModelDropdown.value = "No prediction models available";
+                predictionModelDropdown.SetEnabled(false);
+            }
+            else
+            {
+                predictionModelDropdown.value = "kalman_9dv2";
+            }
+            HeadTrackingSDK.ht_set_prediction(predictionModelDropdown.value);
+            predictionModelDropdown.RegisterValueChangedCallback(
+                (evt) =>
+                {
+                    Debug.Log($"Selected prediction model: {evt.newValue}");
+                    HeadTrackingSDK.ht_set_prediction(evt.newValue);
+                }
+            );
 
             return mainInspector;
         }
@@ -119,14 +147,12 @@ namespace G3D
                         calibFolderLabel.style.display = DisplayStyle.Flex;
                         headtrackingScaleField.style.display = DisplayStyle.Flex;
                         HeadtrackingCalibFileInfo.style.display = DisplayStyle.Flex;
-                        viewOffsetField.style.display = DisplayStyle.None;
                     }
                     else // Holobox and Multiview mode
                     {
                         calibFolderLabel.style.display = DisplayStyle.None;
                         headtrackingScaleField.style.display = DisplayStyle.None;
                         HeadtrackingCalibFileInfo.style.display = DisplayStyle.None;
-                        viewOffsetField.style.display = DisplayStyle.Flex;
                     }
                 }
             );

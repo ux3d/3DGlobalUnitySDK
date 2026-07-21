@@ -95,24 +95,6 @@ namespace G3D
         /// </summary>
         public float headtrackingSensitivity = 1.0f; // scale the headtracking effect
         #region Advanced settings
-        /// <summary>
-        /// Smoothes the head position (Size of the filter kernel). No filtering is applied, if set to all zeros. DO NOT CHANGE THIS WHILE GAME IS ALREADY RUNNING!
-        /// </summary>
-        public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
-
-        /// <summary>
-        /// How latency correction is handled by the headtracking library.
-        /// </summary>
-        public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
-
-        [Tooltip(
-            "If set to true, the head tracking library will print debug messages to the console."
-        )]
-        /// <summary>
-        /// If set to true, the head tracking library will print debug messages to the console.
-        /// </summary>
-        public bool debugMessages = false;
-
         [Tooltip(
             "Show the positions, frustums and focus plane of the generated cameras in the Scene view."
         )]
@@ -264,19 +246,11 @@ namespace G3D
             shaderHandles = new ShaderHandles();
             shaderHandles.init();
 
-            headtrackingConnection = new HeadtrackingConnection(
-                focusDistance,
-                headtrackingSensitivity,
-                configurationPathOverwrite,
-                this,
-                debugMessages,
-                headPositionFilter,
-                latencyCorrectionMode
-            );
+            headtrackingConnection = new HeadtrackingConnection(mode == G3DCameraMode.HEADTRACKING);
             if (mode == G3DCameraMode.HEADTRACKING)
             {
-                headtrackingConnection.initLibrary();
                 headtrackingConnection.startHeadTracking();
+                headtrackingConnection.initBasicWorkingDistance();
             }
 
             updateScreenViewportProperties();
@@ -372,6 +346,8 @@ namespace G3D
             if (mode == G3DCameraMode.HEADTRACKING)
             {
                 viewSeparation = 0.065f;
+                // library might not be initialized
+                headtrackingConnection?.initLibrary();
             }
             else // Holobox and Multiview mode
             {
@@ -482,7 +458,6 @@ namespace G3D
                 {
                     updateFocusDistance(0.7f);
                 }
-                headtrackingConnection?.setBasicWorkingDistance(focusDistance);
 
                 if (mode == G3DCameraMode.HEADTRACKING)
                 {
@@ -522,7 +497,6 @@ namespace G3D
             {
                 updateFocusDistance(BasicWorkingDistanceMeter);
             }
-            headtrackingConnection?.setBasicWorkingDistance(BasicWorkingDistanceMeter);
 
             // calculate eye separation/ view separation
             if (mode == G3DCameraMode.HEADTRACKING)
@@ -549,7 +523,17 @@ namespace G3D
 
             //prevent any memory leaks
             for (int i = 0; i < MAX_CAMERAS; i++)
-                cameras[i].targetTexture?.Release();
+            {
+                if (
+                    cameras != null
+                    && i < cameras.Count
+                    && cameras[i] != null
+                    && cameras[i].targetTexture != null
+                )
+                {
+                    cameras[i].targetTexture.Release();
+                }
+            }
 
             for (int i = 0; i < colorRenderTextures?.Length; i++)
             {
@@ -571,47 +555,9 @@ namespace G3D
             headtrackingConnection.logCameraPositionsToFile();
         }
 
-        /// <summary>
-        /// Shifts views to the left. This does not shift the cameras. This shifts the views you see on the display.
-        /// Only works in headtracking mode, in multiview use viewOffset.
-        /// </summary>
-        public void shiftViewToLeft()
-        {
-            if (mode != G3DCameraMode.HEADTRACKING)
-            {
-                return;
-            }
-
-            headtrackingConnection.shiftViewToLeft();
-        }
-
-        /// <summary>
-        /// Shifts views to the right. This does not shift the cameras. This shifts the views you see on the display.
-        /// Only works in headtracking mode, in multiview use viewOffset.
-        /// </summary>
-        public void shiftViewToRight()
-        {
-            if (mode != G3DCameraMode.HEADTRACKING)
-            {
-                return;
-            }
-
-            headtrackingConnection.shiftViewToRight();
-        }
-
         public void toggleTestFrame()
         {
             showTestFrame = !showTestFrame;
-        }
-
-        public void toggleHeadTracking()
-        {
-            if (mode != G3DCameraMode.HEADTRACKING)
-            {
-                return;
-            }
-
-            headtrackingConnection.toggleHeadTracking();
         }
 
         public G3DShaderParameters GetShaderParameters()
@@ -856,7 +802,7 @@ namespace G3D
             // update the shader parameters (only in headtracking mode)
             if (mode == G3DCameraMode.HEADTRACKING)
             {
-                headtrackingConnection.calculateShaderParameters();
+                setShaderParameters(headtrackingConnection.calculateShaderParameters());
             }
 
             bool cameraCountChanged = updateCameraCountBasedOnMode();
@@ -885,23 +831,11 @@ namespace G3D
             }
         }
 
-        private void updateFocusPlane()
-        {
-            if (focusPlaneObject != null)
-            {
-                focusPlaneObject.transform.localPosition = new Vector3(0, 0, focusDistance);
-            }
-        }
-
         private void updateScreenViewportProperties()
         {
-            Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
-            if (mode == G3DCameraMode.HEADTRACKING)
+            if (mode == G3DCameraMode.HOLOBOX || mode == G3DCameraMode.MULTIVIEW)
             {
-                headtrackingConnection.updateScreenViewportProperties(displayResolution);
-            }
-            else // Multiview and Holobox mode
-            {
+                Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
                 shaderParameters.screenWidth = displayResolution.x;
                 shaderParameters.screenHeight = displayResolution.y;
                 shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
@@ -977,12 +911,9 @@ namespace G3D
                         invertViewsInHeadtracking ? 1 : 0
                     );
                 }
-                else // Multiview and Holobox mode
-                {
-                    material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
-                }
-                material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
-                material.SetFloatArray(
+                material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+                material?.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+                material?.SetFloatArray(
                     Shader.PropertyToID("index_map"),
                     indexMap.getPaddedIndexMapArray()
                 );
@@ -1177,6 +1108,10 @@ namespace G3D
             string texNameInShader = "texture"
         )
         {
+            if (cameras.Count <= 0)
+            {
+                return;
+            }
             int width = Screen.width;
             int height = Screen.height;
 
