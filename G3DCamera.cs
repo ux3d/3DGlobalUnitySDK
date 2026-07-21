@@ -246,13 +246,11 @@ namespace G3D
             shaderHandles = new ShaderHandles();
             shaderHandles.init();
 
-            headtrackingConnection = new HeadtrackingConnection(
-                focusDistance,
-                mode == G3DCameraMode.HEADTRACKING
-            );
+            headtrackingConnection = new HeadtrackingConnection(mode == G3DCameraMode.HEADTRACKING);
             if (mode == G3DCameraMode.HEADTRACKING)
             {
                 headtrackingConnection.startHeadTracking();
+                headtrackingConnection.initBasicWorkingDistance();
             }
 
             updateScreenViewportProperties();
@@ -460,7 +458,6 @@ namespace G3D
                 {
                     updateFocusDistance(0.7f);
                 }
-                headtrackingConnection?.setBasicWorkingDistance(focusDistance);
 
                 if (mode == G3DCameraMode.HEADTRACKING)
                 {
@@ -500,7 +497,6 @@ namespace G3D
             {
                 updateFocusDistance(BasicWorkingDistanceMeter);
             }
-            headtrackingConnection?.setBasicWorkingDistance(BasicWorkingDistanceMeter);
 
             // calculate eye separation/ view separation
             if (mode == G3DCameraMode.HEADTRACKING)
@@ -527,7 +523,17 @@ namespace G3D
 
             //prevent any memory leaks
             for (int i = 0; i < MAX_CAMERAS; i++)
-                cameras[i]?.targetTexture?.Release();
+            {
+                if (
+                    cameras != null
+                    && i < cameras.Count
+                    && cameras[i] != null
+                    && cameras[i].targetTexture != null
+                )
+                {
+                    cameras[i].targetTexture.Release();
+                }
+            }
 
             for (int i = 0; i < colorRenderTextures?.Length; i++)
             {
@@ -905,12 +911,9 @@ namespace G3D
                         invertViewsInHeadtracking ? 1 : 0
                     );
                 }
-                else // Multiview and Holobox mode
-                {
-                    material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
-                }
-                material.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
-                material.SetFloatArray(
+                material?.SetInt(Shader.PropertyToID("viewOffset"), viewOffset);
+                material?.SetInt(Shader.PropertyToID("indexMapLength"), indexMap.currentMap.Length);
+                material?.SetFloatArray(
                     Shader.PropertyToID("index_map"),
                     indexMap.getPaddedIndexMapArray()
                 );
@@ -1105,6 +1108,10 @@ namespace G3D
             string texNameInShader = "texture"
         )
         {
+            if (cameras.Count <= 0)
+            {
+                return;
+            }
             int width = Screen.width;
             int height = Screen.height;
 

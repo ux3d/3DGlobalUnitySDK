@@ -11,7 +11,12 @@ namespace G3D
 
         public float transitionDuration = 0.5f;
 
-        public float basicWorkingDistance = 1.0f;
+        /// <summary>
+        /// This is the default working distance of the display. It is used as the default position if headtracking is lost.
+        /// It is the default (optimal) distance of a user from the display the display was built for.
+        /// e.g. for a 17 inch this might be 80 cm.
+        /// </summary>
+        private float basicWorkingDistance = 0.7f;
         private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
 
         private float headLostTimer = 0.0f;
@@ -45,10 +50,9 @@ namespace G3D
         /// This distance is used as the default position if headtracking is lost.
         /// </summary>
         /// <param name="basicWorkingDistance"></param>
-        public HeadtrackingConnection(float basicWorkingDistance, bool shouldInitLibrary = true)
+        public HeadtrackingConnection(bool shouldInitLibrary = true)
         {
             lastHeadPosition = new Vector3(0, 0, -basicWorkingDistance);
-            this.basicWorkingDistance = basicWorkingDistance;
 
             headPositionLog = new Queue<string>(10000);
 
@@ -106,6 +110,13 @@ namespace G3D
                 worldPosY = 0.0,
                 worldPosZ = -basicWorkingDistance
             };
+        }
+
+        public void initBasicWorkingDistance()
+        {
+            HeadTrackingSDK.RenderParameters monitorParameters =
+                HeadTrackingSDK.ht_get_render_parameters();
+            basicWorkingDistance = monitorParameters.basicWorkingDistanceMM / 1000.0f; // convert from mm to m
         }
 
         public void deinitLibrary()
@@ -186,7 +197,7 @@ namespace G3D
                 headPosition.headDetected =
                     posCode != HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_NO;
 
-                headPosition.worldPosX = trackedPos.world_x / 1000.0; // convert from mm to m
+                headPosition.worldPosX = -trackedPos.world_x / 1000.0; // convert from mm to m
                 headPosition.worldPosY = trackedPos.world_y / 1000.0; // convert from mm to m
                 headPosition.worldPosZ = -trackedPos.world_z / 1000.0; // convert from mm to m
 
@@ -354,11 +365,6 @@ namespace G3D
             return shaderParameters;
         }
 
-        public void setBasicWorkingDistance(float distance)
-        {
-            basicWorkingDistance = distance;
-        }
-
         /// <summary>
         /// returns true if transition end is reached
         ///
@@ -415,9 +421,16 @@ namespace G3D
         /// <returns></returns>
         private float convertWorldPosZToTrackedPosition(float worldPosZ, float focusDistance)
         {
-            // convert from mm to m and apply scale factor
-            float zOffset = basicWorkingDistance + worldPosZ; // worldposZ is negative when in front of the camera, so we add it to the basic working distance
-            float convertedZ = focusDistance - zOffset;
+            if (basicWorkingDistance <= 0.0f || (basicWorkingDistance - 0.7f) < 0.0000001) // sanity check
+            {
+                initBasicWorkingDistance();
+                if (basicWorkingDistance <= 0.0f)
+                {
+                    basicWorkingDistance = 0.7f;
+                }
+            }
+            float distanceRatio = basicWorkingDistance / -worldPosZ;
+            float convertedZ = focusDistance / distanceRatio;
             return -convertedZ; // invert to be in right coordinate system for camera position
         }
 
