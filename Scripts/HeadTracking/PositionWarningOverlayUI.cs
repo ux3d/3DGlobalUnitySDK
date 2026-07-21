@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Video;
 
 namespace G3D
 {
@@ -52,6 +54,13 @@ namespace G3D
         private Text _rightText;
         private Text _centerText;
 
+        private VideoPlayer _moveRightVideoPlayer;
+        private RawImage _moveRightVideoImage;
+        private RenderTexture _moveRightRenderTexture;
+        private AspectRatioFitter _moveRightAspectFitter;
+        private bool _hasMoveRightVideo;
+        private bool _moveRightVideoShouldPlay;
+
         private WarnSide _currentSide = WarnSide.None;
         private float _sideShownAt = -1f;
         private float _hideAt = -1f;
@@ -59,7 +68,27 @@ namespace G3D
         private void Awake()
         {
             BuildUi();
+            SetupMoveRightVideo();
             HideAllNow();
+        }
+
+        private void OnDestroy()
+        {
+            if (_moveRightVideoPlayer != null)
+            {
+                _moveRightVideoPlayer.Stop();
+                _moveRightVideoPlayer.targetTexture = null;
+                _moveRightVideoPlayer.prepareCompleted -= OnMoveRightVideoPrepared;
+                _moveRightVideoPlayer.errorReceived -= OnMoveRightVideoError;
+                _moveRightVideoPlayer.loopPointReached -= OnMoveRightVideoLoopPointReached;
+            }
+
+            if (_moveRightRenderTexture != null)
+            {
+                _moveRightRenderTexture.Release();
+                Destroy(_moveRightRenderTexture);
+                _moveRightRenderTexture = null;
+            }
         }
 
         private void OnEnable()
@@ -160,6 +189,12 @@ namespace G3D
 
         private void AnimateActiveWarning()
         {
+            if (_currentSide == WarnSide.Left && _hasMoveRightVideo)
+            {
+                _overlayFade.color = new Color(0f, 0f, 0f, 0.1f);
+                return;
+            }
+
             float phase = (Time.unscaledTime - _sideShownAt) / Mathf.Max(0.01f, pulseCycleSeconds);
             float pulse = 0.5f + 0.5f * Mathf.Sin(phase * Mathf.PI * 2f);
             float scale = Mathf.Lerp(0.96f, 1.05f, pulse);
@@ -220,6 +255,20 @@ namespace G3D
                 _rightIndicator.gameObject.SetActive(false);
             if (_centerIndicator != null)
                 _centerIndicator.gameObject.SetActive(false);
+
+            if (_hasMoveRightVideo)
+            {
+                _moveRightVideoShouldPlay = false;
+                _moveRightVideoPlayer.Stop();
+                _moveRightVideoImage.enabled = false;
+
+                Image leftImage = _leftIndicator.GetComponent<Image>();
+                if (leftImage != null)
+                    leftImage.enabled = true;
+
+                if (_leftText != null)
+                    _leftText.gameObject.SetActive(true);
+            }
         }
 
         private void SetActiveOnly(WarnSide side)
@@ -247,6 +296,196 @@ namespace G3D
             _leftText.text = "MOVE RIGHT";
             _rightText.text = "MOVE LEFT";
             _centerText.text = side == WarnSide.Close ? "MOVE AWAY" : "MOVE CLOSER";
+
+            if (_hasMoveRightVideo)
+            {
+                Image leftImage = _leftIndicator.GetComponent<Image>();
+
+                if (side == WarnSide.Left)
+                {
+                    _moveRightVideoImage.enabled = true;
+                    _leftText.gameObject.SetActive(false);
+
+                    if (leftImage != null)
+                        leftImage.enabled = false;
+
+                    _moveRightVideoShouldPlay = true;
+                    _moveRightVideoPlayer.Stop();
+                    if (_moveRightVideoPlayer.isPrepared)
+                    {
+                        _moveRightVideoPlayer.Play();
+                    }
+                    else
+                    {
+                        _moveRightVideoPlayer.Prepare();
+                    }
+                }
+                else
+                {
+                    _moveRightVideoShouldPlay = false;
+                    _moveRightVideoPlayer.Stop();
+                    _moveRightVideoImage.enabled = false;
+                    _leftText.gameObject.SetActive(true);
+
+                    if (leftImage != null)
+                        leftImage.enabled = true;
+                }
+            }
+        }
+
+        private void SetupMoveRightVideo()
+        {
+            GameObject videoObj = new GameObject("MoveRightVideo");
+            videoObj.transform.SetParent(_leftIndicator, false);
+
+            RectTransform rt = videoObj.AddComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(8f, 8f);
+            rt.offsetMax = new Vector2(-8f, -8f);
+
+            _moveRightVideoImage = videoObj.AddComponent<RawImage>();
+            _moveRightVideoImage.raycastTarget = false;
+
+            _moveRightAspectFitter = videoObj.AddComponent<AspectRatioFitter>();
+            _moveRightAspectFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            _moveRightAspectFitter.aspectRatio = 540f / 351f;
+
+            _moveRightVideoPlayer = videoObj.AddComponent<VideoPlayer>();
+            _moveRightVideoPlayer.playOnAwake = false;
+            _moveRightVideoPlayer.isLooping = true;
+            _moveRightVideoPlayer.audioOutputMode = VideoAudioOutputMode.None;
+            _moveRightVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
+            _moveRightVideoPlayer.playOnAwake = false;
+            _moveRightVideoPlayer.waitForFirstFrame = true;
+            _moveRightVideoPlayer.skipOnDrop = true;
+            _moveRightVideoPlayer.prepareCompleted += OnMoveRightVideoPrepared;
+            _moveRightVideoPlayer.errorReceived += OnMoveRightVideoError;
+            _moveRightVideoPlayer.loopPointReached += OnMoveRightVideoLoopPointReached;
+
+            VideoClip clip = Resources.Load<VideoClip>("animations/moveRightWarning");
+            if (clip != null)
+            {
+                _moveRightVideoPlayer.source = VideoSource.VideoClip;
+                _moveRightVideoPlayer.clip = clip;
+            }
+            else
+            {
+                string filePath = ResolveMoveRightWarningFilePath();
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    Debug.LogWarning(
+                        "[G3D] moveRightWarning.mp4 not found (VideoClip or file path). Using text fallback."
+                    );
+                    Destroy(videoObj);
+                    return;
+                }
+
+                _moveRightVideoPlayer.source = VideoSource.Url;
+                _moveRightVideoPlayer.url = new Uri(filePath).AbsoluteUri;
+            }
+
+            CreateOrResizeMoveRightRenderTexture(
+                clip != null ? (int)Mathf.Max(64, clip.width > 0 ? clip.width : 540) : 540,
+                clip != null ? (int)Mathf.Max(64, clip.height > 0 ? clip.height : 351) : 351
+            );
+            _moveRightVideoImage.enabled = false;
+
+            _hasMoveRightVideo = true;
+            _moveRightVideoPlayer.Prepare();
+        }
+
+        private string ResolveMoveRightWarningFilePath()
+        {
+            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+
+            string[] candidates =
+            {
+                Path.Combine(
+                    projectRoot,
+                    "Packages",
+                    "com.3dglobal.core",
+                    "Resources",
+                    "animations",
+                    "moveRightWarning.mp4"
+                ),
+                Path.Combine(projectRoot, "Resources", "animations", "moveRightWarning.mp4"),
+                Path.Combine(
+                    projectRoot,
+                    "Assets",
+                    "Resources",
+                    "animations",
+                    "moveRightWarning.mp4"
+                )
+            };
+
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                if (File.Exists(candidates[i]))
+                    return candidates[i];
+            }
+
+            return string.Empty;
+        }
+
+        private void OnMoveRightVideoPrepared(VideoPlayer source)
+        {
+            int preparedWidth = (int)Mathf.Max(64, source.width > 0 ? source.width : 540);
+            int preparedHeight = (int)Mathf.Max(64, source.height > 0 ? source.height : 351);
+            CreateOrResizeMoveRightRenderTexture(preparedWidth, preparedHeight);
+
+            if (_moveRightAspectFitter != null)
+                _moveRightAspectFitter.aspectRatio = preparedWidth / (float)preparedHeight;
+
+            source.isLooping = true;
+            if (_moveRightVideoShouldPlay)
+                source.Play();
+        }
+
+        private void OnMoveRightVideoLoopPointReached(VideoPlayer source)
+        {
+            // Some codecs/platforms ignore isLooping in URL mode; force replay.
+            if (_moveRightVideoShouldPlay)
+                source.Play();
+        }
+
+        private void OnMoveRightVideoError(VideoPlayer source, string message)
+        {
+            Debug.LogError("[G3D] moveRightWarning video error: " + message);
+        }
+
+        private void CreateOrResizeMoveRightRenderTexture(int width, int height)
+        {
+            width = Mathf.Max(64, width);
+            height = Mathf.Max(64, height);
+
+            if (
+                _moveRightRenderTexture != null
+                && _moveRightRenderTexture.width == width
+                && _moveRightRenderTexture.height == height
+            )
+            {
+                _moveRightVideoPlayer.targetTexture = _moveRightRenderTexture;
+                _moveRightVideoImage.texture = _moveRightRenderTexture;
+                return;
+            }
+
+            if (_moveRightRenderTexture != null)
+            {
+                _moveRightRenderTexture.Release();
+                Destroy(_moveRightRenderTexture);
+            }
+
+            _moveRightRenderTexture = new RenderTexture(
+                width,
+                height,
+                0,
+                RenderTextureFormat.ARGB32
+            );
+            _moveRightRenderTexture.Create();
+
+            _moveRightVideoPlayer.targetTexture = _moveRightRenderTexture;
+            _moveRightVideoImage.texture = _moveRightRenderTexture;
         }
 
         private static void SetIndicatorAlpha(RectTransform indicator, float alpha)
@@ -306,7 +545,7 @@ namespace G3D
                 rootRect,
                 new Vector2(0f, 0.5f),
                 new Vector2(0f, 0.5f),
-                new Vector2(260f, 0f),
+                new Vector2(120f, 0f),
                 new Vector2(420f, 120f),
                 "MOVE RIGHT"
             );
