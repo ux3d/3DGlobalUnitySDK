@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
@@ -38,7 +39,6 @@ namespace G3D
         [Tooltip("Main warning text font size.")]
         public int warningFontSize = 52;
 
-        private Canvas _canvas;
         private GameObject _root;
         private Image _overlayFade;
 
@@ -47,6 +47,7 @@ namespace G3D
         private RectTransform _leftIndicator;
         private RectTransform _rightIndicator;
         private RectTransform _centerIndicator;
+        private RectTransform[] _indicators;
 
         private Text _topText;
         private Text _bottomText;
@@ -54,12 +55,21 @@ namespace G3D
         private Text _rightText;
         private Text _centerText;
 
-        private VideoPlayer _moveRightVideoPlayer;
-        private RawImage _moveRightVideoImage;
-        private RenderTexture _moveRightRenderTexture;
-        private AspectRatioFitter _moveRightAspectFitter;
-        private bool _hasMoveRightVideo;
-        private bool _moveRightVideoShouldPlay;
+        private sealed class VideoHint
+        {
+            public WarnSide Side;
+            public string ResourceName;
+            public RectTransform Indicator;
+            public Text Label;
+            public RawImage Image;
+            public VideoPlayer Player;
+            public RenderTexture RenderTexture;
+            public AspectRatioFitter AspectFitter;
+            public bool HasVideo;
+            public bool ShouldPlay;
+        }
+
+        private readonly List<VideoHint> _videoHints = new List<VideoHint>();
 
         private WarnSide _currentSide = WarnSide.None;
         private float _sideShownAt = -1f;
@@ -68,26 +78,30 @@ namespace G3D
         private void Awake()
         {
             BuildUi();
-            SetupMoveRightVideo();
+            SetupAllWarningVideos();
             HideAllNow();
         }
 
         private void OnDestroy()
         {
-            if (_moveRightVideoPlayer != null)
+            for (int i = 0; i < _videoHints.Count; i++)
             {
-                _moveRightVideoPlayer.Stop();
-                _moveRightVideoPlayer.targetTexture = null;
-                _moveRightVideoPlayer.prepareCompleted -= OnMoveRightVideoPrepared;
-                _moveRightVideoPlayer.errorReceived -= OnMoveRightVideoError;
-                _moveRightVideoPlayer.loopPointReached -= OnMoveRightVideoLoopPointReached;
-            }
+                VideoHint hint = _videoHints[i];
+                if (hint.Player != null)
+                {
+                    hint.Player.Stop();
+                    hint.Player.targetTexture = null;
+                    hint.Player.prepareCompleted -= OnAnyVideoPrepared;
+                    hint.Player.errorReceived -= OnAnyVideoError;
+                    hint.Player.loopPointReached -= OnAnyVideoLoopPointReached;
+                }
 
-            if (_moveRightRenderTexture != null)
-            {
-                _moveRightRenderTexture.Release();
-                Destroy(_moveRightRenderTexture);
-                _moveRightRenderTexture = null;
+                if (hint.RenderTexture != null)
+                {
+                    hint.RenderTexture.Release();
+                    Destroy(hint.RenderTexture);
+                    hint.RenderTexture = null;
+                }
             }
         }
 
@@ -174,8 +188,8 @@ namespace G3D
                 _currentSide = side;
                 _sideShownAt = Time.unscaledTime;
 
-                SetActiveOnly(side);
                 _root.SetActive(true);
+                SetActiveOnly(side);
                 return;
             }
 
@@ -189,7 +203,8 @@ namespace G3D
 
         private void AnimateActiveWarning()
         {
-            if (_currentSide == WarnSide.Left && _hasMoveRightVideo)
+            VideoHint activeVideoHint = GetActiveVideoHint(_currentSide);
+            if (activeVideoHint != null && activeVideoHint.HasVideo)
             {
                 _overlayFade.color = new Color(0f, 0f, 0f, 0.1f);
                 return;
@@ -200,7 +215,7 @@ namespace G3D
             float scale = Mathf.Lerp(0.96f, 1.05f, pulse);
             float alpha = Mathf.Lerp(0.45f, 1f, pulse);
 
-            RectTransform active = GetActiveIndicator();
+            RectTransform active = GetIndicatorForSide(_currentSide);
             if (active != null)
             {
                 active.localScale = new Vector3(scale, scale, 1f);
@@ -216,9 +231,9 @@ namespace G3D
             _overlayFade.color = new Color(0f, 0f, 0f, Mathf.Lerp(0.06f, 0.14f, pulse));
         }
 
-        private RectTransform GetActiveIndicator()
+        private RectTransform GetIndicatorForSide(WarnSide side)
         {
-            switch (_currentSide)
+            switch (side)
             {
                 case WarnSide.Top:
                     return _topIndicator;
@@ -245,98 +260,60 @@ namespace G3D
             if (_root != null)
                 _root.SetActive(false);
 
-            if (_topIndicator != null)
-                _topIndicator.gameObject.SetActive(false);
-            if (_bottomIndicator != null)
-                _bottomIndicator.gameObject.SetActive(false);
-            if (_leftIndicator != null)
-                _leftIndicator.gameObject.SetActive(false);
-            if (_rightIndicator != null)
-                _rightIndicator.gameObject.SetActive(false);
-            if (_centerIndicator != null)
-                _centerIndicator.gameObject.SetActive(false);
-
-            if (_hasMoveRightVideo)
+            if (_indicators != null)
             {
-                _moveRightVideoShouldPlay = false;
-                _moveRightVideoPlayer.Stop();
-                _moveRightVideoImage.enabled = false;
-
-                Image leftImage = _leftIndicator.GetComponent<Image>();
-                if (leftImage != null)
-                    leftImage.enabled = true;
-
-                if (_leftText != null)
-                    _leftText.gameObject.SetActive(true);
+                foreach (RectTransform indicator in _indicators)
+                    indicator.gameObject.SetActive(false);
             }
+
+            SetAllVideoHintsInactive();
         }
 
         private void SetActiveOnly(WarnSide side)
         {
-            _topIndicator.gameObject.SetActive(side == WarnSide.Top);
-            _bottomIndicator.gameObject.SetActive(side == WarnSide.Bottom);
-            _leftIndicator.gameObject.SetActive(side == WarnSide.Left);
-            _rightIndicator.gameObject.SetActive(side == WarnSide.Right);
-            _centerIndicator.gameObject.SetActive(side == WarnSide.Close || side == WarnSide.Far);
+            RectTransform activeIndicator = GetIndicatorForSide(side);
+            foreach (RectTransform indicator in _indicators)
+            {
+                indicator.gameObject.SetActive(indicator == activeIndicator);
+                indicator.localScale = Vector3.one;
+                SetIndicatorAlpha(indicator, 1f);
+            }
 
-            _topIndicator.localScale = Vector3.one;
-            _bottomIndicator.localScale = Vector3.one;
-            _leftIndicator.localScale = Vector3.one;
-            _rightIndicator.localScale = Vector3.one;
-            _centerIndicator.localScale = Vector3.one;
-
-            SetIndicatorAlpha(_topIndicator, 1f);
-            SetIndicatorAlpha(_bottomIndicator, 1f);
-            SetIndicatorAlpha(_leftIndicator, 1f);
-            SetIndicatorAlpha(_rightIndicator, 1f);
-            SetIndicatorAlpha(_centerIndicator, 1f);
-
-            _topText.text = "MOVE DOWN";
-            _bottomText.text = "MOVE UP";
-            _leftText.text = "MOVE RIGHT";
-            _rightText.text = "MOVE LEFT";
+            // Only the depth cue changes wording; the edge labels are set once in BuildUi.
             _centerText.text = side == WarnSide.Close ? "MOVE AWAY" : "MOVE CLOSER";
 
-            if (_hasMoveRightVideo)
-            {
-                Image leftImage = _leftIndicator.GetComponent<Image>();
-
-                if (side == WarnSide.Left)
-                {
-                    _moveRightVideoImage.enabled = true;
-                    _leftText.gameObject.SetActive(false);
-
-                    if (leftImage != null)
-                        leftImage.enabled = false;
-
-                    _moveRightVideoShouldPlay = true;
-                    _moveRightVideoPlayer.Stop();
-                    if (_moveRightVideoPlayer.isPrepared)
-                    {
-                        _moveRightVideoPlayer.Play();
-                    }
-                    else
-                    {
-                        _moveRightVideoPlayer.Prepare();
-                    }
-                }
-                else
-                {
-                    _moveRightVideoShouldPlay = false;
-                    _moveRightVideoPlayer.Stop();
-                    _moveRightVideoImage.enabled = false;
-                    _leftText.gameObject.SetActive(true);
-
-                    if (leftImage != null)
-                        leftImage.enabled = true;
-                }
-            }
+            SetAllVideoHintsInactive();
+            ActivateVideoHintForSide(side);
         }
 
-        private void SetupMoveRightVideo()
+        private void SetupAllWarningVideos()
         {
-            GameObject videoObj = new GameObject("MoveRightVideo");
-            videoObj.transform.SetParent(_leftIndicator, false);
+            _videoHints.Clear();
+            TryCreateVideoHint(WarnSide.Top, "moveDownWarning", _topIndicator, _topText);
+            TryCreateVideoHint(WarnSide.Bottom, "moveUpWarning", _bottomIndicator, _bottomText);
+            TryCreateVideoHint(WarnSide.Left, "moveRightWarning", _leftIndicator, _leftText);
+            TryCreateVideoHint(WarnSide.Right, "moveLeftWarning", _rightIndicator, _rightText);
+            TryCreateVideoHint(WarnSide.Close, "moveAwayWarning", _centerIndicator, _centerText);
+            TryCreateVideoHint(WarnSide.Far, "moveCloserWarning", _centerIndicator, _centerText);
+        }
+
+        private void TryCreateVideoHint(
+            WarnSide side,
+            string resourceName,
+            RectTransform indicator,
+            Text label
+        )
+        {
+            VideoHint hint = new VideoHint
+            {
+                Side = side,
+                ResourceName = resourceName,
+                Indicator = indicator,
+                Label = label
+            };
+
+            GameObject videoObj = new GameObject(resourceName + "Video");
+            videoObj.transform.SetParent(indicator, false);
 
             RectTransform rt = videoObj.AddComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
@@ -344,148 +321,281 @@ namespace G3D
             rt.offsetMin = new Vector2(8f, 8f);
             rt.offsetMax = new Vector2(-8f, -8f);
 
-            _moveRightVideoImage = videoObj.AddComponent<RawImage>();
-            _moveRightVideoImage.raycastTarget = false;
+            hint.Image = videoObj.AddComponent<RawImage>();
+            hint.Image.raycastTarget = false;
+            hint.Image.enabled = false;
 
-            _moveRightAspectFitter = videoObj.AddComponent<AspectRatioFitter>();
-            _moveRightAspectFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-            _moveRightAspectFitter.aspectRatio = 540f / 351f;
+            hint.AspectFitter = videoObj.AddComponent<AspectRatioFitter>();
+            hint.AspectFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            hint.AspectFitter.aspectRatio = 540f / 351f;
 
-            _moveRightVideoPlayer = videoObj.AddComponent<VideoPlayer>();
-            _moveRightVideoPlayer.playOnAwake = false;
-            _moveRightVideoPlayer.isLooping = true;
-            _moveRightVideoPlayer.audioOutputMode = VideoAudioOutputMode.None;
-            _moveRightVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
-            _moveRightVideoPlayer.playOnAwake = false;
-            _moveRightVideoPlayer.waitForFirstFrame = true;
-            _moveRightVideoPlayer.skipOnDrop = true;
-            _moveRightVideoPlayer.prepareCompleted += OnMoveRightVideoPrepared;
-            _moveRightVideoPlayer.errorReceived += OnMoveRightVideoError;
-            _moveRightVideoPlayer.loopPointReached += OnMoveRightVideoLoopPointReached;
+            hint.Player = videoObj.AddComponent<VideoPlayer>();
+            hint.Player.playOnAwake = false;
+            hint.Player.isLooping = true;
+            hint.Player.audioOutputMode = VideoAudioOutputMode.None;
+            hint.Player.renderMode = VideoRenderMode.RenderTexture;
+            hint.Player.waitForFirstFrame = true;
+            hint.Player.skipOnDrop = true;
+            hint.Player.prepareCompleted += OnAnyVideoPrepared;
+            hint.Player.errorReceived += OnAnyVideoError;
+            hint.Player.loopPointReached += OnAnyVideoLoopPointReached;
 
-            VideoClip clip = Resources.Load<VideoClip>("animations/moveRightWarning");
+            // Prefer Unity's imported VideoClip: it is transcoded into the Library
+            // and plays reliably even when the raw file in a package can't be read
+            // directly. Fall back to a validated on-disk .mp4 only if no clip exists.
+            VideoClip clip = Resources.Load<VideoClip>("animations/" + resourceName);
             if (clip != null)
             {
-                _moveRightVideoPlayer.source = VideoSource.VideoClip;
-                _moveRightVideoPlayer.clip = clip;
+                hint.Player.source = VideoSource.VideoClip;
+                hint.Player.clip = clip;
+                CreateOrResizeRenderTexture(
+                    hint,
+                    (int)Mathf.Max(64, clip.width),
+                    (int)Mathf.Max(64, clip.height)
+                );
+                hint.HasVideo = true;
+                _videoHints.Add(hint);
+                return;
             }
-            else
+
+            string filePath = ResolveWarningFilePath(resourceName + ".mp4");
+            if (string.IsNullOrEmpty(filePath))
             {
-                string filePath = ResolveMoveRightWarningFilePath();
-                if (string.IsNullOrEmpty(filePath))
-                {
-                    Debug.LogWarning(
-                        "[G3D] moveRightWarning.mp4 not found (VideoClip or file path). Using text fallback."
-                    );
-                    Destroy(videoObj);
-                    return;
-                }
-
-                _moveRightVideoPlayer.source = VideoSource.Url;
-                _moveRightVideoPlayer.url = new Uri(filePath).AbsoluteUri;
+                Debug.LogWarning(
+                    "[G3D] " + resourceName + ".mp4 not found or invalid. Using text fallback."
+                );
+                Destroy(videoObj);
+                _videoHints.Add(hint);
+                return;
             }
 
-            CreateOrResizeMoveRightRenderTexture(
-                clip != null ? (int)Mathf.Max(64, clip.width > 0 ? clip.width : 540) : 540,
-                clip != null ? (int)Mathf.Max(64, clip.height > 0 ? clip.height : 351) : 351
-            );
-            _moveRightVideoImage.enabled = false;
+            hint.Player.source = VideoSource.Url;
+            hint.Player.url = new Uri(filePath).AbsoluteUri;
+            CreateOrResizeRenderTexture(hint, 540, 351);
 
-            _hasMoveRightVideo = true;
-            _moveRightVideoPlayer.Prepare();
+            hint.HasVideo = true;
+            _videoHints.Add(hint);
         }
 
-        private string ResolveMoveRightWarningFilePath()
+        private string ResolveWarningFilePath(string fileName)
         {
             string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
 
+            // Prefer project-level assets first; package path is a fallback.
             string[] candidates =
             {
+                Path.Combine(projectRoot, "Assets", "Resources", "animations", fileName),
+                Path.Combine(projectRoot, "Resources", "animations", fileName),
                 Path.Combine(
                     projectRoot,
                     "Packages",
                     "com.3dglobal.core",
                     "Resources",
                     "animations",
-                    "moveRightWarning.mp4"
-                ),
-                Path.Combine(projectRoot, "Resources", "animations", "moveRightWarning.mp4"),
-                Path.Combine(
-                    projectRoot,
-                    "Assets",
-                    "Resources",
-                    "animations",
-                    "moveRightWarning.mp4"
+                    fileName
                 )
             };
 
             for (int i = 0; i < candidates.Length; i++)
             {
-                if (File.Exists(candidates[i]))
-                    return candidates[i];
+                string candidate = candidates[i];
+                if (!File.Exists(candidate))
+                    continue;
+
+                if (IsPlayableMp4(candidate))
+                    return candidate;
             }
 
             return string.Empty;
         }
 
-        private void OnMoveRightVideoPrepared(VideoPlayer source)
+        // Guards against files that exist but aren't real video: 0-byte files and
+        // Git-LFS pointer stubs (a few hundred bytes of text) both make the native
+        // player log "received empty file" / "Cannot read file". Detect and skip them
+        // so we fall back to the text hint cleanly instead of spamming errors.
+        private static bool IsPlayableMp4(string path)
         {
+            try
+            {
+                var info = new FileInfo(path);
+                if (info.Length < 1024)
+                {
+                    Debug.LogWarning("[G3D] Ignoring empty/too-small video file: " + path);
+                    return false;
+                }
+
+                using (FileStream stream = File.OpenRead(path))
+                {
+                    byte[] header = new byte[16];
+                    int read = stream.Read(header, 0, header.Length);
+                    if (read < 12)
+                        return false;
+
+                    // Real MP4/QuickTime files carry an 'ftyp' box near the start.
+                    bool hasFtyp =
+                        header[4] == (byte)'f'
+                        && header[5] == (byte)'t'
+                        && header[6] == (byte)'y'
+                        && header[7] == (byte)'p';
+
+                    // Git-LFS pointer files begin with the ASCII text "version ".
+                    bool isLfsPointer =
+                        header[0] == (byte)'v'
+                        && header[1] == (byte)'e'
+                        && header[2] == (byte)'r'
+                        && header[3] == (byte)'s';
+
+                    if (isLfsPointer || !hasFtyp)
+                    {
+                        Debug.LogWarning(
+                            "[G3D] Ignoring non-video file (empty, corrupt, or Git-LFS pointer): "
+                                + path
+                        );
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning(
+                    "[G3D] Ignoring unreadable warning video file: "
+                        + path
+                        + " ("
+                        + ex.Message
+                        + ")"
+                );
+                return false;
+            }
+        }
+
+        private void OnAnyVideoPrepared(VideoPlayer source)
+        {
+            VideoHint hint = FindHintByPlayer(source);
+            if (hint == null)
+                return;
+
             int preparedWidth = (int)Mathf.Max(64, source.width > 0 ? source.width : 540);
             int preparedHeight = (int)Mathf.Max(64, source.height > 0 ? source.height : 351);
-            CreateOrResizeMoveRightRenderTexture(preparedWidth, preparedHeight);
+            CreateOrResizeRenderTexture(hint, preparedWidth, preparedHeight);
 
-            if (_moveRightAspectFitter != null)
-                _moveRightAspectFitter.aspectRatio = preparedWidth / (float)preparedHeight;
+            if (hint.AspectFitter != null)
+                hint.AspectFitter.aspectRatio = preparedWidth / (float)preparedHeight;
 
             source.isLooping = true;
-            if (_moveRightVideoShouldPlay)
+            if (hint.ShouldPlay)
                 source.Play();
         }
 
-        private void OnMoveRightVideoLoopPointReached(VideoPlayer source)
+        private void OnAnyVideoLoopPointReached(VideoPlayer source)
         {
             // Some codecs/platforms ignore isLooping in URL mode; force replay.
-            if (_moveRightVideoShouldPlay)
+            VideoHint hint = FindHintByPlayer(source);
+            if (hint != null && hint.ShouldPlay)
                 source.Play();
         }
 
-        private void OnMoveRightVideoError(VideoPlayer source, string message)
+        private void OnAnyVideoError(VideoPlayer source, string message)
         {
-            Debug.LogError("[G3D] moveRightWarning video error: " + message);
+            VideoHint hint = FindHintByPlayer(source);
+            string id = hint != null ? hint.ResourceName : "unknownWarning";
+            Debug.LogError("[G3D] " + id + " video error: " + message);
         }
 
-        private void CreateOrResizeMoveRightRenderTexture(int width, int height)
+        private void CreateOrResizeRenderTexture(VideoHint hint, int width, int height)
         {
             width = Mathf.Max(64, width);
             height = Mathf.Max(64, height);
 
             if (
-                _moveRightRenderTexture != null
-                && _moveRightRenderTexture.width == width
-                && _moveRightRenderTexture.height == height
+                hint.RenderTexture != null
+                && hint.RenderTexture.width == width
+                && hint.RenderTexture.height == height
             )
             {
-                _moveRightVideoPlayer.targetTexture = _moveRightRenderTexture;
-                _moveRightVideoImage.texture = _moveRightRenderTexture;
+                hint.Player.targetTexture = hint.RenderTexture;
+                hint.Image.texture = hint.RenderTexture;
                 return;
             }
 
-            if (_moveRightRenderTexture != null)
+            if (hint.RenderTexture != null)
             {
-                _moveRightRenderTexture.Release();
-                Destroy(_moveRightRenderTexture);
+                hint.RenderTexture.Release();
+                Destroy(hint.RenderTexture);
             }
 
-            _moveRightRenderTexture = new RenderTexture(
-                width,
-                height,
-                0,
-                RenderTextureFormat.ARGB32
-            );
-            _moveRightRenderTexture.Create();
+            hint.RenderTexture = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
+            hint.RenderTexture.Create();
 
-            _moveRightVideoPlayer.targetTexture = _moveRightRenderTexture;
-            _moveRightVideoImage.texture = _moveRightRenderTexture;
+            hint.Player.targetTexture = hint.RenderTexture;
+            hint.Image.texture = hint.RenderTexture;
+        }
+
+        private VideoHint FindHintByPlayer(VideoPlayer player)
+        {
+            for (int i = 0; i < _videoHints.Count; i++)
+            {
+                if (_videoHints[i].Player == player)
+                    return _videoHints[i];
+            }
+
+            return null;
+        }
+
+        private VideoHint GetActiveVideoHint(WarnSide side)
+        {
+            for (int i = 0; i < _videoHints.Count; i++)
+            {
+                if (_videoHints[i].Side == side && _videoHints[i].HasVideo)
+                    return _videoHints[i];
+            }
+
+            return null;
+        }
+
+        private void SetAllVideoHintsInactive()
+        {
+            for (int i = 0; i < _videoHints.Count; i++)
+            {
+                VideoHint hint = _videoHints[i];
+                if (!hint.HasVideo)
+                    continue;
+
+                hint.ShouldPlay = false;
+                hint.Player.Stop();
+                hint.Image.enabled = false;
+
+                Image background = hint.Indicator.GetComponent<Image>();
+                if (background != null)
+                    background.enabled = true;
+
+                if (hint.Label != null)
+                    hint.Label.gameObject.SetActive(true);
+            }
+        }
+
+        private void ActivateVideoHintForSide(WarnSide side)
+        {
+            VideoHint hint = GetActiveVideoHint(side);
+            if (hint == null || !hint.HasVideo)
+                return;
+
+            hint.Image.enabled = true;
+            hint.ShouldPlay = true;
+
+            if (hint.Label != null)
+                hint.Label.gameObject.SetActive(false);
+
+            Image background = hint.Indicator.GetComponent<Image>();
+            if (background != null)
+                background.enabled = false;
+
+            hint.Player.Stop();
+            if (hint.Player.isPrepared)
+                hint.Player.Play();
+            else
+                hint.Player.Prepare();
         }
 
         private static void SetIndicatorAlpha(RectTransform indicator, float alpha)
@@ -503,9 +613,9 @@ namespace G3D
             _root = new GameObject("PositionWarningOverlayRoot");
             _root.transform.SetParent(transform, false);
 
-            _canvas = _root.AddComponent<Canvas>();
-            _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            _canvas.sortingOrder = sortingOrder;
+            Canvas canvas = _root.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = sortingOrder;
             _root.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler
                 .ScaleMode
                 .ScaleWithScreenSize;
@@ -525,8 +635,8 @@ namespace G3D
                 rootRect,
                 new Vector2(0.5f, 1f),
                 new Vector2(0.5f, 1f),
-                new Vector2(0f, -120f),
-                new Vector2(640f, 120f),
+                new Vector2(0f, -90f),
+                new Vector2(420f, 120f),
                 "MOVE DOWN"
             );
 
@@ -535,8 +645,8 @@ namespace G3D
                 rootRect,
                 new Vector2(0.5f, 0f),
                 new Vector2(0.5f, 0f),
-                new Vector2(0f, 120f),
-                new Vector2(640f, 120f),
+                new Vector2(0f, 90f),
+                new Vector2(420f, 120f),
                 "MOVE UP"
             );
 
@@ -555,7 +665,7 @@ namespace G3D
                 rootRect,
                 new Vector2(1f, 0.5f),
                 new Vector2(1f, 0.5f),
-                new Vector2(-260f, 0f),
+                new Vector2(-120f, 0f),
                 new Vector2(420f, 120f),
                 "MOVE LEFT"
             );
@@ -575,6 +685,15 @@ namespace G3D
             _leftText = _leftIndicator.GetComponentInChildren<Text>(true);
             _rightText = _rightIndicator.GetComponentInChildren<Text>(true);
             _centerText = _centerIndicator.GetComponentInChildren<Text>(true);
+
+            _indicators = new[]
+            {
+                _topIndicator,
+                _bottomIndicator,
+                _leftIndicator,
+                _rightIndicator,
+                _centerIndicator
+            };
         }
 
         private RectTransform CreateIndicator(
