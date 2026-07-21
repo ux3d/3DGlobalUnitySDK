@@ -36,12 +36,6 @@ namespace G3D
         [Tooltip("Main warning text font size.")]
         public int warningFontSize = 52;
 
-        [Tooltip("Message used for front/close warning.")]
-        public string moveBackText = "MOVE BACK";
-
-        [Tooltip("Message used for back/far warning.")]
-        public string moveCloserText = "MOVE CLOSER";
-
         private Canvas _canvas;
         private GameObject _root;
         private Image _overlayFade;
@@ -124,10 +118,10 @@ namespace G3D
                     return WarnSide.Bottom;
                 case HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_WARN_LEFT:
                 case HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_ERR_LEFT:
-                    return WarnSide.Right;
+                    return WarnSide.Left;
                 case HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_WARN_RIGHT:
                 case HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_ERR_RIGHT:
-                    return WarnSide.Left;
+                    return WarnSide.Right;
                 case HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_WARN_FRONT:
                 case HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_ERR_FRONT:
                     return WarnSide.Close;
@@ -252,7 +246,7 @@ namespace G3D
             _bottomText.text = "MOVE UP";
             _leftText.text = "MOVE RIGHT";
             _rightText.text = "MOVE LEFT";
-            _centerText.text = side == WarnSide.Close ? moveBackText : moveCloserText;
+            _centerText.text = side == WarnSide.Close ? "MOVE AWAY" : "MOVE CLOSER";
         }
 
         private static void SetIndicatorAlpha(RectTransform indicator, float alpha)
@@ -334,7 +328,7 @@ namespace G3D
                 new Vector2(0.5f, 0.5f),
                 Vector2.zero,
                 new Vector2(560f, 140f),
-                moveBackText
+                "MOVE AWAY"
             );
 
             _topText = _topIndicator.GetComponentInChildren<Text>(true);
