@@ -77,6 +77,11 @@ namespace G3D
 
         public void initLibrary()
         {
+            if (HeadTrackingSDK.ht_is_initialized())
+            {
+                Debug.LogWarning("Headtracking library is already initialized");
+                return;
+            }
             if (HeadTrackingSDK.load())
             {
                 if (HeadTrackingSDK.ht_init()) { }
@@ -173,12 +178,22 @@ namespace G3D
         /// <returns></returns>
         public HeadPosition getHeadPosition()
         {
-            HeadPosition currentHeadPosition;
             lock (headPosLock)
             {
-                currentHeadPosition = headPosition;
+                HeadTrackingSDK.HeadPosition trackedPos = HeadTrackingSDK.ht_get_head_world_pos();
+                HeadTrackingSDK.HeadTrackingUserPosCodes posCode =
+                    HeadTrackingSDK.ht_get_user_guidance();
+                headPosition.headDetected =
+                    posCode != HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_NO;
+
+                headPosition.worldPosX = trackedPos.world_x / 1000.0; // convert from mm to m
+                headPosition.worldPosY = trackedPos.world_y / 1000.0; // convert from mm to m
+                headPosition.worldPosZ = -trackedPos.world_z / 1000.0; // convert from mm to m
+
+                headPosition.imagePosX = trackedPos.image_x;
+                headPosition.imagePosY = trackedPos.image_y;
             }
-            return currentHeadPosition;
+            return headPosition;
         }
 
         /**

@@ -389,7 +389,22 @@ namespace G3D
         /// @return success
         public static bool ht_init()
         {
-            return ht_init_from_dir(Application.streamingAssetsPath + "/G3DHTService");
+            string serviceDirectory = Path.Combine(Application.streamingAssetsPath, "G3DHTService");
+            string serviceExePath = Path.Combine(serviceDirectory, "G3DHTService.exe");
+
+            if (!Directory.Exists(serviceDirectory) || !File.Exists(serviceExePath))
+            {
+                Debug.LogError(
+                    "[G3D] Headtracking init failed: G3DHTService is missing from StreamingAssets. "
+                        + "Expected directory: "
+                        + serviceDirectory
+                        + " | Expected exe: "
+                        + serviceExePath
+                );
+                return false;
+            }
+
+            return ht_init_from_dir(serviceDirectory);
         }
 
         /// @brief finalizes the headtracking and disconnects from G3DHTService

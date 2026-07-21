@@ -527,7 +527,7 @@ namespace G3D
 
             //prevent any memory leaks
             for (int i = 0; i < MAX_CAMERAS; i++)
-                cameras[i].targetTexture?.Release();
+                cameras[i]?.targetTexture?.Release();
 
             for (int i = 0; i < colorRenderTextures?.Length; i++)
             {
