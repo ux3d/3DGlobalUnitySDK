@@ -86,7 +86,7 @@ namespace G3D
                 Debug.LogWarning("Headtracking library is already initialized");
                 return;
             }
-            if (HeadTrackingSDK.load())
+            if (HeadTrackingSDK.load_from(getLibraryPath()))
             {
                 if (HeadTrackingSDK.ht_init()) { }
                 else
@@ -527,6 +527,26 @@ namespace G3D
                 zCompensationValue = renderParameters.zCompensationValue
             };
             return shaderParameters;
+        }
+
+        private string getLibraryPath()
+        {
+            #if UNITY_EDITOR
+                // Find the DLL in the package via AssetDatabase
+                string[] guids = UnityEditor.AssetDatabase.FindAssets("G3DSDK64 t:DefaultAsset");
+                if (guids.Length > 0)
+                {
+                    string assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]);
+                    return Path.GetFullPath(assetPath);
+                }
+                return "G3DSDK64.dll"; // fallback to default name if not found
+            #else
+                // In a standalone build, Unity copies the plugin next to the executable
+                string pluginsDir = Path.Combine(
+                    Path.GetDirectoryName(Application.dataPath),
+                    Application.productName + "_Data", "Plugins", "x86_64");
+                return Path.Combine(pluginsDir, "G3DSDK64.dll");
+            #endif
         }
     }
 }
