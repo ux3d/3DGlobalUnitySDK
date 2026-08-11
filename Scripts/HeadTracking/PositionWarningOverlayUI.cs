@@ -33,15 +33,7 @@ namespace G3D
         [Tooltip("Canvas sorting order for the overlay.")]
         public int sortingOrder = 900;
 
-        [Tooltip("How long one pulse takes. Hide is deferred until this cycle ends.")]
-        public float pulseCycleSeconds = 0.7f;
-
-        [Tooltip("Main warning text font size.")]
-        public int warningFontSize = 52;
-
         private GameObject _root;
-        private Image _overlayFade;
-
         private RectTransform _topIndicator;
         private RectTransform _bottomIndicator;
         private RectTransform _leftIndicator;
@@ -49,18 +41,11 @@ namespace G3D
         private RectTransform _centerIndicator;
         private RectTransform[] _indicators;
 
-        private Text _topText;
-        private Text _bottomText;
-        private Text _leftText;
-        private Text _rightText;
-        private Text _centerText;
-
         private sealed class VideoHint
         {
             public WarnSide Side;
             public string ResourceName;
             public RectTransform Indicator;
-            public Text Label;
             public RawImage Image;
             public VideoPlayer Player;
             public RenderTexture RenderTexture;
@@ -74,6 +59,7 @@ namespace G3D
         private WarnSide _currentSide = WarnSide.None;
         private float _sideShownAt = -1f;
         private float _hideAt = -1f;
+        private bool _hidePending = false;
 
         private void Awake()
         {
@@ -178,57 +164,47 @@ namespace G3D
 
         private void ShowSide(WarnSide side)
         {
-            if (side != WarnSide.None)
+            if (side == WarnSide.None)
             {
-                _hideAt = -1f;
-
-                if (_currentSide == side)
-                    return;
-
-                _currentSide = side;
-                _sideShownAt = Time.unscaledTime;
-
-                _root.SetActive(true);
-                SetActiveOnly(side);
+                if (_currentSide != WarnSide.None && !_hidePending)
+                {
+                    _hidePending = true;
+                    VideoHint hint = GetActiveVideoHint(_currentSide);
+                    if (hint != null && hint.Player != null)
+                        hint.Player.isLooping = false;
+                }
                 return;
             }
 
-            if (_currentSide != WarnSide.None && _hideAt < 0f)
+            _hidePending = false;
+            _hideAt = -1f;
+
+            if (_currentSide == side)
             {
-                float elapsed = Mathf.Max(0f, Time.unscaledTime - _sideShownAt);
-                float remaining = Mathf.Max(0f, pulseCycleSeconds - elapsed);
-                _hideAt = Time.unscaledTime + remaining;
+                // Restore looping in case we were in finish-and-hide state.
+                VideoHint active = GetActiveVideoHint(_currentSide);
+                if (active != null && active.Player != null)
+                    active.Player.isLooping = true;
+                return;
             }
+
+            _currentSide = side;
+            _sideShownAt = Time.unscaledTime;
+
+            _root.SetActive(true);
+            SetActiveOnly(side);
+            return;
         }
+
 
         private void AnimateActiveWarning()
         {
             VideoHint activeVideoHint = GetActiveVideoHint(_currentSide);
-            if (activeVideoHint != null && activeVideoHint.HasVideo)
+            if (activeVideoHint != null)
             {
-                _overlayFade.color = new Color(0f, 0f, 0f, 0.1f);
                 return;
             }
 
-            float phase = (Time.unscaledTime - _sideShownAt) / Mathf.Max(0.01f, pulseCycleSeconds);
-            float pulse = 0.5f + 0.5f * Mathf.Sin(phase * Mathf.PI * 2f);
-            float scale = Mathf.Lerp(0.96f, 1.05f, pulse);
-            float alpha = Mathf.Lerp(0.45f, 1f, pulse);
-
-            RectTransform active = GetIndicatorForSide(_currentSide);
-            if (active != null)
-            {
-                active.localScale = new Vector3(scale, scale, 1f);
-                Image img = active.GetComponent<Image>();
-                if (img != null)
-                {
-                    Color c = img.color;
-                    c.a = alpha;
-                    img.color = c;
-                }
-            }
-
-            _overlayFade.color = new Color(0f, 0f, 0f, Mathf.Lerp(0.06f, 0.14f, pulse));
         }
 
         private RectTransform GetIndicatorForSide(WarnSide side)
@@ -256,6 +232,7 @@ namespace G3D
             _currentSide = WarnSide.None;
             _hideAt = -1f;
             _sideShownAt = -1f;
+            _hidePending = false;
 
             if (_root != null)
                 _root.SetActive(false);
@@ -276,12 +253,7 @@ namespace G3D
             {
                 indicator.gameObject.SetActive(indicator == activeIndicator);
                 indicator.localScale = Vector3.one;
-                SetIndicatorAlpha(indicator, 1f);
             }
-
-            // Only the depth cue changes wording; the edge labels are set once in BuildUi.
-            _centerText.text = side == WarnSide.Close ? "MOVE AWAY" : "MOVE CLOSER";
-
             SetAllVideoHintsInactive();
             ActivateVideoHintForSide(side);
         }
@@ -289,19 +261,18 @@ namespace G3D
         private void SetupAllWarningVideos()
         {
             _videoHints.Clear();
-            TryCreateVideoHint(WarnSide.Top, "moveDownWarning", _topIndicator, _topText);
-            TryCreateVideoHint(WarnSide.Bottom, "moveUpWarning", _bottomIndicator, _bottomText);
-            TryCreateVideoHint(WarnSide.Left, "moveRightWarning", _leftIndicator, _leftText);
-            TryCreateVideoHint(WarnSide.Right, "moveLeftWarning", _rightIndicator, _rightText);
-            TryCreateVideoHint(WarnSide.Close, "moveAwayWarning", _centerIndicator, _centerText);
-            TryCreateVideoHint(WarnSide.Far, "moveCloserWarning", _centerIndicator, _centerText);
+            TryCreateVideoHint(WarnSide.Top, "moveDownWarning", _topIndicator);
+            TryCreateVideoHint(WarnSide.Bottom, "moveUpWarning", _bottomIndicator);
+            TryCreateVideoHint(WarnSide.Left, "moveRightWarning", _leftIndicator);
+            TryCreateVideoHint(WarnSide.Right, "moveLeftWarning", _rightIndicator);
+            TryCreateVideoHint(WarnSide.Close, "moveAwayWarning", _centerIndicator);
+            TryCreateVideoHint(WarnSide.Far, "moveCloserWarning", _centerIndicator);
         }
 
         private void TryCreateVideoHint(
             WarnSide side,
             string resourceName,
-            RectTransform indicator,
-            Text label
+            RectTransform indicator
         )
         {
             VideoHint hint = new VideoHint
@@ -309,7 +280,6 @@ namespace G3D
                 Side = side,
                 ResourceName = resourceName,
                 Indicator = indicator,
-                Label = label
             };
 
             GameObject videoObj = new GameObject(resourceName + "Video");
@@ -490,9 +460,18 @@ namespace G3D
 
         private void OnAnyVideoLoopPointReached(VideoPlayer source)
         {
-            // Some codecs/platforms ignore isLooping in URL mode; force replay.
             VideoHint hint = FindHintByPlayer(source);
-            if (hint != null && hint.ShouldPlay)
+            if (hint == null)
+                return;
+
+            if (_hidePending)
+            {
+                HideAllNow();
+                return;
+            }
+
+            // Some codecs/platforms ignore isLooping in URL mode; force replay.
+            if (hint.ShouldPlay)
                 source.Play();
         }
 
@@ -565,47 +544,24 @@ namespace G3D
                 hint.ShouldPlay = false;
                 hint.Player.Stop();
                 hint.Image.enabled = false;
-
-                Image background = hint.Indicator.GetComponent<Image>();
-                if (background != null)
-                    background.enabled = true;
-
-                if (hint.Label != null)
-                    hint.Label.gameObject.SetActive(true);
             }
         }
 
         private void ActivateVideoHintForSide(WarnSide side)
         {
             VideoHint hint = GetActiveVideoHint(side);
-            if (hint == null || !hint.HasVideo)
+            if (hint == null)
                 return;
 
+            hint.Player.isLooping = true;
             hint.Image.enabled = true;
             hint.ShouldPlay = true;
-
-            if (hint.Label != null)
-                hint.Label.gameObject.SetActive(false);
-
-            Image background = hint.Indicator.GetComponent<Image>();
-            if (background != null)
-                background.enabled = false;
 
             hint.Player.Stop();
             if (hint.Player.isPrepared)
                 hint.Player.Play();
             else
                 hint.Player.Prepare();
-        }
-
-        private static void SetIndicatorAlpha(RectTransform indicator, float alpha)
-        {
-            Image img = indicator.GetComponent<Image>();
-            if (img == null)
-                return;
-            Color c = img.color;
-            c.a = alpha;
-            img.color = c;
         }
 
         private void BuildUi()
@@ -627,8 +583,6 @@ namespace G3D
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
-            _overlayFade = CreateImage("Fade", rootRect, new Color(0f, 0f, 0f, 0.1f));
-            StretchToParent(_overlayFade.rectTransform);
 
             _topIndicator = CreateIndicator(
                 "TopIndicator",
@@ -636,8 +590,7 @@ namespace G3D
                 new Vector2(0.5f, 1f),
                 new Vector2(0.5f, 1f),
                 new Vector2(0f, -90f),
-                new Vector2(420f, 120f),
-                "MOVE DOWN"
+                new Vector2(420f, 120f)
             );
 
             _bottomIndicator = CreateIndicator(
@@ -646,8 +599,7 @@ namespace G3D
                 new Vector2(0.5f, 0f),
                 new Vector2(0.5f, 0f),
                 new Vector2(0f, 90f),
-                new Vector2(420f, 120f),
-                "MOVE UP"
+                new Vector2(420f, 120f)
             );
 
             _leftIndicator = CreateIndicator(
@@ -656,8 +608,7 @@ namespace G3D
                 new Vector2(0f, 0.5f),
                 new Vector2(0f, 0.5f),
                 new Vector2(120f, 0f),
-                new Vector2(420f, 120f),
-                "MOVE RIGHT"
+                new Vector2(420f, 120f)
             );
 
             _rightIndicator = CreateIndicator(
@@ -666,8 +617,7 @@ namespace G3D
                 new Vector2(1f, 0.5f),
                 new Vector2(1f, 0.5f),
                 new Vector2(-120f, 0f),
-                new Vector2(420f, 120f),
-                "MOVE LEFT"
+                new Vector2(420f, 120f)
             );
 
             _centerIndicator = CreateIndicator(
@@ -676,15 +626,8 @@ namespace G3D
                 new Vector2(0.5f, 0.5f),
                 new Vector2(0.5f, 0.5f),
                 Vector2.zero,
-                new Vector2(560f, 140f),
-                "MOVE AWAY"
+                new Vector2(560f, 140f)
             );
-
-            _topText = _topIndicator.GetComponentInChildren<Text>(true);
-            _bottomText = _bottomIndicator.GetComponentInChildren<Text>(true);
-            _leftText = _leftIndicator.GetComponentInChildren<Text>(true);
-            _rightText = _rightIndicator.GetComponentInChildren<Text>(true);
-            _centerText = _centerIndicator.GetComponentInChildren<Text>(true);
 
             _indicators = new[]
             {
@@ -702,58 +645,20 @@ namespace G3D
             Vector2 anchorMin,
             Vector2 anchorMax,
             Vector2 anchoredPos,
-            Vector2 size,
-            string text
+            Vector2 size
         )
         {
             GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
-            Image image = go.AddComponent<Image>();
-            image.color = new Color(0.96f, 0.62f, 0.12f, 0.95f);
 
-            RectTransform rt = go.GetComponent<RectTransform>();
+            RectTransform rt = go.AddComponent<RectTransform>();
             rt.anchorMin = anchorMin;
             rt.anchorMax = anchorMax;
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = anchoredPos;
             rt.sizeDelta = size;
 
-            GameObject textObj = new GameObject("Label");
-            textObj.transform.SetParent(rt, false);
-            Text label = textObj.AddComponent<Text>();
-            label.alignment = TextAnchor.MiddleCenter;
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            label.fontStyle = FontStyle.Bold;
-            label.fontSize = warningFontSize;
-            label.color = new Color(0.08f, 0.08f, 0.08f, 1f);
-            label.text = text;
-            label.horizontalOverflow = HorizontalWrapMode.Wrap;
-            label.verticalOverflow = VerticalWrapMode.Overflow;
-
-            RectTransform textRt = textObj.GetComponent<RectTransform>();
-            textRt.anchorMin = Vector2.zero;
-            textRt.anchorMax = Vector2.one;
-            textRt.offsetMin = new Vector2(16f, 12f);
-            textRt.offsetMax = new Vector2(-16f, -12f);
-
             return rt;
-        }
-
-        private static Image CreateImage(string name, RectTransform parent, Color color)
-        {
-            GameObject go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            Image image = go.AddComponent<Image>();
-            image.color = color;
-            return image;
-        }
-
-        private static void StretchToParent(RectTransform rt)
-        {
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
         }
     }
 }
