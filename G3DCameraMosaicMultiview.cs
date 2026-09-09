@@ -19,7 +19,8 @@ namespace G3D
     public enum G3DCameraMosaicMode
     {
         HOLOBOX,
-        MULTIVIEW
+        MULTIVIEW,
+        HEADTRACKING
     }
 
     public enum DataType
@@ -110,6 +111,11 @@ namespace G3D
         /// </summary>
         public bool shouldRenderMosaic = false;
 
+        [Tooltip("Switch position of the left and right view.")]
+        public bool invertViewsInHeadtracking = false;
+
+        public HeadtrackingConnection headtrackingConnection;
+
         public DataType dataType = DataType.RenderTexture;
 
         /// <summary>
@@ -167,6 +173,15 @@ namespace G3D
             shaderHandles = new ShaderHandles();
             shaderHandles.init();
 
+            headtrackingConnection = new HeadtrackingConnection(
+                mode == G3DCameraMosaicMode.HEADTRACKING
+            );
+            if (mode == G3DCameraMosaicMode.HEADTRACKING)
+            {
+                headtrackingConnection.startHeadTracking();
+                headtrackingConnection.initBasicWorkingDistance();
+            }
+
             // This has to be done after the cameras are updated
             cachedWindowPosition = new Vector2Int(
                 Screen.mainWindowPosition.x,
@@ -207,6 +222,11 @@ namespace G3D
             updateIndexMap();
         }
 
+        void OnApplicationQuit()
+        {
+            headtrackingConnection?.deinitLibrary();
+        }
+
 #if G3D_URP
         private void OnEnable()
         {
@@ -231,6 +251,11 @@ namespace G3D
 
         void Update()
         {
+            if (mode == G3DCameraMosaicMode.HEADTRACKING)
+            {
+                shaderParameters = headtrackingConnection.calculateShaderParameters();
+            }
+
             updateShaderParameters();
 
             if (windowResized() || windowMoved())
@@ -240,7 +265,7 @@ namespace G3D
         }
 
         /// <summary>
-        /// Call this function after the mode has been changed (e.g. multiview to holobox)
+        /// Call this function after the mode has been changed (e.g. multiview to holobox or headtracking)
         /// </summary>
         public void updateMode()
         {
@@ -252,6 +277,14 @@ namespace G3D
             {
                 mirrorViews = false;
             }
+
+            if (mode == G3DCameraMosaicMode.HEADTRACKING)
+            {
+                // library might not be initialized yet
+                headtrackingConnection?.initLibrary();
+            }
+
+            reinitializeShader();
         }
 
         public void updateIndexMap()
@@ -278,16 +311,27 @@ namespace G3D
 
         public void reinitializeShader()
         {
-            material = new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
+            material =
+                mode == G3DCameraMosaicMode.HEADTRACKING
+                    ? new Material(Shader.Find("G3D/AutostereoMosaic"))
+                    : new Material(Shader.Find("G3D/AutostereoMultiviewMosaic"));
             setCorrectMosaicTexture();
 
             updateScreenViewportProperties();
             updateShaderParameters();
 
 #if G3D_HDRP
+            if(customPass == null)
+            {
+                return;
+            }
             customPass.fullscreenPassMaterial = material;
 #endif
 #if G3D_URP
+            if(customPass == null)
+            {
+                return;
+            }
             customPass.updateMaterial(material);
 #endif
         }
@@ -580,6 +624,33 @@ namespace G3D
             material?.SetInt(shaderHandles.BGRPixelLayout, shaderParameters.BGRPixelLayout);
             material?.SetInt(shaderHandles.mstart, shaderParameters.mstart);
 
+            material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
+
+            if (mode == G3DCameraMosaicMode.HEADTRACKING)
+            {
+                material?.SetInt(
+                    Shader.PropertyToID("invertViews"),
+                    invertViewsInHeadtracking ? 1 : 0
+                );
+
+                material?.SetInt(shaderHandles.testGapWidth, shaderParameters.testGapWidth);
+                material?.SetInt(shaderHandles.track, shaderParameters.track);
+                material?.SetInt(shaderHandles.hviews1, shaderParameters.hviews1);
+                material?.SetInt(shaderHandles.hviews2, shaderParameters.hviews2);
+                material?.SetInt(shaderHandles.blur, shaderParameters.blur);
+                material?.SetInt(shaderHandles.blackBorder, shaderParameters.blackBorder);
+                material?.SetInt(shaderHandles.blackSpace, shaderParameters.blackSpace);
+                material?.SetInt(shaderHandles.bls, shaderParameters.bls);
+                material?.SetInt(shaderHandles.ble, shaderParameters.ble);
+                material?.SetInt(shaderHandles.brs, shaderParameters.brs);
+                material?.SetInt(shaderHandles.bre, shaderParameters.bre);
+                material?.SetInt(shaderHandles.zCorrectionValue, shaderParameters.zCorrectionValue);
+                material?.SetInt(
+                    shaderHandles.zCompensationValue,
+                    shaderParameters.zCompensationValue
+                );
+            }
+
             int cameraCount = mosaicColumnCount * mosaicRowCount;
             int shaderMaxCount = shaderParameters.nativeViewCount;
             if (cameraCount > shaderMaxCount)
@@ -588,8 +659,6 @@ namespace G3D
             }
 
             material?.SetInt(Shader.PropertyToID("cameraCount"), cameraCount);
-
-            material?.SetInt(Shader.PropertyToID("mirror"), mirrorViews ? 1 : 0);
 
             material?.SetInt(Shader.PropertyToID("mosaic_rows"), mosaicRowCount);
             material?.SetInt(Shader.PropertyToID("mosaic_columns"), mosaicColumnCount);
