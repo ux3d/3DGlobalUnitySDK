@@ -1,4 +1,4 @@
-Shader "G3D/AutostereoMultiviewMosaic"
+Shader "G3D/AutostereoMosaic"
 {
     HLSLINCLUDE
     #pragma target 4.5
@@ -9,84 +9,107 @@ Shader "G3D/AutostereoMultiviewMosaic"
     Texture2D _colorMosaic;
     SamplerState sampler_colorMosaic;
 
-    float2 calculateUVForMosaic(uint viewIndex, float2 startingUV) {
-        if(viewIndex < 0 )
-        {
-            viewIndex = 0;
-        }
-        uint gridCount = mosaic_rows * mosaic_columns;
-        // viewIndex has already been reduced to a compact camera index by the index_map lookup
-        // in finalizeViewIndex, so it must be remapped relative to cameraCount, not nativeViewCount.
-        if(gridCount < cameraCount)
-        {
-            if(gridCount < 1)
-            {
-                gridCount = 1;
-            }
-            viewIndex = map(viewIndex, 0, cameraCount - 1, 0, gridCount - 1);
+    int invertViews;
+
+    // The mosaic is expected to be a side by side image: view 0 is the left half, view 1 the right half.
+    static const uint mosaicViewCount = 2;
+
+    float4 sampleFromView(uint viewIndex, float2 uv) {
+        if (mirror != 0) {
+            uv.x = 1.0 - uv.x;
         }
 
-        uint xAxis = viewIndex % mosaic_columns;
-        uint yAxis = viewIndex / mosaic_columns;
-        // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
-        // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
-        yAxis = mosaic_rows - 1 - yAxis;
-        int2 moasicIndex = int2(xAxis, yAxis);
-        float2 scaledUV = float2(startingUV.x / mosaic_columns, startingUV.y / mosaic_rows);
-        float2 cellSize = float2(1.0 / mosaic_columns, 1.0 / mosaic_rows);
-        return scaledUV + cellSize * moasicIndex;
+        viewIndex = viewIndex % mosaicViewCount;
+        float2 mosaicUV = float2((uv.x + float(viewIndex)) / float(mosaicViewCount), uv.y);
+
+        return _colorMosaic.Sample(sampler_colorMosaic, mosaicUV);
     }
 
     float4 renderAutostereoEffect(v2f i) {
-        float yPos = s_height - i.screenPos.y; // invert y coordinate to account for different coordinates between glsl and hlsl (original shader written in glsl)
-        
-        float2 computedScreenPos = float2(i.screenPos.x, i.screenPos.y) + float2(v_pos_x, v_pos_y);
-        int3 viewIndices;
-        
-        if(use_hq_views != 0) {
-            viewIndices = getHQViewIndices(computedScreenPos);
-        } else {
-            viewIndices = getSubPixelViewIndices(computedScreenPos);
+        // Start der Berechnung von dynamische Daten
+        int  xScreenCoords = int(i.screenPos.x) + v_pos_x;     // transform x position from viewport to screen coordinates
+        // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
+        // The shader was written for OpenGL, so we need to invert the y axis to make it work in Unity.
+        int  yScreenCoords = int(i.screenPos.y) + v_pos_y;     // transform y position from viewport to screen coordinates
+        if (isleft == 0) {
+            yScreenCoords = s_height - yScreenCoords;        // invertieren für rechts geneigte Linse
         }
-        
+        int  yw = int(yScreenCoords * zwinkel) / nwinkel;        // Winkelberechnung für die Renderberechnung
+
+        //Start native Renderberechnung
+        int  sr = (xScreenCoords * 3) + yw;
+        uint3 xwert = int3(sr + 0, sr + 1, sr + 2) % nativeViewCount;                              // #### nativeViewCount->lt03
+
+        // Start HQ-Renderberechnung inklusive Z-Korrektur
+
+        int  hqwert = ((yScreenCoords % nwinkel) * zwinkel) % nwinkel;
+        if (isleft == 1)
+        {
+            hqwert = (nwinkel - 1) - hqwert;
+        }
+        if (hqwert < 0)
+        {
+            hqwert = hqwert * -1;
+        }
+        int zwert = 0;
+        if (tvx != 0) {
+            zwert = (sr / tvx) - zkom;
+        }
+
+        int tr2d = 0;
+        if (track < 0) {
+            tr2d = track;
+        }
+
+        uint3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + viewOffset + zwert;
+        xwert = hviews1 - (mtmp % hqview);
+
         float2 uvCoords = i.uv;
-        // mirror the image if necessary
-        if (mirror != 0) {
-            uvCoords.x = 1.0 - uvCoords.x;
+
+        // hier wird der Farbwert des Views aus der Textur geholt und die Ausblendung realisisert
+
+        uint inverViewsUint = uint(invertViews);
+        float4 colorLeft = sampleFromView((1 + inverViewsUint) % 2, uvCoords);              // Pixeldaten linkes Bild
+        float4 colorRight = sampleFromView((0 + inverViewsUint) % 2, uvCoords);             // Pixeldaten rechtes Bild
+        float cor=0.0, cog=0.0, cob=0.0;
+
+
+        if ( (xwert.r >= bls) && (xwert.r <= ble) )  cor = colorLeft.r ;
+        if ( (xwert.g >= bls) && (xwert.g <= ble) )  cog = colorLeft.g ;
+        if ( (xwert.b >= bls) && (xwert.b <= ble) )  cob = colorLeft.b ;
+        if ( (xwert.r >= brs) && (xwert.r <= bre) )  cor = colorRight.r ;
+        if ( (xwert.g >= brs) && (xwert.g <= bre) )  cog = colorRight.g ;
+        if ( (xwert.b >= brs) && (xwert.b <= bre) )  cob = colorRight.b ;
+
+        float4 color = float4(cor, cog, cob, 1.0); // gerenderte Pixeldaten
+        if (0 == tvx) {
+            color = colorLeft;
         }
 
-        if(isBGR) {
-            viewIndices.xyz = viewIndices.zyx;
+        if (tr2d == -1) {
+            color = colorLeft;
         }
-        
-         //use indices to sample correct subpixels
-        float4 color = float4(0.0, 0.0, 0.0, 1.0);
-        if(test != 0) {
-            color.x = 1.0;
-        } else {
-            // 250 corresponds to a black view
-            if(viewIndices.x != 250) {
-                float2 mappedUVCoords = calculateUVForMosaic(viewIndices.x, uvCoords);
-                float4 tmpColorX = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
-                color.x = tmpColorX.x;
-            }
-            if(viewIndices.y != 250) {
-                float2 mappedUVCoords = calculateUVForMosaic(viewIndices.y, uvCoords);
-                float4 tmpColorY = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
-                color.y = tmpColorY.y;
-            }
-            if(viewIndices.z != 250) {
-                float2 mappedUVCoords = calculateUVForMosaic(viewIndices.z, uvCoords);
-                float4 tmpColorZ = _colorMosaic.Sample(sampler_colorMosaic, mappedUVCoords);
-                color.z = tmpColorZ.z;
-            }
+        if (tr2d == -2) {
+            color = colorRight;
         }
 
-        // if(uvCoords.x < 0.5) {
-        //     color = float4(calculateUVForMosaic(0, uvCoords), 0.0, 1.0);
-        // } else {
-        //     color = float4(calculateUVForMosaic(1, uvCoords), 0.0, 1.0);
-        // }
+        // Testbilderzeugung Rot Schwarz
+        if (test==1)  {  // Testbild ein nativer View-Rot(rechtes Auge) zu View-Grün(linkes Auge) die Views befinden sich direkt am Kanalübergang!
+            color = float4(0.0, 0.0, 0.0, 1.0);
+            if ((xwert.r > (hviews2 - testgap)) && (xwert.r <= hviews2)) color.r = 1.0 ;
+            if ((xwert.g > hviews2)             && (xwert.g < (hviews2 + testgap)) ) color.g = 1.0 ;
+        }
+
+        // Teststreifen Rot Schwarz volle Kanäle ohne Blackmatrix !
+        if (stest == 1) {
+            color = float4(0.0, 0.0, 0.0, 1.0);
+            if (xwert.r <= hviews2) {
+                color = float4(1.0, 0.0, 0.0, 1.0);     // rechtes Auge sieht einen roten Streifen
+            }
+            if (xwert.g > hviews2) {
+                color = float4(0.0, 1.0, 0.0, 1.0);
+            }
+        }  // linkes Auge sieht einen gruenen Streifen
 
         return color;
     }
@@ -97,7 +120,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
         if (mirror != 0) {
             uvCoords.x = 1.0 - uvCoords.x;
         }
-        
+
         return _colorMosaic.Sample(sampler_colorMosaic, uvCoords);
     }
 
@@ -107,7 +130,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
             return renderAutostereoEffect(i);
         } else {
             return renderMosaicEffect(i);
-        } 
+        }
     }
     ENDHLSL
 
@@ -169,7 +192,7 @@ Shader "G3D/AutostereoMultiviewMosaic"
         Pass
         {
             Name "G3DFullScreen3D"
-            
+
             ZWrite Off
             ZTest Always
             Blend Off

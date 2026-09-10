@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 namespace G3D
 {
     [CustomEditor(typeof(G3DCameraMosaicMultiview))]
-    public class InspectorG3DMosaicCamera : Editor
+    public class InspectorG3DMosaicCamera : UnityEditor.Editor
     {
         public VisualTreeAsset inspectorXML;
 
@@ -97,8 +97,10 @@ namespace G3D
 
             IndexMap = mainInspector.Q<Label>("IndexMap");
             updateIndexMapDisplay();
-            
-            Button visitOnlineDocumentationButton = mainInspector.Q<Button>("visitOnlineDocumentation");
+
+            Button visitOnlineDocumentationButton = mainInspector.Q<Button>(
+                "visitOnlineDocumentation"
+            );
             visitOnlineDocumentationButton.clicked += () =>
             {
                 Application.OpenURL("https://3d-global-docs.vercel.app/docs/category/unity");

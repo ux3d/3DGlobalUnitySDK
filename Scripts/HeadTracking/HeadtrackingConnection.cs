@@ -6,21 +6,17 @@ using UnityEngine;
 namespace G3D
 {
     public class HeadtrackingConnection
-        : ITNewHeadPositionCallback,
-            ITNewShaderParametersCallback,
-            ITNewErrorMessageCallback
     {
         public float headLostTimeoutInSec = 3.0f;
 
         public float transitionDuration = 0.5f;
 
-        public Vector3Int headPositionFilter = new Vector3Int(5, 5, 5);
-        public LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE;
-
-        public float basicWorkingDistance = 1.0f;
-        public float headTrackingSensitivity = 1.0f;
-        private bool debugMessages;
-
+        /// <summary>
+        /// This is the default working distance of the display. It is used as the default position if headtracking is lost.
+        /// It is the default (optimal) distance of a user from the display the display was built for.
+        /// e.g. for a 17 inch this might be 80 cm.
+        /// </summary>
+        private float basicWorkingDistance = 0.7f;
         private Vector3 lastHeadPosition = new Vector3(0, 0, 0);
 
         private float headLostTimer = 0.0f;
@@ -37,60 +33,45 @@ namespace G3D
 
         private HeadTrackingState prevHeadTrackingState = HeadTrackingState.LOST;
 
-        private LibInterface libInterface;
-        private string calibrationPath;
-
         /// <summary>
         /// This struct is used to store the current head position.
         /// It is updated in a different thread, so always use getHeadPosition() to get the current head position.
         /// NEVER use headPosition directly.
         /// </summary>
         private HeadPosition headPosition;
-        private HeadPosition filteredHeadPosition;
 
         private static object headPosLock = new object();
 
         private Queue<string> headPositionLog;
 
-        private G3DCamera g3dCamera;
-
-        public HeadtrackingConnection(
-            float basicWorkingDistance,
-            float headTrackingSensitivity,
-            string configurationPathOverwrite,
-            G3DCamera g3dCamera,
-            bool debugMessages = false,
-            Vector3Int headPositionFilter = new Vector3Int(),
-            LatencyCorrectionMode latencyCorrectionMode = LatencyCorrectionMode.LCM_SIMPLE
-        )
+        /// <summary>
+        /// basicWorkingDistance is the default (optimal) distance of a user from the display the display was built for.
+        /// e.g. for a 17 inch this might be 80 cm.
+        /// This distance is used as the default position if headtracking is lost.
+        /// </summary>
+        /// <param name="basicWorkingDistance"></param>
+        public HeadtrackingConnection(bool shouldInitLibrary = true)
         {
             lastHeadPosition = new Vector3(0, 0, -basicWorkingDistance);
-            this.basicWorkingDistance = basicWorkingDistance;
-            this.headTrackingSensitivity = headTrackingSensitivity;
-
-            calibrationPath = System.Environment.GetFolderPath(
-                Environment.SpecialFolder.CommonDocuments
-            );
-            calibrationPath = Path.Combine(calibrationPath, "3D Global", "calibrations");
-            if (!string.IsNullOrEmpty(configurationPathOverwrite))
-            {
-                calibrationPath = configurationPathOverwrite;
-            }
-
-            this.debugMessages = debugMessages;
-            this.headPositionFilter = headPositionFilter;
-            this.latencyCorrectionMode = latencyCorrectionMode;
-
-            this.g3dCamera = g3dCamera;
 
             headPositionLog = new Queue<string>(10000);
+
+            if (shouldInitLibrary)
+            {
+                initLibrary();
+            }
+        }
+
+        ~HeadtrackingConnection()
+        {
+            deinitLibrary();
         }
 
         public void startHeadTracking()
         {
             try
             {
-                libInterface.startHeadTracking();
+                HeadTrackingSDK.ht_start();
             }
             catch (Exception e)
             {
@@ -98,55 +79,105 @@ namespace G3D
             }
         }
 
-        public void shiftViewToLeft()
+        public void initLibrary()
         {
-            try
+            if (HeadTrackingSDK.ht_is_initialized())
             {
-                libInterface.shiftViewToLeft();
+                Debug.LogWarning("Headtracking library is already initialized");
+                return;
             }
-            catch (Exception e)
+            if (HeadTrackingSDK.load_from(getLibraryPath()))
             {
-                Debug.LogError("Failed to shift view to left: " + e.Message);
+                if (HeadTrackingSDK.ht_init()) { }
+                else
+                {
+                    Debug.LogError("Failed to initialize headtracking library");
+                    return;
+                }
             }
+            else
+            {
+                Debug.LogError("Failed to load headtracking library");
+                return;
+            }
+
+            // set initial values
+            // intialize head position at focus distance from focus plane
+            headPosition = new HeadPosition
+            {
+                headDetected = false,
+                worldPosX = 0.0,
+                worldPosY = 0.0,
+                worldPosZ = -basicWorkingDistance
+            };
         }
 
-        public void shiftViewToRight()
+        public void initBasicWorkingDistance()
         {
-            try
-            {
-                libInterface.shiftViewToRight();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to shift view to right: " + e.Message);
-            }
+            HeadTrackingSDK.RenderParameters monitorParameters =
+                HeadTrackingSDK.ht_get_render_parameters();
+            basicWorkingDistance = monitorParameters.basicWorkingDistanceMM / 1000.0f; // convert from mm to m
         }
 
-        public void toggleHeadTracking()
+        public void deinitLibrary()
         {
-            if (libInterface == null || !libInterface.isInitialized())
+            if (!HeadTrackingSDK.ht_is_initialized())
             {
                 return;
             }
 
             try
             {
-                HeadTrackingStatus headtrackingConnection = libInterface.getHeadTrackingStatus();
-                if (headtrackingConnection.hasTrackingDevice)
-                {
-                    if (!headtrackingConnection.isTrackingActive)
-                    {
-                        libInterface.startHeadTracking();
-                    }
-                    else
-                    {
-                        libInterface.stopHeadTracking();
-                    }
-                }
+                HeadTrackingSDK.ht_stop();
+                HeadTrackingSDK.ht_fin();
+                HeadTrackingSDK.unload();
             }
             catch (Exception e)
             {
-                Debug.LogError("Failed to toggle head tracking status: " + e.Message);
+                Debug.Log(e);
+            }
+        }
+
+        /// <summary>
+        /// Use this method to update the head position. This should only be used for debugging purposes,
+        /// as the head position is automatically updated in a different thread by the head tracking library.
+        /// </summary>
+        /// <param name="trackedHeadPos"></param>
+        /// <param name="headDetected"></param>
+        public void debugUpdateHeadPosition(
+            HeadTrackingSDK.HeadPosition trackedHeadPos,
+            bool headDetected
+        )
+        {
+            lock (headPosLock)
+            {
+                string logEntry =
+                    DateTime.Now.ToString("HH:mm::ss.fff")
+                    + ";"
+                    + trackedHeadPos.world_x
+                    + ";"
+                    + trackedHeadPos.world_y
+                    + ";"
+                    + trackedHeadPos.world_z
+                    + ";"
+                    + headDetected
+                    + ";";
+
+                headPosition.headDetected = headDetected;
+
+                int millimeterToMeter = 1000;
+
+                Vector3 headPos = new Vector3(
+                    -trackedHeadPos.world_x / millimeterToMeter,
+                    trackedHeadPos.world_y / millimeterToMeter,
+                    -trackedHeadPos.world_z / millimeterToMeter
+                );
+
+                headPosition.worldPosX = headPos.x;
+                headPosition.worldPosY = headPos.y;
+                headPosition.worldPosZ = headPos.z;
+
+                headPositionLog.Enqueue(logEntry);
             }
         }
 
@@ -158,19 +189,22 @@ namespace G3D
         /// <returns></returns>
         public HeadPosition getHeadPosition()
         {
-            HeadPosition currentHeadPosition;
             lock (headPosLock)
             {
-                if (usePositionFiltering())
-                {
-                    currentHeadPosition = filteredHeadPosition;
-                }
-                else
-                {
-                    currentHeadPosition = headPosition;
-                }
+                HeadTrackingSDK.HeadPosition trackedPos = HeadTrackingSDK.ht_get_head_world_pos();
+                HeadTrackingSDK.HeadTrackingUserPosCodes posCode =
+                    HeadTrackingSDK.ht_get_user_guidance();
+                headPosition.headDetected =
+                    posCode != HeadTrackingSDK.HeadTrackingUserPosCodes.USER_POS_NO;
+
+                headPosition.worldPosX = -trackedPos.world_x / 1000.0; // convert from mm to m
+                headPosition.worldPosY = trackedPos.world_y / 1000.0; // convert from mm to m
+                headPosition.worldPosZ = -trackedPos.world_z / 1000.0; // convert from mm to m
+
+                headPosition.imagePosX = trackedPos.image_x;
+                headPosition.imagePosY = trackedPos.image_y;
             }
-            return currentHeadPosition;
+            return headPosition;
         }
 
         /**
@@ -301,106 +335,6 @@ namespace G3D
             prevHeadTrackingState = newState;
         }
 
-        public void initLibrary()
-        {
-            string applicationName = Application.productName;
-            if (string.IsNullOrEmpty(applicationName))
-            {
-                applicationName = "Unity";
-            }
-            var invalids = System.IO.Path.GetInvalidFileNameChars();
-            applicationName = String
-                .Join("_", applicationName.Split(invalids, StringSplitOptions.RemoveEmptyEntries))
-                .TrimEnd('.');
-            applicationName = applicationName + "_G3D_Config.ini";
-
-            try
-            {
-                bool useHimaxD2XXDevices = true;
-                bool useHimaxRP2040Devices = true;
-                bool usePmdFlexxDevices = true;
-
-                libInterface = LibInterface.Instance;
-                libInterface.init(
-                    calibrationPath,
-                    Application.persistentDataPath,
-                    applicationName,
-                    this,
-                    this,
-                    this,
-                    debugMessages,
-                    useHimaxD2XXDevices,
-                    useHimaxRP2040Devices,
-                    usePmdFlexxDevices
-                );
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to initialize library: " + e.Message);
-                return;
-            }
-
-            // set initial values
-            // intialize head position at focus distance from focus plane
-            headPosition = new HeadPosition
-            {
-                headDetected = false,
-                imagePosIsValid = false,
-                imagePosX = 0,
-                imagePosY = 0,
-                worldPosX = 0.0,
-                worldPosY = 0.0,
-                worldPosZ = -basicWorkingDistance
-            };
-            filteredHeadPosition = new HeadPosition
-            {
-                headDetected = false,
-                imagePosIsValid = false,
-                imagePosX = 0,
-                imagePosY = 0,
-                worldPosX = 0.0,
-                worldPosY = 0.0,
-                worldPosZ = -basicWorkingDistance
-            };
-
-            if (usePositionFiltering())
-            {
-                try
-                {
-                    libInterface.initializePositionFilter(
-                        headPositionFilter.x,
-                        headPositionFilter.y,
-                        headPositionFilter.z
-                    );
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError("Failed to initialize position filter: " + e.Message);
-                }
-            }
-        }
-
-        public void deinitLibrary()
-        {
-            if (libInterface == null || !libInterface.isInitialized())
-            {
-                return;
-            }
-
-            try
-            {
-                libInterface.stopHeadTracking();
-                libInterface.unregisterHeadPositionChangedCallback(this);
-                libInterface.unregisterShaderParametersChangedCallback(this);
-                libInterface.unregisterMessageCallback(this);
-                libInterface.deinit();
-            }
-            catch (Exception e)
-            {
-                Debug.Log(e);
-            }
-        }
-
         public void logCameraPositionsToFile()
         {
             StreamWriter writer = new StreamWriter(
@@ -418,43 +352,17 @@ namespace G3D
             writer.Close();
         }
 
-        public void calculateShaderParameters()
+        public G3DShaderParameters calculateShaderParameters()
         {
-            if (libInterface == null || !libInterface.isInitialized())
-            {
-                return;
-            }
-            libInterface.calculateShaderParameters(latencyCorrectionMode);
-            g3dCamera.setShaderParameters(libInterface.getCurrentShaderParameters());
-        }
-
-        public void updateScreenViewportProperties(Vector2Int displayResolution)
-        {
-            try
-            {
-                // This is the size of the entire monitor screen
-                libInterface.setScreenSize(displayResolution.x, displayResolution.y);
-
-                // this refers to the window in which the 3D effect is rendered (including eg windows top window menu)
-                libInterface.setWindowSize(Screen.width, Screen.height);
-                libInterface.setWindowPosition(
-                    Screen.mainWindowPosition.x,
-                    Screen.mainWindowPosition.y
-                );
-
-                // This refers to the actual viewport in which the 3D effect is rendered
-                libInterface.setViewportSize(Screen.width, Screen.height);
-                libInterface.setViewportOffset(0, 0);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to update screen viewport properties: " + e.Message);
-            }
-        }
-
-        public void setBasicWorkingDistance(float distance)
-        {
-            basicWorkingDistance = distance;
+            HeadTrackingSDK.RenderParameters renderParameters =
+                HeadTrackingSDK.ht_get_render_parameters();
+            HeadTrackingSDK.MonitorParameters monitorParameters =
+                HeadTrackingSDK.ht_get_monitor_parameters();
+            G3DShaderParameters shaderParameters = convertToShaderParameters(
+                renderParameters,
+                monitorParameters
+            );
+            return shaderParameters;
         }
 
         /// <summary>
@@ -513,9 +421,16 @@ namespace G3D
         /// <returns></returns>
         private float convertWorldPosZToTrackedPosition(float worldPosZ, float focusDistance)
         {
-            // convert from mm to m and apply scale factor
-            float zOffset = basicWorkingDistance + worldPosZ; // worldposZ is negative when in front of the camera, so we add it to the basic working distance
-            float convertedZ = focusDistance - zOffset;
+            if (basicWorkingDistance <= 0.0f || (basicWorkingDistance - 0.7f) < 0.0000001) // sanity check
+            {
+                initBasicWorkingDistance();
+                if (basicWorkingDistance <= 0.0f)
+                {
+                    basicWorkingDistance = 0.7f;
+                }
+            }
+            float distanceRatio = basicWorkingDistance / -worldPosZ;
+            float convertedZ = focusDistance / distanceRatio;
             return -convertedZ; // invert to be in right coordinate system for camera position
         }
 
@@ -577,184 +492,61 @@ namespace G3D
             return newState;
         }
 
-        private string headTrackingStateToString()
-        {
-            switch (prevHeadTrackingState)
-            {
-                case HeadTrackingState.TRACKING:
-                    return "TRACKING";
-                case HeadTrackingState.LOST:
-                    return "LOST";
-                case HeadTrackingState.LOSTGRACEPERIOD:
-                    return "LOSTGRACEPERIOD";
-                case HeadTrackingState.TRANSITIONTOLOST:
-                    return "TRANSITIONTOLOST";
-                case HeadTrackingState.TRANSITIONTOTRACKING:
-                    return "TRANSITIONTOTRACKING";
-                default:
-                    return "UNKNOWN";
-            }
-        }
-
-        #region callback handling
-        void ITNewHeadPositionCallback.NewHeadPositionCallback(
-            bool headDetected,
-            bool imagePosIsValid,
-            int imagePosX,
-            int imagePosY,
-            double worldPosX,
-            double worldPosY,
-            double worldPosZ
+        private G3DShaderParameters convertToShaderParameters(
+            HeadTrackingSDK.RenderParameters renderParameters,
+            HeadTrackingSDK.MonitorParameters monitorParameters
         )
         {
-            lock (headPosLock)
+            G3DShaderParameters shaderParameters = new G3DShaderParameters
             {
-                string logEntry =
-                    DateTime.Now.ToString("HH:mm::ss.fff")
-                    + ";"
-                    + worldPosX
-                    + ";"
-                    + worldPosY
-                    + ";"
-                    + worldPosZ
-                    + ";"
-                    + headDetected
-                    + ";"
-                    + imagePosIsValid
-                    + ";";
+                leftViewportPosition = renderParameters.leftViewportPosition,
+                bottomViewportPosition = renderParameters.bottomViewportPosition,
+                screenWidth = renderParameters.screenWidth,
+                screenHeight = renderParameters.screenHeight,
+                nativeViewCount = monitorParameters.viewcount,
+                angleRatioNumerator = monitorParameters.angleNumerator,
+                angleRatioDenominator = monitorParameters.angleDenominator,
+                leftLensOrientation = monitorParameters.left ? 1 : 0,
+                BGRPixelLayout = monitorParameters.bgr,
+                mstart = renderParameters.viewOffset,
+                showTestFrame = renderParameters.showTestFrame,
+                showTestStripe = renderParameters.showTestStripe,
+                testGapWidth = renderParameters.testGapWidth,
+                track = renderParameters.track,
+                hqViewCount = renderParameters.hviews1 + 1,
+                hviews1 = renderParameters.hviews1,
+                hviews2 = renderParameters.hviews2,
+                blur = renderParameters.blur,
+                blackBorder = renderParameters.blackBorder,
+                blackSpace = renderParameters.blackSpace,
+                bls = renderParameters.bls,
+                ble = renderParameters.ble,
+                brs = renderParameters.brs,
+                bre = renderParameters.bre,
+                zCorrectionValue = renderParameters.zCorrectionValue,
+                zCompensationValue = renderParameters.zCompensationValue
+            };
+            return shaderParameters;
+        }
 
-                headPosition.headDetected = headDetected;
-                headPosition.imagePosIsValid = imagePosIsValid;
-
-                int millimeterToMeter = 1000;
-
-                Vector3 headPos = new Vector3(
-                    (float)-worldPosX / millimeterToMeter,
-                    (float)worldPosY / millimeterToMeter,
-                    (float)-worldPosZ / millimeterToMeter
-                );
-
-                int scaleFactorInt = (int)headTrackingSensitivity;
-
-                headPosition.imagePosX = imagePosX / (int)millimeterToMeter * scaleFactorInt;
-                headPosition.imagePosY = imagePosY / (int)millimeterToMeter * scaleFactorInt;
-                headPosition.worldPosX = headPos.x * headTrackingSensitivity;
-                headPosition.worldPosY = headPos.y * headTrackingSensitivity;
-                headPosition.worldPosZ = headPos.z * headTrackingSensitivity;
-
-                if (usePositionFiltering())
+        private string getLibraryPath()
+        {
+            #if UNITY_EDITOR
+                // Find the DLL in the package via AssetDatabase
+                string[] guids = UnityEditor.AssetDatabase.FindAssets("G3DSDK64 t:DefaultAsset");
+                if (guids.Length > 0)
                 {
-                    double filteredPositionX;
-                    double filteredPositionY;
-                    double filteredPositionZ;
-
-                    if (headDetected)
-                    {
-                        try
-                        {
-                            libInterface.applyPositionFilter(
-                                worldPosX,
-                                worldPosY,
-                                worldPosZ,
-                                out filteredPositionX,
-                                out filteredPositionY,
-                                out filteredPositionZ
-                            );
-
-                            filteredHeadPosition.worldPosX =
-                                -filteredPositionX / millimeterToMeter * headTrackingSensitivity;
-                            filteredHeadPosition.worldPosY =
-                                filteredPositionY / millimeterToMeter * headTrackingSensitivity;
-                            filteredHeadPosition.worldPosZ =
-                                -filteredPositionZ / millimeterToMeter * headTrackingSensitivity;
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.LogError("Failed to apply position filter: " + e.Message);
-                        }
-                    }
-
-                    filteredHeadPosition.headDetected = headDetected;
-                    filteredHeadPosition.imagePosIsValid = imagePosIsValid;
-
-                    logEntry +=
-                        filteredHeadPosition.worldPosX
-                        + ";"
-                        + filteredHeadPosition.worldPosY
-                        + ";"
-                        + filteredHeadPosition.worldPosZ
-                        + ";";
+                    string assetPath = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]);
+                    return Path.GetFullPath(assetPath);
                 }
-
-                headPositionLog.Enqueue(logEntry);
-            }
-        }
-
-        void ITNewErrorMessageCallback.NewErrorMessageCallback(
-            EMessageSeverity severity,
-            string sender,
-            string caption,
-            string cause,
-            string remedy
-        )
-        {
-            string messageText = formatErrorMessage(caption, cause, remedy);
-            switch (severity)
-            {
-                case EMessageSeverity.MS_EXCEPTION:
-                    Debug.LogError(messageText);
-                    break;
-                case EMessageSeverity.MS_ERROR:
-                    Debug.LogError(messageText);
-                    break;
-                case EMessageSeverity.MS_WARNING:
-                    Debug.LogWarning(messageText);
-                    break;
-                case EMessageSeverity.MS_INFO:
-
-                    Debug.Log(messageText);
-                    break;
-                default:
-                    Debug.Log(messageText);
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// The shader parameters contain everything necessary for the shader to render the 3D effect.
-        /// These are updated every time a new head position is received.
-        /// They do not update the head position itself.
-        /// </summary>
-        /// <param name="shaderParameters"></param>
-        void ITNewShaderParametersCallback.NewShaderParametersCallback(
-            G3DShaderParameters shaderParameters
-        )
-        {
-            g3dCamera.setShaderParameters(shaderParameters);
-        }
-
-        private string formatErrorMessage(string caption, string cause, string remedy)
-        {
-            string messageText = caption + ": " + cause;
-
-            if (string.IsNullOrEmpty(remedy) == false)
-            {
-                messageText = messageText + "\n" + remedy;
-            }
-
-            return messageText;
-        }
-        #endregion
-
-        /// <summary>
-        /// Returns false if all values of the position filter are set to zero.
-        /// </summary>
-        /// <returns></returns>
-        private bool usePositionFiltering()
-        {
-            return headPositionFilter.x != 0
-                || headPositionFilter.y != 0
-                || headPositionFilter.z != 0;
+                return "G3DSDK64.dll"; // fallback to default name if not found
+            #else
+                // In a standalone build, Unity copies the plugin next to the executable
+                string pluginsDir = Path.Combine(
+                    Path.GetDirectoryName(Application.dataPath),
+                    Application.productName + "_Data", "Plugins", "x86_64");
+                return Path.Combine(pluginsDir, "G3DSDK64.dll");
+            #endif
         }
     }
 }
