@@ -483,13 +483,32 @@ namespace G3D
             columns = 1;
 
             string[] parts = name.Split('.');
-            if (parts.Length < 3 || parts[1] != "mosaic")
+            if (parts.Length >= 2 && parts[parts.Length - 1].ToLower() == "sbs")
             {
-                Debug.LogError("Invalid mosaic video file name format: " + name);
+                rows = 1;
+                columns = 2;
+                return;
+            }
+            else if (parts.Length >= 3 && parts[parts.Length - 2].ToLower() == "mosaic")
+            {
+                dimensionsFromMosaic(parts, out rows, out columns);
                 return;
             }
 
-            string rowsStr = parts[2];
+        }
+
+        /// <summary>
+        /// e.g. something.mosaic.3x3.mp4 -> 3 rows, 3 columns
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="rows"></param>
+        /// <param name="columns"></param>
+        private void dimensionsFromMosaic(string[] parts, out int rows, out int columns)
+        {
+            rows = 1;
+            columns = 1;
+
+            string rowsStr = parts[parts.Length - 1];
             string[] tmp = rowsStr.Split('x');
             if (tmp.Length != 2)
             {

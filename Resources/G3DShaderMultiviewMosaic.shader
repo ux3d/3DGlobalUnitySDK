@@ -14,10 +14,18 @@ Shader "G3D/AutostereoMultiviewMosaic"
         {
             viewIndex = 0;
         }
-        if(mosaic_rows * mosaic_columns < nativeViewCount)
+        uint gridCount = mosaic_rows * mosaic_columns;
+        // viewIndex has already been reduced to a compact camera index by the index_map lookup
+        // in finalizeViewIndex, so it must be remapped relative to cameraCount, not nativeViewCount.
+        if(gridCount < cameraCount)
         {
-            viewIndex = map(viewIndex, 0, nativeViewCount - 1, 0, mosaic_rows * mosaic_columns - 1);
+            if(gridCount < 1)
+            {
+                gridCount = 1;
+            }
+            viewIndex = map(viewIndex, 0, cameraCount - 1, 0, gridCount - 1);
         }
+
         uint xAxis = viewIndex % mosaic_columns;
         uint yAxis = viewIndex / mosaic_columns;
         // invert y axis to account for different coordinate systems between Unity and OpenGL (OpenGL has origin at bottom left)
@@ -73,6 +81,12 @@ Shader "G3D/AutostereoMultiviewMosaic"
                 color.z = tmpColorZ.z;
             }
         }
+
+        // if(uvCoords.x < 0.5) {
+        //     color = float4(calculateUVForMosaic(0, uvCoords), 0.0, 1.0);
+        // } else {
+        //     color = float4(calculateUVForMosaic(1, uvCoords), 0.0, 1.0);
+        // }
 
         return color;
     }
