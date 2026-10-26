@@ -127,7 +127,15 @@ int3 getHQViewIndices(float2 screenPos)
 
 int map(int x, int in_min, int in_max, int out_min, int out_max)
 {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    if (in_max == in_min)
+    {
+        return out_min;
+    }
+    // use rounded float division instead of truncating integer division so small
+    // output ranges (e.g. a 2x1 mosaic grid) still distribute across all buckets
+    // instead of everything truncating down to the same bucket.
+    float t = float(x - in_min) / float(in_max - in_min);
+    return int(round(out_min + t * float(out_max - out_min)));
 }
 
 // the text coords of the original left and right view are from 0 - 1

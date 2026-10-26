@@ -62,7 +62,7 @@ Shader "G3D/Autostereo"
             tr2d = track;
         }
 
-        uint3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + zwert;
+        uint3 mtmp = ((hviews1 - xwert) * nwinkel) + hqwert + track + mstart + viewOffset + zwert;
         xwert = hviews1 - (mtmp % hqview);
         // xwert = hviews1 - modiv3g3d(mtmp, hqview);
 
