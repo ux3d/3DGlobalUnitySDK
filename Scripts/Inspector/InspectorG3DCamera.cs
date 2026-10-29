@@ -13,14 +13,13 @@ namespace G3D
         public VisualTreeAsset inspectorXML;
 
         private PropertyField modeField;
-        private PropertyField configurationFileField;
+        private PropertyField configCodeField;
         private PropertyField indexMapYoyoStartField;
         private PropertyField invertIndexMapField;
         private PropertyField invertIndexMapIndicesField;
 
         private PropertyField headtrackingScaleField;
 
-        private PropertyField viewOffsetField;
         private PropertyField focusDistanceField;
         private PropertyField dollyZoomField;
 
@@ -33,12 +32,6 @@ namespace G3D
         private Foldout advancedSettingsFoldout;
 
         private Label IndexMap;
-
-        /// <summary>
-        /// This is used to hack the Unity Inspector.
-        /// Unity triggers a change event when the Inspector is first displayed, but it doesn't provide the new value in that event, so we have to store the last config file to detect when it actually changes.
-        /// </summary>
-        private TextAsset lastConfigFile;
 
         // We use this to check if the headtracking connection is active
         // in order to display certain UI elements in the inspector
@@ -68,7 +61,7 @@ namespace G3D
 
             headtrackingScaleField = mainInspector.Q<PropertyField>("headtrackingSensitivity");
 
-            viewOffsetField = mainInspector.Q<PropertyField>("viewOffset");
+            configCodeField = mainInspector.Q<PropertyField>("configCode");
 
             focusDistanceField = mainInspector.Q<PropertyField>("focusDistance");
             dollyZoomField = mainInspector.Q<PropertyField>("dollyZoom");
@@ -89,30 +82,13 @@ namespace G3D
             calibFolderLabel = mainInspector.Q<Label>("HeadtrackingCalibrationFolder");
             calibFolderLabel.text = calibrationPath;
 
+
             HeadtrackingCalibFileInfo = mainInspector.Q<Label>("HeadtrackingCalibFileInfo");
 
-            configurationFileField = mainInspector.Q<PropertyField>("configurationFile");
-            lastConfigFile = camera.configurationFile != null ? camera.configurationFile : null; // store the initial config file to detect changes later
             indexMapYoyoStartField = mainInspector.Q<PropertyField>("indexMapYoyoStart");
             invertIndexMapField = mainInspector.Q<PropertyField>("invertIndexMap");
             invertIndexMapIndicesField = mainInspector.Q<PropertyField>("invertIndexMapIndices");
             setupValueChangeInteractions();
-
-            Button setFocusDistanceButton = mainInspector.Q<Button>("setFocusDistance");
-            setFocusDistanceButton.tooltip =
-                "Set the focus distance to the native focus distance of the display. At native focus distance the camera to focus plane distance is the same as the ideal real world viewing distance of the display.";
-            setFocusDistanceButton.clicked += () =>
-            {
-                camera.setFocusDistanceToDisplay();
-            };
-
-            Button setCameraFOVButton = mainInspector.Q<Button>("setCameraFOV");
-            setCameraFOVButton.tooltip =
-                "Set the main camera's field of view to the real world angle the display actually covers in the user's vision when viewed from the ideal distance.";
-            setCameraFOVButton.clicked += () =>
-            {
-                camera.setCameraFOVToDisplayFOV();
-            };
 
             Button visitOnlineDocumentationButton = mainInspector.Q<Button>(
                 "visitOnlineDocumentation"
@@ -150,7 +126,8 @@ namespace G3D
             modeField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    G3DCameraMode newMode = (G3DCameraMode)evt.changedProperty.enumValueIndex;
+                    // update UI
+                    G3DCameraMode newMode = Misc.CameraModeFromString((string) evt.changedProperty.boxedValue.ToString());
                     if (newMode == G3DCameraMode.HEADTRACKING)
                     {
                         calibFolderLabel.style.display = DisplayStyle.Flex;
@@ -163,6 +140,10 @@ namespace G3D
                         headtrackingScaleField.style.display = DisplayStyle.None;
                         HeadtrackingCalibFileInfo.style.display = DisplayStyle.None;
                     }
+
+                    // update camera mode in the backend
+                    ((G3DCamera)target).updateMode();
+                    updateIndexMap();
                 }
             );
 
@@ -174,25 +155,14 @@ namespace G3D
             );
 
             G3DCamera camera = (G3DCamera)target;
-            configurationFileField.RegisterValueChangeCallback(
+            configCodeField.RegisterValueChangeCallback(
                 (evt) =>
                 {
-                    if (camera.configurationFile != lastConfigFile)
-                    {
-                        lastConfigFile = camera.configurationFile;
-                        camera.setupCameras();
-                        updateIndexMap();
-
-                        // force update the scene view to dorce gizmo update
-                        SceneView.RepaintAll();
-                    }
-                }
-            );
-            modeField.RegisterValueChangeCallback(
-                (evt) =>
-                {
-                    camera.updateMode();
+                    camera.setupCameras();
                     updateIndexMap();
+
+                    // force update the scene view to force gizmo update
+                    SceneView.RepaintAll();
                 }
             );
 

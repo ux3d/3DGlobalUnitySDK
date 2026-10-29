@@ -208,7 +208,7 @@ namespace G3D
 #endif
 
             // Do this last to ensure custom passes are already set up
-            shaderParameters = ConfigurationProvider.getParametersFromConfigCode(configCode);
+            shaderParameters = ConfigCodeHandling.getParametersFromConfigCode(configCode);
             setupTextureMode();
             reinitializeShader();
 
@@ -345,7 +345,7 @@ namespace G3D
                 return;
             }
             this.configCode = configCode;
-            shaderParameters = ConfigurationProvider.getParametersFromConfigCode(configCode);
+            shaderParameters = ConfigCodeHandling.getParametersFromConfigCode(configCode);
         }
 
         public string getConfigCode()

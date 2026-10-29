@@ -1,8 +1,9 @@
 using System;
+using UnityEngine;
 
 namespace G3D
 {
-    public class ConfigCode
+    public class ConfigCodeHandling
     {
         public struct DisplayConfig
         {
@@ -218,6 +219,12 @@ namespace G3D
                     config.lensAngleDenominator = 7;
                     config.isLeft = true;
                     break;
+                case "H":
+                    config.lensOpeningAngleInDeg = 13.4f;
+                    config.lensAngleNumerator = 40;
+                    config.lensAngleDenominator = 49;
+                    config.isLeft = true;
+                    break;
 
                 // right tilted lenses
                 case "N":
@@ -265,6 +272,113 @@ namespace G3D
                 default:
                     throw new ArgumentException("Invalid config code.");
             }
+        }
+
+        public static G3DShaderParameters getParametersFromDisplayConfig(
+            DisplayConfig displayConfig
+        )
+        {
+            return fillShaderParameters(
+                (int)displayConfig.numberOfViews,
+                (int)displayConfig.lensAngleNumerator,
+                (int)displayConfig.lensAngleDenominator,
+                displayConfig.isLeft ? 1 : 0,
+                displayConfig.isBGR,
+                0,
+                0
+            );
+        }
+
+        public static G3DShaderParameters getParametersFromConfigCode(string configCode)
+        {
+            try
+            {
+                DisplayConfig displayConfig = ParseConfigCode(configCode);
+                return getParametersFromDisplayConfig(displayConfig);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to get shader parameters from config code: " + e.Message);
+                return fillShaderParameters();
+            }
+        }
+
+        public static int getNumberOfViews(string configCode)
+        {
+            try
+            {
+                DisplayConfig displayConfig = ParseConfigCode(configCode);
+                return (int)displayConfig.numberOfViews;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to get number of views from config code: " + e.Message);
+                return 7; // default to 2 views if parsing fails
+            }
+        }
+
+        private static G3DShaderParameters fillShaderParameters(
+            int nativeViewCount = 2,
+            int angleRatioNumerator = 1,
+            int angleRatioDenominator = 1,
+            int leftLensOrientation = 0,
+            bool isBGR = false,
+            int blackBorder = 0,
+            int blackSpace = 0,
+            int screenWidth = 0,
+            int screenHeight = 0
+        )
+        {
+            G3DShaderParameters parameters = new G3DShaderParameters();
+
+            // display parameters
+            parameters.screenWidth = screenWidth;
+            parameters.screenHeight = screenHeight;
+#if UNITY_IOS
+            parameters.leftViewportPosition = 0; //< The left position of the viewport in screen coordinates
+            parameters.bottomViewportPosition = 0; //< The bottom position of the viewport in screen coordinates
+#else
+
+            parameters.leftViewportPosition = Screen.mainWindowPosition.x; //< The left position of the viewport in screen coordinates
+            parameters.bottomViewportPosition = Screen.mainWindowPosition.y + Screen.height; //< The bottom position of the viewport in screen coordinates
+#endif
+
+            // default values are those i got from the head tracking library when no camera was connected
+            parameters.nativeViewCount = nativeViewCount;
+            parameters.angleRatioNumerator = angleRatioNumerator;
+            parameters.angleRatioDenominator = angleRatioDenominator;
+            parameters.leftLensOrientation = leftLensOrientation;
+            parameters.BGRPixelLayout = isBGR ? 1 : 0;
+            parameters.blackBorder = blackBorder;
+            parameters.blackSpace = blackSpace;
+
+            parameters.showTestFrame = 0;
+            parameters.showTestStripe = 0;
+            parameters.testGapWidth = 0;
+
+            parameters.blur = 0; // this is based on a guess
+
+            parameters.mstart = 0; // set to zero for no viewOffset
+            parameters.track = 0; // set to zero for no tracking shift
+
+            // lens parameters
+            // This is a total guess as to how this parameter is calculated.
+            parameters.hqViewCount = parameters.nativeViewCount * parameters.angleRatioDenominator;
+            parameters.hviews1 = parameters.hqViewCount - 1;
+            parameters.hviews2 = parameters.hqViewCount / 2;
+
+            // bls and ble correspond to the start and end of the left eye view "window"
+            // brs and bre correspond to the start and end of the right eye view "window"
+            // my guess: the left eye takes half the views, and the right eye takes the other half
+            parameters.bls = 0;
+            parameters.ble = parameters.hviews2;
+            parameters.brs = parameters.hviews2;
+            parameters.bre = parameters.hqViewCount - 1;
+
+            parameters.zCompensationValue = 0; // i got this value from the library when no camera was connected
+            parameters.zCorrectionValue = 13248; // i got this value from the library when no camera was connected
+
+            return parameters;
         }
     }
 }

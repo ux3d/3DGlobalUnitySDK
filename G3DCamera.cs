@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
 using G3D.RenderPipeline;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -10,7 +10,6 @@ using UnityEngine.Rendering.HighDefinition;
 
 #if G3D_URP
 using UnityEngine.Rendering.Universal;
-using UnityEngine.UI;
 #endif
 
 namespace G3D
@@ -22,8 +21,8 @@ namespace G3D
     [DisallowMultipleComponent]
     public class G3DCamera : MonoBehaviour
     {
-        [Tooltip("Drop the configuration file for the display you want to use here.")]
-        public TextAsset configurationFile;
+        [Tooltip("The Config Code for the display you want to use. It should be on a sticker on the back of the monitor.")]
+        public string ConfigCode = "07D";
 
         [Tooltip(
             "This path has to be set to the directory where the folder containing the configuration files for your monitor are located. The folder has to have the same name as your camera model."
@@ -33,7 +32,7 @@ namespace G3D
         /// </summary>
         public string configurationPathOverwrite = "";
 
-        public G3DCameraMode mode = G3DCameraMode.MULTIVIEW;
+        [SerializeField] public ObservableCameraMode mode = new ObservableCameraMode(G3DCameraMode.MULTIVIEW);
 
         /// <summary>
         /// prefix added to the cameras created by this script.
@@ -73,16 +72,12 @@ namespace G3D
         [Range(0.001f, 3)]
         public float dollyZoom = 1;
 
+        // distance between the two cameras
         [Tooltip(
-            "Scale the distance between the views (cameras). 1.0 is no scaling, 0.5 is half the distance, 2.0 is double the distance. Native distance depends on configuration file."
+            "Distance between the two cameras."
         )]
-        [Range(0.0f, 20.0f)]
-        /// <summary>
-        /// Scale the distance between the views (cameras).
-        /// 1.0 is no scaling, 0.5 is half the distance, 2.0 is double the distance.
-        /// Native distance depends on configuration file.
-        /// </summary>
-        public float viewOffsetScale = 1.0f;
+        // TODO make this always use unity units (meters)
+        public float viewSeparation = 0.065f;
 
         /// <summary>
         /// Distance between the cameras and the focus plane in meters. Native value depends on configuration file.
@@ -166,9 +161,6 @@ namespace G3D
         #region Private variables
         private IndexMap indexMap = IndexMap.Instance;
 
-        // distance between the two cameras for headtracking mode (in meters). DO NOT USE FOR MULTIVIEW MODE!
-        private float viewSeparation = 0.065f;
-
         private const int MAX_CAMERAS = 16; //shaders dont have dynamic arrays and this is the max supported. change it here? change it in the shaders as well ...
         private int internalCameraCount = 2;
         private int oldRenderResolutionScale = 100;
@@ -202,17 +194,7 @@ namespace G3D
         private Vector2Int cachedWindowPosition;
         private Vector2Int cachedWindowSize;
 
-        /// <summary>
-        /// This value is calculated based on the configuration file
-        /// </summary>
-        private float displayFOV = 16.0f;
-
         private bool showTestFrame = false;
-
-        private float scaledViewSeparation
-        {
-            get { return viewSeparation * viewOffsetScale; }
-        }
 
         private float focusDistWithDollyZoom
         {
@@ -232,10 +214,15 @@ namespace G3D
 
         private bool mainCamInactiveLastFrame = false;
 
-        // TODO this is a hack. Fix this.
-        private string configCodeHack = "";
-
         #region Initialization
+
+        private G3DCamera()
+        {
+            mode.Changed += (oldValue, newValue) =>
+            {
+                updateMode();
+            };
+        }
 
         void Awake()
         {
@@ -280,7 +267,7 @@ namespace G3D
 
             updateScreenViewportProperties();
 
-            loadShaderParametersFromConfigurationFile();
+            loadShaderParametersFromConfigCode();
             updateShaderParameters();
 
             updateCameras();
@@ -294,7 +281,7 @@ namespace G3D
             cachedWindowSize = new Vector2Int(Screen.width, Screen.height);
 
             indexMap.UpdateIndexMap(
-                getCameraCountFromConfigurationFile(),
+                ConfigCodeHandling.getNumberOfViews(ConfigCode),
                 internalCameraCount,
                 indexMapYoyoStart / 100.0f,
                 invertIndexMap,
@@ -359,8 +346,7 @@ namespace G3D
 
         public void setMode(G3DCameraMode newMode)
         {
-            mode = newMode;
-            updateMode();
+            mode.Value = newMode;
         }
 
         /// <summary>
@@ -376,19 +362,16 @@ namespace G3D
             }
             else // Holobox and Multiview mode
             {
-                if (configurationFile == null)
+                if(String.IsNullOrEmpty(ConfigCode))
                 {
                     Debug.LogWarning(
-                        "No configuration file set. Please set a configuration file. Using default values."
+                        "No config code set. Please set a config code. Using default values."
                     );
+                    
                 }
                 else
                 {
-                    ConfigurationProvider configuration = ConfigurationProvider.getFromString(
-                        configurationFile.text
-                    );
-                    internalCameraCount = getCameraCountFromConfigurationFile(configuration);
-                    loadMultiviewViewSeparationFromConfiguration(configuration);
+                    internalCameraCount = ConfigCodeHandling.getNumberOfViews(ConfigCode);
                 }
             }
 
@@ -410,7 +393,7 @@ namespace G3D
         public void updateIndexMap()
         {
             indexMap.UpdateIndexMap(
-                getCameraCountFromConfigurationFile(),
+                ConfigCodeHandling.getNumberOfViews(ConfigCode),
                 internalCameraCount,
                 indexMapYoyoStart / 100.0f,
                 invertIndexMap,
@@ -426,48 +409,27 @@ namespace G3D
         /// <summary>
         /// Load shader parameters from current configuration file.
         /// </summary>
-        public void loadShaderParametersFromConfigurationFile()
+        public void loadShaderParametersFromConfigCode()
         {
-            if (configurationFile == null)
+            if (String.IsNullOrEmpty(ConfigCode))
             {
                 Debug.LogError(
-                    "No configuration file set. Please set a configuration file. Using default values."
+                    "No config code set. Please set a config code. Using default values."
                 );
                 return;
             }
 
             lock (shaderLock)
             {
-                ConfigurationProvider configurationProvider = ConfigurationProvider.getFromString(
-                    configurationFile.text
-                );
-                shaderParameters = configurationProvider.getShaderParameters();
+                shaderParameters = ConfigCodeHandling.getParametersFromConfigCode(ConfigCode);
             }
-        }
-
-        /// <summary>
-        /// Updates all camera parameters based on the configuration file (i.e. focus distance, fov, etc.).
-        /// Includes shader parameters (i.e. lense shear angle, camera count, etc.).
-        ///
-        /// Updates configuration file as well.
-        /// </summary>
-        public void setupCameras(TextAsset configurationFile)
-        {
-            this.configurationFile = configurationFile;
-            setupCameras();
         }
 
         public void loadConfigFromConfigCode(string configCode)
         {
-            internalCameraCount = ConfigurationProvider.getNumberOfViewsFromConfigCode(configCode);
-            shaderParameters = ConfigurationProvider.getParametersFromConfigCode(configCode);
-            configCodeHack = configCode;
-        }
-
-        [ContextMenu("test")]
-        public void test()
-        {
-            loadConfigFromConfigCode("07D");
+            ConfigCode = configCode;
+            internalCameraCount = ConfigCodeHandling.getNumberOfViews(configCode);
+            shaderParameters = ConfigCodeHandling.getParametersFromConfigCode(configCode);
         }
 
         /// <summary>
@@ -487,10 +449,10 @@ namespace G3D
                 // only run this code if not in editor mode
                 initCamerasAndParents();
             }
-            if (configurationFile == null)
+            if (String.IsNullOrEmpty(ConfigCode))
             {
                 Debug.LogError(
-                    "No configuration file set. Please set a configuration file. Using default values."
+                    "No config code set. Please set a config code. Using default values."
                 );
                 if (updateFocusDist)
                 {
@@ -509,31 +471,9 @@ namespace G3D
                 return;
             }
 
-            // load values from configuration file
-            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
-                configurationFile.text
-            );
-            int BasicWorkingDistanceMM = configuration.getInt("BasicWorkingDistanceMM");
-            float PhysicalSizeInch = configuration.getFloat("PhysicalSizeInch");
-            int NativeViewcount = configuration.getInt("NativeViewcount");
-            int HorizontalResolution = configuration.getInt("HorizontalResolution");
-            int VerticalResolution = configuration.getInt("VerticalResolution");
-
-            // calculate intermediate values
-            float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
-            float physicalSizeInMeter = PhysicalSizeInch * 0.0254f;
-            float aspectRatio = (float)HorizontalResolution / (float)VerticalResolution;
-            float FOV =
-                2
-                * Mathf.Atan(physicalSizeInMeter / 2.0f / BasicWorkingDistanceMeter)
-                * Mathf.Rad2Deg;
-            // set camera fov
-            displayFOV = Camera.HorizontalToVerticalFieldOfView(FOV, aspectRatio);
-
-            // set focus distance
             if (updateFocusDist)
             {
-                updateFocusDistance(BasicWorkingDistanceMeter);
+                updateFocusDistance(0.7f);
             }
 
             // calculate eye separation/ view separation
@@ -543,13 +483,12 @@ namespace G3D
             }
             else // Holobox and Multiview mode
             {
-                loadMultiviewViewSeparationFromConfiguration(configuration);
-                internalCameraCount = NativeViewcount;
+                internalCameraCount = ConfigCodeHandling.getNumberOfViews(ConfigCode);
             }
 
             updateCameraCountBasedOnMode();
 
-            loadShaderParametersFromConfigurationFile();
+            loadShaderParametersFromConfigCode();
         }
 
         public void updateRenderTextures()
@@ -615,38 +554,6 @@ namespace G3D
         }
 
         /// <summary>
-        /// Set the cameras FOV to the fov calculated from the configuration file.
-        /// Sets the filed of view to the natural field of view the display actually covers in your field of vision if you sit at the recommended distance.
-        /// </summary>
-        public void setCameraFOVToDisplayFOV()
-        {
-            // set to display FOV from configuration file
-            mainCamera.fieldOfView = displayFOV;
-        }
-
-        /// <summary>
-        /// Set the focus distance to the native focus distance of the dispaly. Native focus distance is the distance the viewer has to be from the display for the 3d effect to look best.
-        /// </summary>
-        public void setFocusDistanceToDisplay()
-        {
-            if (configurationFile == null)
-            {
-                Debug.LogError(
-                    "No configuration file set. Please set a configuration file. Using default values."
-                );
-                updateFocusDistance(0.7f);
-                return;
-            }
-
-            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
-                configurationFile.text
-            );
-            int BasicWorkingDistanceMM = configuration.getInt("BasicWorkingDistanceMM");
-            float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
-            updateFocusDistance(BasicWorkingDistanceMeter);
-        }
-
-        /// <summary>
         /// If no value or NAN is passed the focus distance will not be updated, but the focus plane object position will be updated
         /// </summary>
         /// <param name="newFocusDistance"></param>
@@ -684,36 +591,6 @@ namespace G3D
             mainCamera = GetComponent<Camera>();
             mainCamCullingMask = mainCamera.cullingMask;
             originalMainClearFlags = mainCamera.clearFlags;
-        }
-
-        private void loadMultiviewViewSeparationFromConfiguration(
-            ConfigurationProvider configuration
-        )
-        {
-            if (mode != G3DCameraMode.MULTIVIEW && mode != G3DCameraMode.HOLOBOX)
-            {
-                return;
-            }
-
-            int BasicWorkingDistanceMM = configuration.getInt("BasicWorkingDistanceMM");
-            int NativeViewcount = configuration.getInt("NativeViewcount");
-            float ApertureAngle = 14.0f;
-            try
-            {
-                ApertureAngle = configuration.getFloat("ApertureAngle");
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning(e.Message);
-            }
-
-            float BasicWorkingDistanceMeter = BasicWorkingDistanceMM / 1000.0f;
-            float halfZoneOpeningAngleRad = ApertureAngle * Mathf.Deg2Rad / 2.0f;
-            float halfWidthZoneAtbasicDistance =
-                Mathf.Tan(halfZoneOpeningAngleRad) * BasicWorkingDistanceMeter;
-
-            // calculate eye separation/ view separation
-            viewSeparation = halfWidthZoneAtbasicDistance * 2 / NativeViewcount;
         }
 
         /// <summary>
@@ -756,45 +633,6 @@ namespace G3D
                     cameras[i].transform.localRotation = Quaternion.identity;
                 }
             }
-        }
-
-        private int getCameraCountFromConfigurationFile()
-        {
-            if (configurationFile == null)
-            {
-                return 2;
-            }
-
-            // TODO do not recreate the configuration provider every time
-            // This gets called every frame in UpdateCameraCountBasedOnMode
-            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
-                configurationFile.text
-            );
-            return getCameraCountFromConfigurationFile(configuration);
-        }
-
-        private int getCameraCountFromConfigurationFile(ConfigurationProvider configuration)
-        {
-            int NativeViewcount = configuration.getInt("NativeViewcount");
-            return NativeViewcount;
-        }
-
-        private Vector2Int getDisplayResolutionFromConfigurationFile()
-        {
-            if (configurationFile == null)
-            {
-                Debug.LogError(
-                    "No configuration file set. Please set a configuration file. Using default values."
-                );
-                return new Vector2Int(1920, 1080);
-            }
-
-            ConfigurationProvider configuration = ConfigurationProvider.getFromString(
-                configurationFile.text
-            );
-            int HorizontalResolution = configuration.getInt("HorizontalResolution");
-            int VerticalResolution = configuration.getInt("VerticalResolution");
-            return new Vector2Int(HorizontalResolution, VerticalResolution);
         }
 
         private void reinitializeShader()
@@ -882,9 +720,11 @@ namespace G3D
         {
             if (mode == G3DCameraMode.HOLOBOX || mode == G3DCameraMode.MULTIVIEW)
             {
-                Vector2Int displayResolution = getDisplayResolutionFromConfigurationFile();
-                shaderParameters.screenWidth = displayResolution.x;
-                shaderParameters.screenHeight = displayResolution.y;
+                // use Screen.resolutions to get highest possible screen resolution,
+                // no matter what the screen might be set to in the display settings
+                Resolution[] resolutions = Screen.resolutions;
+                shaderParameters.screenWidth = resolutions.Last().width;
+                shaderParameters.screenHeight = resolutions.Last().height;
                 shaderParameters.leftViewportPosition = Screen.mainWindowPosition.x;
                 shaderParameters.bottomViewportPosition =
                     Screen.mainWindowPosition.y + Screen.height;
@@ -1003,13 +843,13 @@ namespace G3D
                 headtrackingConnection.handleHeadTrackingState(
                     ref targetPosition,
                     ref targetViewSeparation,
-                    scaledViewSeparation,
+                    viewSeparation,
                     focusDistWithDollyZoom
                 );
             }
             else // Multiview and Holobox mode
             {
-                targetViewSeparation = scaledViewSeparation;
+                targetViewSeparation = viewSeparation;
             }
 
             cameraParent.transform.localPosition = targetPosition;
@@ -1073,14 +913,13 @@ namespace G3D
             }
             else // Multiview and Holobox mode
             {
-                if (String.IsNullOrEmpty(configCodeHack))
+                if (String.IsNullOrEmpty(ConfigCode))
                 {
-                    internalCameraCount = getCameraCountFromConfigurationFile();
-                }
-                else
+                    internalCameraCount = 7;
+                }else
                 {
-                    internalCameraCount = ConfigurationProvider.getNumberOfViewsFromConfigCode(
-                        configCodeHack
+                    internalCameraCount = ConfigCodeHandling.getNumberOfViews(
+                        ConfigCode
                     );
                 }
                 if (internalCameraCount > MAX_CAMERAS)
@@ -1317,7 +1156,7 @@ namespace G3D
             {
                 float localCameraOffset = calculateCameraOffset(
                     i,
-                    scaledViewSeparation,
+                    viewSeparation,
                     internalCameraCount
                 );
                 Vector3 camPos = basePosition - new Vector3(0, 0, focusDistWithDollyZoom);
@@ -1331,7 +1170,7 @@ namespace G3D
             {
                 float localCameraOffset = calculateCameraOffset(
                     i,
-                    scaledViewSeparation,
+                    viewSeparation,
                     internalCameraCount
                 );
 
